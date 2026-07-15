@@ -179,6 +179,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .tbl tr:nth-child(even) td{background:#FBF8F2}
 .card{transition:box-shadow .2s}
 
+/* ===== كاميرا وشريط الإنجاز ===== */
+.camwrap{background:#000;border-radius:14px;overflow:hidden}
+.camwrap video{width:100%;max-height:55vh;display:block;object-fit:cover}
+.pbar{height:9px;background:var(--line);border-radius:6px;margin-top:8px;overflow:hidden}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),#7FBF8E);border-radius:6px;transition:width .35s}
+
 /* ===== إحصائيات لوحة الإدارة ===== */
 .statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
 .stat{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 8px;text-align:center}
@@ -348,6 +354,46 @@ function devId(){
     return d;
   }catch(e){ return 'no-storage'; }
 }
+function devTok(){ try{ return localStorage.getItem('rko_devtok')||''; }catch(e){ return ''; } }
+function devLabel(){ try{ return localStorage.getItem('rko_devlabel')||''; }catch(e){ return ''; } }
+
+/* ---------- كاميرا مباشرة (لا استوديو): للتحقق وتوثيق المهام ---------- */
+function cameraSheet(opts, cb){
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
+    toast('الكاميرا غير مدعومة على هذا المتصفح', true);
+    if(opts.onFail) opts.onFail();
+    return;
+  }
+  var stream=null;
+  function stopCam(){ if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream=null; } }
+  sheet(opts.title||'التصوير المباشر',
+    '<div class="camwrap"><video id="camV" autoplay playsinline muted></video></div>'+
+    '<div class="muted small center" style="margin-top:6px">تصوير مباشر فقط — لا يمكن الاختيار من الاستوديو، وتُختم الصورة بالوقت</div>'+
+    '<div class="btnrow"><button class="btn block" id="camGo">📸 التقاط</button></div>',
+    function(ov, closeFn){
+      var xb=$('.x',ov); if(xb) xb.addEventListener('click', stopCam);
+      ov.addEventListener('click', function(e){ if(e.target===ov) stopCam(); });
+      navigator.mediaDevices.getUserMedia({video:{facingMode:opts.facing||'environment', width:{ideal:1024}}, audio:false})
+        .then(function(st){ stream=st; var v=$('#camV',ov); if(v) v.srcObject=st; else stopCam(); })
+        .catch(function(){
+          stopCam(); closeFn();
+          toast('يجب السماح بالكاميرا — هذه العملية تتطلب تصويراً مباشراً', true);
+          if(opts.onFail) opts.onFail();
+        });
+      $('#camGo',ov).addEventListener('click', function(){
+        var v=$('#camV',ov);
+        if(!stream || !v || !v.videoWidth){ toast('الكاميرا لم تجهز بعد — لحظة', true); return; }
+        var max=800, w=v.videoWidth, h=v.videoHeight;
+        if(w>h && w>max){ h=Math.round(h*max/w); w=max; } else if(h>=w && h>max){ w=Math.round(w*max/h); h=max; }
+        var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        var ctx=cv.getContext('2d'); ctx.drawImage(v,0,0,w,h);
+        ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,h-26,w,26);
+        ctx.fillStyle='#fff'; ctx.font='13px sans-serif'; ctx.textAlign='right'; ctx.direction='rtl';
+        ctx.fillText((opts.watermark||'')+' · '+new Date().toLocaleString('ar-JO'), w-8, h-8);
+        stopCam(); closeFn(); cb(cv.toDataURL('image/jpeg',0.72));
+      });
+    });
+}
 function getGeo(cb){
   if(!navigator.geolocation){ cb(null); return; }
   var done=false;
@@ -359,21 +405,35 @@ function getGeo(cb){
     if(done) return; done=true; clearTimeout(t); cb(null);
   }, {enableHighAccuracy:true, timeout:6000, maximumAge:30000});
 }
-/* تأكيد الحضور/الانصراف: كلمة السر تمنع تسجيل زميلة عن زميلتها، والموقع يُلتقط للتوثيق */
+/* تأكيد الحضور/الانصراف: كلمة سرها + صورة تحقق مباشرة (تمنع التسجيل بكلمة سر مُعارة) + جهاز مفعّل */
 function attSheet(kind){
   var isOut = kind==='out';
+  var selfie='', camFailed=false;
   sheet(isOut?'تأكيد الانصراف':'تأكيد الحضور',
-    '<div class="muted small">حمايةً للجميع: أدخلي كلمة سرك بنفسك، ويُلتقط موقع الجهاز لحظة التسجيل فقط (لا تتبع خارج ذلك).</div>'+
+    '<div class="muted small">ثلاث خطوات تحقق: كلمة سرك + صورة مباشرة + جهاز الكافيه. الموقع يُلتقط لحظة التسجيل فقط — لا تتبع خارج ذلك.</div>'+
     '<label class="f">كلمة السر</label><input class="f" id="atPin" type="password" inputmode="numeric" autocomplete="off">'+
+    '<div class="btnrow"><button class="btn ghost block" id="atCam">📸 التقاط صورة التحقق (مباشرة)</button></div>'+
+    '<div class="center"><img id="atPrev" alt="" style="display:none;width:110px;border-radius:12px;margin-top:6px"></div>'+
     '<div class="btnrow"><button class="btn '+(isOut?'orange ':'')+'block" id="atGo">'+(isOut?'تسجيل الانصراف':'تسجيل الحضور ✔')+'</button></div>',
     function(ov, close){
       var inp=$('#atPin',ov); setTimeout(function(){ inp.focus(); },100);
+      $('#atCam',ov).addEventListener('click', function(){
+        cameraSheet({facing:'user', title:'صورة التحقق المباشرة',
+          watermark:(S.me?S.me.name:'')+(isOut?' · انصراف':' · حضور'),
+          onFail:function(){ camFailed=true; }},
+          function(d){
+            selfie=d;
+            var im=$('#atPrev',ov); if(im){ im.src=d; im.style.display='inline-block'; }
+            var cbn=$('#atCam',ov); if(cbn) cbn.textContent='📸 إعادة الالتقاط';
+          });
+      });
       function go(){
         if(!inp.value){ toast('أدخلي كلمة سرك', true); return; }
+        if(!selfie && !camFailed){ toast('التقطي صورة التحقق المباشرة أولاً', true); return; }
         busyWrap($('#atGo',ov), function(){
           return new Promise(function(resolve){
             getGeo(function(geo){
-              sAct(isOut?'check_out':'check_in', {pin:inp.value, geo:geo, device_id:devId()}, false).then(function(res){
+              sAct(isOut?'check_out':'check_in', {pin:inp.value, selfie:selfie, geo:geo, device_token:devTok(), device_id:devId()}, false).then(function(res){
                 resolve();
                 if(res.ok){
                   close();
@@ -412,54 +472,71 @@ function renderLogin(){
       '<h1 style="font-size:24px;margin:0">ريحانة</h1>'+
       '<div style="opacity:.75;font-size:13.5px">نظام التشغيل اليومي</div>'+
     '</div>'+
-    '<div class="tiles" id="tiles"><div class="empty">جاري التحميل…</div></div>'+
-    '<div class="wrap center small muted" style="margin-top:18px">اختاري اسمك ثم أدخلي كلمة السر.<br>الجهاز مشترك — الجلسة تُغلق تلقائياً بعد دقائق من عدم الاستخدام.</div>';
+    '<div class="wrap" style="max-width:420px">'+
+      '<div class="card" style="margin-top:-26px;position:relative;z-index:2;border-radius:18px">'+
+        '<h3 style="justify-content:center">تسجيل الدخول</h3>'+
+        '<label class="f">اسم المستخدم</label><input class="f" id="luU" autocomplete="username" autocapitalize="none" spellcheck="false">'+
+        '<label class="f">كلمة السر</label><input class="f" id="luP" type="password" inputmode="numeric" autocomplete="current-password">'+
+        '<div class="btnrow"><button class="btn block" id="luGo">دخول</button></div>'+
+      '</div>'+
+      '<div class="center small" id="devLine" style="margin-top:12px"></div>'+
+      '<div class="center small muted" style="margin-top:14px">الجهاز مشترك — الجلسة تُغلق تلقائياً بعد دقائق من عدم الاستخدام.</div>'+
+    '</div>';
   // دخول الإدارة: ٥ لمسات على الشعار
   $('#loginLogo').addEventListener('click', function(){
     logoTaps++; clearTimeout(logoTapT);
     logoTapT=setTimeout(function(){ logoTaps=0; },1600);
     if(logoTaps>=5){ logoTaps=0; adminLoginSheet(); }
   });
-  function paintTiles(emps){
-    $('#tiles').innerHTML = emps.map(function(e){
-      return '<div class="tile arch-sm" role="button" tabindex="0" data-id="'+e.id+'" data-name="'+esc(e.name)+'">'+
-        '<div class="avatar" style="background:'+esc(e.color||'#3E6B4C')+'">'+esc((e.name||'؟').charAt(0))+'</div>'+esc(e.name)+'</div>';
-    }).join('') || '<div class="empty">لا توجد موظفات مفعّلات</div>';
-    $$('.tile').forEach(function(t){
-      function open(){ staffLoginSheet(+t.getAttribute('data-id'), t.getAttribute('data-name')); }
-      t.addEventListener('click', open);
-      t.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } });
+  function paintDev(dev){
+    var el=$('#devLine'); if(!el) return;
+    if(dev && dev.valid){
+      try{ localStorage.setItem('rko_devlabel', dev.label||''); }catch(e){}
+      el.innerHTML='<span class="chip green">📱 جهاز مفعّل: '+esc(dev.label||'جهاز الكافيه')+'</span>';
+    } else {
+      el.innerHTML='<span class="chip orange">جهاز غير مفعّل</span> <button class="btn sm ghost" id="devAct">تفعيل الجهاز</button>'+
+        '<div class="muted small" style="margin-top:4px">تسجيل الحضور يتطلب جهازاً مفعّلاً بحساب من الإدارة</div>';
+      var b=$('#devAct'); if(b) b.addEventListener('click', deviceSheet);
+    }
+  }
+  paintDev(devTok() ? {valid:true, label:devLabel()} : null);
+  rawRpc('rko_staff','login_list',{device_token:devTok()}).then(function(res){
+    if(res && res.ok){
+      if(devTok() && !res.device){ try{ localStorage.removeItem('rko_devtok'); localStorage.removeItem('rko_devlabel'); }catch(e){} paintDev(null); }
+      else paintDev(res.device);
+    }
+  }).catch(function(){});
+  function go(){
+    var u=$('#luU').value.trim(), pw=$('#luP').value;
+    if(!u || !pw){ toast('أدخلي اسم المستخدم وكلمة السر', true); return; }
+    busyWrap($('#luGo'), function(){
+      return rpc('rko_staff','login',{username:u, password:pw, device:'shared', device_token:devTok()}).then(function(res){
+        if(!res.ok){ toast(res.error||'خطأ', true); $('#luP').value=''; return; }
+        S.token=res.token; S.role='staff'; S.me=res.me; saveSess(); startStaff();
+      });
     });
   }
-  function cachedEmps(){ try{ return JSON.parse(localStorage.getItem('rko_emps')||'null'); }catch(e){ return null; } }
-  rawRpc('rko_staff','login_list',{}).then(function(res){
-    if(!res || !res.ok){ $('#tiles').innerHTML='<div class="empty">تعذر جلب الأسماء — تحققي من الاتصال أو من إعداد CONFIG</div>'; return; }
-    var emps=res.employees||[];
-    try{ localStorage.setItem('rko_emps', JSON.stringify(emps)); }catch(e){}
-    paintTiles(emps);
-  }).catch(function(){
-    var c=cachedEmps();
-    if(c && c.length){ paintTiles(c); toast('عرض الأسماء من الذاكرة — لا يوجد اتصال', true); }
-    else $('#tiles').innerHTML='<div class="empty">لا يوجد اتصال بالإنترنت</div>';
-  });
+  $('#luGo').addEventListener('click', go);
+  [$('#luU'),$('#luP')].forEach(function(i){ i.addEventListener('keydown', function(e){ if(e.key==='Enter') go(); }); });
 }
-function staffLoginSheet(id, name){
-  sheet('دخول — '+name,
-    '<label class="f">كلمة السر</label><input class="f" id="lp" type="password" inputmode="numeric" autocomplete="off">'+
-    '<div class="btnrow"><button class="btn block" id="lgo">دخول</button></div>',
+function deviceSheet(){
+  sheet('تفعيل جهاز الكافيه',
+    '<div class="muted small">حساب الجهاز تنشئه الإدارة من قسم «أجهزة الكافيه» — يُدخل مرة واحدة على هذا الجهاز فقط.</div>'+
+    '<label class="f">اسم مستخدم الجهاز</label><input class="f" id="dvU" autocapitalize="none" spellcheck="false">'+
+    '<label class="f">كلمة سر الجهاز</label><input class="f" id="dvP" type="password">'+
+    '<div class="btnrow"><button class="btn block" id="dvGo">تفعيل</button></div>',
     function(ov, close){
-      var inp=$('#lp',ov); setTimeout(function(){ inp.focus(); },100);
-      function go(){
-        if(!inp.value){ toast('أدخلي كلمة السر', true); return; }
-        busyWrap($('#lgo',ov), function(){
-          return rpc('rko_staff','login',{employee_id:id, password:inp.value, device:'shared'}).then(function(res){
-            if(!res.ok){ toast(res.error||'خطأ', true); inp.value=''; inp.focus(); return; }
-            S.token=res.token; S.role='staff'; S.me=res.me; saveSess(); close(); startStaff();
+      $('#dvGo',ov).addEventListener('click', function(){
+        var u=$('#dvU',ov).value.trim(), pw=$('#dvP',ov).value;
+        if(!u || !pw){ toast('أدخلي بيانات حساب الجهاز', true); return; }
+        busyWrap(this, function(){
+          return rawRpc('rko_staff','device_login',{username:u, password:pw}).then(function(res){
+            if(!res.ok){ toast(res.error||'خطأ', true); return; }
+            try{ localStorage.setItem('rko_devtok', res.device_token); localStorage.setItem('rko_devlabel', res.label||''); }catch(e){}
+            close(); toast('فُعّل الجهاز ✔'); renderLogin();
           });
         });
-      }
-      $('#lgo',ov).addEventListener('click', go);
-      inp.addEventListener('keydown', function(e){ if(e.key==='Enter') go(); });
+      });
     });
 }
 function adminLoginSheet(){
@@ -577,7 +654,7 @@ function viewNow(){
   // بطاقة الشفت
   var inT = att && att['in'], outT = att && att.out;
   out.push('<div class="card soft arch" style="padding-top:22px">'+
-    '<h3 style="justify-content:center;text-align:center">'+esc(sh.name)+' · '+esc(sh.area||'')+'</h3>'+
+    '<h3 style="justify-content:center;text-align:center">'+esc(sh.name)+' · '+esc(sh.area||'')+((sh.extra_areas&&sh.extra_areas.length)?' + '+sh.extra_areas.map(esc).join(' + '):'')+'</h3>'+
     '<div class="center muted">'+fmtT(sh.start)+' → '+fmtT(sh.end)+' · استراحة '+mins(sh.break_minutes)+(sh.break_parts>1?' ('+sh.break_parts+' أجزاء)':'')+'</div>'+
     (sh.daily_role?'<div class="center" style="margin-top:8px"><span class="chip ink">دورك اليوم: '+esc(sh.daily_role)+'</span></div>':'')+
     '<hr class="sep">'+
@@ -639,6 +716,9 @@ function viewTasks(){
   if(!tasks.length) return '<div class="empty">لا مهام لليوم — تُولَّد تلقائياً عند وجود شفت ومنطقة</div>';
   var groups={}; tasks.forEach(function(t){ (groups[t.phase]=groups[t.phase]||[]).push(t); });
   var order=['opening','during','adhoc','closing'], out=[];
+  var doneN=tasks.filter(function(t){return t.status==='done'||t.status==='approved';}).length;
+  var pct=Math.round(100*doneN/tasks.length);
+  out.push('<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between"><b>إنجاز اليوم</b><span class="chip '+(pct===100?'green':pct>=50?'':'orange')+'">'+doneN+'/'+tasks.length+'</span></div><div class="pbar"><i style="width:'+pct+'%"></i></div>'+(pct===100?'<div class="small center" style="margin-top:6px">أنهيتِ كل مهامك — رائعة 🌟</div>':'')+'</div>');
   order.forEach(function(ph){
     if(!groups[ph]) return;
     out.push('<h3 style="margin:14px 2px 8px">'+PHASE[ph]+'</h3>');
@@ -688,7 +768,7 @@ function completeFlow(t){
     body+='<label class="f">الرقم / الكمية</label><input class="f" id="tNum" type="number" inputmode="decimal">';
   }
   if(t.needs_photo){
-    body+='<div class="btnrow"><button class="btn ghost block" id="tPhoto">📷 التقاط صورة التوثيق</button></div><img id="tPhotoPrev" style="display:none;width:100%;border-radius:10px;margin-top:8px">';
+    body+='<div class="btnrow"><button class="btn ghost block" id="tPhoto">📸 توثيق مباشر بالكاميرا (لا يقبل صوراً قديمة)</button></div><img id="tPhotoPrev" style="display:none;width:100%;border-radius:10px;margin-top:8px">';
   }
   if(t.needs_two){
     body+='<hr class="sep"><b>تأكيد موظفة ثانية</b><div class="muted small">تختار اسمها وتدخل كلمة سرها بنفسها</div>'+
@@ -700,7 +780,11 @@ function completeFlow(t){
   sheet('إنهاء: '+t.name, body, function(ov, close){
     var photo='';
     var pb=$('#tPhoto',ov);
-    if(pb) pb.addEventListener('click', function(){ pickPhoto(function(d){ photo=d; var im=$('#tPhotoPrev',ov); im.src=d; im.style.display='block'; pb.textContent='📷 إعادة الالتقاط'; }); });
+    if(pb) pb.addEventListener('click', function(){
+      cameraSheet({facing:'environment', title:'توثيق المهمة — تصوير مباشر',
+        watermark:(S.me?S.me.name:'')+' · '+t.name},
+        function(d){ photo=d; var im=$('#tPhotoPrev',ov); im.src=d; im.style.display='block'; pb.textContent='📸 إعادة الالتقاط'; });
+    });
     $('#tGo',ov).addEventListener('click', function(){
       var p={id:t.id};
       if(t.method==='checklist'){
@@ -727,7 +811,7 @@ function viewShift(){
   var st=S.state, sh=st.shift, out=[];
   if(!sh) return '<div class="empty">لا يوجد شفت اليوم</div>';
   out.push('<div class="card beige"><h3>🔄 تفاصيل الشفت</h3>'+
-    '<div>'+esc(sh.name)+' · '+esc(sh.area||'')+'</div>'+
+    '<div>'+esc(sh.name)+' · '+esc(sh.area||'')+((sh.extra_areas&&sh.extra_areas.length)?' <span class="chip green">+ '+sh.extra_areas.map(esc).join(' + ')+'</span>':'')+'</div>'+
     '<div class="muted">'+fmtT(sh.start)+' → '+fmtT(sh.end)+'</div>'+
     (sh.daily_role?'<div style="margin-top:6px">🎯 <b>دورك اليوم:</b> '+esc(sh.daily_role)+'</div>':'')+'</div>');
   // زميلات اليوم
@@ -923,7 +1007,7 @@ var SECS=[
   ['tasks','✅','مهام اليوم'],['attendance','🕐','الحضور'],['skills','🌱','المهارات'],
   ['training','🎓','التدريب'],['absence','🚨','الغياب والتغطية'],['coop','🤝','التعاون'],
   ['evals','📈','التقييم الشهري'],['awards','🏅','التقدير'],['requests','📨','الطلبات'],
-  ['handovers','🔄','التسليمات'],['reports','📊','التقارير'],['settings','⚙️','الإعدادات'],
+  ['handovers','🔄','التسليمات'],['reports','📊','التقارير'],['devices','📱','الأجهزة'],['settings','⚙️','الإعدادات'],
   ['audit','📜','سجل التدقيق'],['flags','🚩','إشارات المراجعة']
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
@@ -1009,7 +1093,7 @@ ADMIN.employees=function(v){
     v.innerHTML='<div class="btnrow" style="margin-bottom:10px"><button class="btn sm" id="empNew">+ موظفة جديدة</button></div>'+
       A.emps.map(function(e){
         return '<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between">'+
-        '<div><span class="avatar" style="display:inline-flex;width:30px;height:30px;font-size:14px;border-radius:50%;background:'+esc(e.color||'#3E6B4C')+';color:#fff;align-items:center;justify-content:center">'+esc(e.name.charAt(0))+'</span> <b>'+esc(e.name)+'</b> '+
+        '<div><span class="avatar" style="display:inline-flex;width:30px;height:30px;font-size:14px;border-radius:50%;background:'+esc(e.color||'#3E6B4C')+';color:#fff;align-items:center;justify-content:center">'+esc(e.name.charAt(0))+'</span> <b>'+esc(e.name)+'</b> <span class="chip" style="direction:ltr">'+esc(e.username||'')+'</span> '+
         (e.role==='admin'?'<span class="chip ink">إدارة</span>':'')+(e.flexible?'<span class="chip orange">جوكر</span>':'')+(!e.active?'<span class="chip red">موقوفة</span>':'')+'</div>'+
         '<div class="btnrow" style="margin:0"><button class="btn sm ghost" data-edit="'+e.id+'">تعديل</button><button class="btn sm ghost" data-pw="'+e.id+'">كلمة السر</button></div></div></div>';
       }).join('');
@@ -1029,6 +1113,7 @@ ADMIN.employees=function(v){
   function empForm(e){
     sheet(e?'تعديل: '+e.name:'موظفة جديدة',
       '<label class="f">الاسم</label><input class="f" id="eN" value="'+(e?esc(e.name):'')+'">'+
+      '<label class="f">اسم المستخدم (للدخول)</label><input class="f" id="eU" autocapitalize="none" spellcheck="false" value="'+(e&&e.username?esc(e.username):'')+'">'+
       '<label class="f">اللون</label><input class="f" id="eC" type="color" value="'+(e&&e.color?esc(e.color):'#3E6B4C')+'" style="height:46px">'+
       (e?'':'<label class="f">كلمة السر الأولى</label><input class="f" id="eP" value="0000">')+
       (e?'<div class="check"><input type="checkbox" id="eA" '+(e.active?'checked':'')+'><span>مفعّلة</span></div>'+
@@ -1036,7 +1121,7 @@ ADMIN.employees=function(v){
       '<div class="btnrow"><button class="btn block" id="eGo">حفظ</button></div>',
       function(ov, close){
         $('#eGo',ov).addEventListener('click', function(){
-          var p={name:$('#eN',ov).value.trim(), color:$('#eC',ov).value};
+          var p={name:$('#eN',ov).value.trim(), color:$('#eC',ov).value, username:$('#eU',ov).value.trim()};
           if(!p.name){ toast('اكتبي الاسم', true); return; }
           if(e){ p.id=e.id; p.active=$('#eA',ov).checked; p.flexible=$('#eF',ov).checked; }
           else{
@@ -1130,7 +1215,7 @@ ADMIN.shifts=function(v){
         cur=res.shifts||[];
         $('#shList').innerHTML = cur.length ? cur.map(function(s){
           return '<div class="card" style="padding:10px 12px'+(s.status==='absent'?';opacity:.55':'')+'"><div class="row" style="justify-content:space-between">'+
-            '<div><b>'+esc(s.employee)+'</b> — '+esc(s.type||'مخصص')+' · '+esc(s.area||'بلا منطقة')+(s.status==='absent'?' <span class="chip red">غياب</span>':'')+
+            '<div><b>'+esc(s.employee)+'</b> — '+esc(s.type||'مخصص')+' · '+esc(s.area||'بلا منطقة')+((s.extra_area_names&&s.extra_area_names.length)?' <span class="chip green">+ '+s.extra_area_names.map(esc).join(' + ')+'</span>':'')+(s.status==='absent'?' <span class="chip red">غياب</span>':'')+
             '<div class="muted small">'+fmtHM(s.start)+' → '+fmtHM(s.end)+(s.daily_role?' · 🎯 '+esc(s.daily_role):'')+'</div></div>'+
             '<div class="btnrow" style="margin:0"><button class="btn sm ghost" data-edit="'+s.id+'">تعديل</button><button class="btn sm ghost red" data-del="'+s.id+'">حذف</button></div></div></div>';
         }).join('') : '<div class="empty">لا شفتات بهذا اليوم</div>';
@@ -1148,7 +1233,13 @@ ADMIN.shifts=function(v){
       sheet(s ? 'تعديل شفت — '+s.employee : 'شفت جديد — '+$('#shDay').value,
         '<label class="f">الموظفة</label><select class="f" id="sE" '+(s?'disabled':'')+'>'+staffOpts(s?s.employee_id:null)+'</select>'+
         '<label class="f">نوع الشفت</label><select class="f" id="sT">'+typeOpts(s?s.type_id:null)+'</select>'+
-        '<label class="f">المنطقة</label><select class="f" id="sA">'+areaOpts(s?s.area_id:null)+'</select>'+
+        '<label class="f">المنطقة الأساسية</label><select class="f" id="sA">'+areaOpts(s?s.area_id:null)+'</select>'+
+        '<label class="f">مناطق إضافية (أدوار متعددة بنفس الشفت — مثال: كاش + طلبات)</label>'+
+        '<div>'+(A.areas||[]).map(function(ax){
+          var cur=(s&&s.extra_areas)||[];
+          var on=false; cur.forEach(function(cv){ if(+cv===ax.id) on=true; });
+          return '<label class="check" style="margin:4px 0"><input type="checkbox" class="xa" value="'+ax.id+'" '+(on?'checked':'')+'><span>'+esc(ax.name)+'</span></label>';
+        }).join('')+'</div>'+
         '<div class="row"><div class="grow"><label class="f">بداية مخصصة (اختياري)</label><input class="f" id="sS" type="time"></div>'+
         '<div class="grow"><label class="f">نهاية مخصصة (اختياري)</label><input class="f" id="sEn" type="time"></div></div>'+
         '<div class="muted small">اتركي الوقتين فارغين لاعتماد أوقات نوع الشفت'+(s?' (الحالي: '+fmtHM(s.start)+' → '+fmtHM(s.end)+')':'')+'.</div>'+
@@ -1157,6 +1248,7 @@ ADMIN.shifts=function(v){
         function(ov, close){
           $('#sGo',ov).addEventListener('click', function(){
             var p={day:$('#shDay').value, employee_id:+$('#sE',ov).value, type_id:+$('#sT',ov).value, area_id:+$('#sA',ov).value, daily_role:$('#sR',ov).value};
+            p.extra_areas=$$('.xa',ov).filter(function(c){return c.checked;}).map(function(c){return +c.value;}).filter(function(idv){return idv!==p.area_id;});
             var st=$('#sS',ov).value, en=$('#sEn',ov).value;
             if(st) p.start_time=st;
             if(en) p.end_time=en;
@@ -1338,9 +1430,9 @@ ADMIN.attendance=function(v){
             '<div class="btnrow"><button class="btn sm" data-fa="'+f.id+'">اعتماد الوقت التقريبي</button><button class="btn sm ghost red" data-fr="'+f.id+'">رفض</button></div></div>');
         });
       }
-      out.push('<h3 style="margin-top:8px">حضور اليوم</h3><div class="scrollx"><table class="tbl"><tr><th>الموظفة</th><th>المنطقة</th><th>حضور</th><th>انصراف</th><th>تأخير</th><th>إضافي</th></tr>'+
-        (res.rows||[]).map(function(r){
-          return '<tr><td><b>'+esc(r.employee)+'</b></td><td>'+esc(r.area||'—')+'</td><td>'+fmtT(r['in'])+'</td><td>'+fmtT(r.out)+'</td><td>'+(r.late>0?'<span class="chip orange">'+r.late+' د</span>':'—')+'</td><td>'+(r.ot>0?r.ot+' د':'—')+'</td></tr>';
+      out.push('<h3 style="margin-top:8px">حضور اليوم</h3><div class="scrollx"><table class="tbl"><tr><th>الموظفة</th><th>المنطقة</th><th>حضور</th><th>انصراف</th><th>تأخير</th><th>إضافي</th><th>تحقق</th></tr>'+
+        (res.rows||[]).map(function(r,ri){
+          return '<tr><td><b>'+esc(r.employee)+'</b></td><td>'+esc(r.area||'—')+'</td><td>'+fmtT(r['in'])+'</td><td>'+fmtT(r.out)+'</td><td>'+(r.late>0?'<span class="chip orange">'+r.late+' د</span>':'—')+'</td><td>'+(r.ot>0?r.ot+' د':'—')+'</td><td>'+((r.in_selfie||r.out_selfie)?'<button class="btn sm ghost" data-selfie="'+ri+'">📸</button>':'—')+'</td></tr>';
         }).join('')+'</table></div>');
       var posts=(res.postpones||[]).filter(function(p){return !p.compensated;});
       if(posts.length){
@@ -1362,6 +1454,13 @@ ADMIN.attendance=function(v){
         aAct('fix_decide',{id:+b.getAttribute('data-fr'),decision:'reject',note:note}).then(load);
       });});
       $$('[data-comp]',v).forEach(function(b){ b.addEventListener('click', function(){ aAct('postpone_compensate',{id:+b.getAttribute('data-comp')}).then(load); });});
+      $$('[data-selfie]',v).forEach(function(b){ b.addEventListener('click', function(){
+        var r=(res.rows||[])[+b.getAttribute('data-selfie')]; if(!r) return;
+        function geoTxt(g){ return g&&g.lat ? '📍 '+g.lat+', '+g.lng+(g.acc?' (±'+g.acc+'م)':'') : '📍 بدون موقع'; }
+        sheet('صور التحقق — '+r.employee,
+          (r.in_selfie?'<b>الحضور '+fmtT(r['in'])+'</b><div class="small muted">'+geoTxt(r.in_geo)+'</div><img src="'+r.in_selfie+'" style="width:100%;border-radius:12px;margin:6px 0">':'<div class="muted small">لا صورة حضور</div>')+
+          (r.out_selfie?'<hr class="sep"><b>الانصراف '+fmtT(r.out)+'</b><div class="small muted">'+geoTxt(r.out_geo)+'</div><img src="'+r.out_selfie+'" style="width:100%;border-radius:12px;margin:6px 0">':''));
+      });});
     });
   }
   $('#atDay').addEventListener('change', load); load();
@@ -1683,26 +1782,67 @@ ADMIN.reports=function(v){
   });
 };
 
+/* ---------- أجهزة الكافيه ---------- */
+ADMIN.devices=function(v){
+  aAct('devices_list',{}).then(function(res){
+    var rows=res.rows||[];
+    v.innerHTML='<div class="muted small" style="margin-bottom:8px">أنشئي حساباً لكل جهاز في الكافيه (تابلت الصالة مثلاً) وفعّليه من شاشة الدخول على الجهاز نفسه. مع «الوضع الصارم» في الإعدادات لا يُقبل دخول ولا حضور إلا من جهاز مفعّل.</div>'+
+      '<div class="btnrow" style="margin-bottom:10px"><button class="btn sm" id="dvNew">+ جهاز جديد</button></div>'+
+      (rows.map(function(d){
+        return '<div class="card" style="padding:10px 12px'+(d.active?'':';opacity:.55')+'"><div class="row" style="justify-content:space-between">'+
+          '<div><b>📱 '+esc(d.label||'جهاز')+'</b> <span class="chip" style="direction:ltr">'+esc(d.username)+'</span>'+(d.active?'':' <span class="chip red">موقوف</span>')+
+          '<div class="muted small">آخر استخدام: '+(d.last_seen?(fmtD(d.last_seen)+' '+fmtT(d.last_seen)):'لم يُستخدم بعد')+'</div></div>'+
+          '<button class="btn sm ghost" data-dved="'+d.id+'">تعديل</button></div></div>';
+      }).join('')||'<div class="empty">لا أجهزة بعد — أنشئي حساب الجهاز الأول</div>');
+    function form(d){
+      sheet(d?'تعديل جهاز — '+(d.label||''):'جهاز جديد',
+        '<label class="f">اسم الجهاز (وصفي)</label><input class="f" id="dL" value="'+(d?esc(d.label):'تابلت الكافيه')+'">'+
+        (d?'':'<label class="f">اسم المستخدم</label><input class="f" id="dU" autocapitalize="none" spellcheck="false" placeholder="مثال: tablet1">')+
+        '<label class="f">كلمة السر'+(d?' (اتركيها فارغة للإبقاء عليها)':'')+'</label><input class="f" id="dP" type="password">'+
+        (d?'<div class="check"><input type="checkbox" id="dA" '+(d.active?'checked':'')+'><span>مفعّل</span></div>'+
+           '<div class="check"><input type="checkbox" id="dR"><span>إبطال التفعيلات السابقة — يعيد طلب التفعيل على الجهاز</span></div>':'')+
+        '<div class="btnrow"><button class="btn block" id="dGo">حفظ</button></div>',
+        function(ov, close){
+          $('#dGo',ov).addEventListener('click', function(){
+            var p={label:$('#dL',ov).value};
+            if(d){
+              p.id=d.id; p.active=$('#dA',ov).checked; p.rotate=$('#dR',ov).checked;
+              if($('#dP',ov).value) p.password=$('#dP',ov).value;
+            } else {
+              p.username=$('#dU',ov).value.trim(); p.password=$('#dP',ov).value;
+              if(!p.username){ toast('اسم مستخدم الجهاز مطلوب', true); return; }
+              if(!p.password || p.password.length<4){ toast('كلمة سر ٤ خانات على الأقل', true); return; }
+            }
+            busyWrap(this, function(){
+              return aAct('device_save',p).then(function(r){ if(r.ok){close();ADMIN.devices(v);toast('تم ✔');} else toast(r.error||'خطأ',true); });
+            });
+          });
+        });
+    }
+    $('#dvNew').addEventListener('click', function(){ form(null); });
+    $$('[data-dved]',v).forEach(function(b){ b.addEventListener('click', function(){
+      var d=null; rows.forEach(function(x){ if(x.id===+b.getAttribute('data-dved')) d=x; }); if(d) form(d);
+    });});
+  });
+};
+
 /* ---------- الإعدادات ---------- */
 ADMIN.settings=function(v){
   aAct('settings_get',{}).then(function(res){
     var st=res.settings||{};
-    var guard=st.attendance_guard||{}, devs=st.trusted_devices||[], myDev=devId();
+    var guard=st.attendance_guard||{};
     var labels={terms:'المصطلحات', hours:'ساعات العمل', eval_weights:'أوزان التقييم', session:'الجلسات', coop_reasons:'أسباب التعاون', request_types:'أنواع الطلبات', theme:'الألوان', privacy_note:'نص الخصوصية', phone_policy:'سياسة الهاتف'};
     var guardCard='<div class="card beige"><h3>🛡 حماية الحضور والانصراف</h3>'+
-      '<div class="small muted">بلا كاميرات ولا مديرة: كل تسجيل يتطلب كلمة سر الموظفة نفسها، ويُلتقط الموقع ويُفحص الجهاز — أي شذوذ يظهر في «إشارات المراجعة» بلا عقوبة تلقائية.</div>'+
+      '<div class="small muted">بلا كاميرات مراقبة وبلا مديرة: كل تسجيل يتطلب كلمة سر الموظفة نفسها + صورة تحقق مباشرة + جهازاً مفعّلاً، ويُلتقط الموقع. أي شذوذ يظهر في «إشارات المراجعة» بلا عقوبة تلقائية.</div>'+
+      '<div class="check"><input type="checkbox" id="agSelf" '+(guard.require_selfie?'checked':'')+'><span>صورة تحقق مباشرة إلزامية للحضور والانصراف</span></div>'+
       '<div class="check"><input type="checkbox" id="agGeo" '+(guard.require_geo?'checked':'')+'><span>إشارة مراجعة عند التسجيل بدون موقع</span></div>'+
-      '<div class="check"><input type="checkbox" id="agDev" '+(guard.enforce_device?'checked':'')+'><span>منع التسجيل من غير أجهزة الكافيه المعتمدة (صارم)</span></div>'+
+      '<div class="check"><input type="checkbox" id="agDev" '+(guard.enforce_device?'checked':'')+'><span>الوضع الصارم: لا دخول ولا حضور إلا من أجهزة الكافيه المفعّلة (قسم «الأجهزة»)</span></div>'+
       '<label class="f">نصف قطر السماح حول الكافيه (متر)</label><input class="f" id="agRad" type="number" value="'+(guard.radius_m||250)+'">'+
-      '<div class="small muted" style="margin-top:4px">📍 موقع الكافيه: '+(guard.lat?('محدد ('+guard.lat+', '+guard.lng+')'):'<b>غير محدد — حددي الموقع من داخل الكافيه</b>')+'</div>'+
+      '<div class="small muted" style="margin-top:4px">📍 موقع الكافيه: '+(guard.lat?('محدد ('+guard.lat+', '+guard.lng+')'):'<b>غير محدد — حدديه من داخل الكافيه</b>')+'</div>'+
       '<div class="btnrow">'+
         '<button class="btn sm" id="agLoc">📍 اعتماد موقعي الحالي</button>'+
-        '<button class="btn sm" id="agDevAdd">✔ اعتماد هذا الجهاز</button>'+
-        '<button class="btn sm orange" id="agSave">حفظ الإعدادات</button></div>'+
-      '<div class="small" style="margin-top:8px"><b>الأجهزة المعتمدة ('+devs.length+'):</b><div id="agDevs" style="margin-top:4px">'+
-        (devs.map(function(dd,i){
-          return '<span class="chip '+(dd.id===myDev?'green':'')+'" style="margin:2px">'+esc(dd.label||('جهاز '+(i+1)))+(dd.id===myDev?' (هذا الجهاز)':'')+' <button data-rmdev="'+i+'" style="background:none;border:none;color:var(--red);cursor:pointer;padding:0 2px">✕</button></span>';
-        }).join('')||'<span class="muted">لا أجهزة معتمدة بعد — التسجيل مسموح من أي جهاز مع إشارة مراجعة</span>')+'</div></div></div>';
+        '<button class="btn sm orange" id="agSave">حفظ إعدادات الحماية</button></div>'+
+      '</div>';
     v.innerHTML=guardCard+
       '<div class="muted small" style="margin:12px 0 8px">إعدادات متقدمة (JSON) — عدّلي بحذر ثم احفظي.</div>'+
       Object.keys(st).filter(function(k){return k!=='attendance_guard'&&k!=='trusted_devices';}).map(function(k){
@@ -1711,7 +1851,7 @@ ADMIN.settings=function(v){
           '<div class="btnrow"><button class="btn sm" data-sv="'+esc(k)+'">حفظ</button></div></div>';
       }).join('');
     function saveGuard(extra){
-      var g={require_geo:$('#agGeo',v).checked, enforce_device:$('#agDev',v).checked, radius_m:+$('#agRad',v).value||250, lat:guard.lat, lng:guard.lng};
+      var g={require_selfie:$('#agSelf',v).checked, require_geo:$('#agGeo',v).checked, enforce_device:$('#agDev',v).checked, radius_m:+$('#agRad',v).value||250, lat:guard.lat, lng:guard.lng};
       if(extra) Object.assign(g, extra);
       return aAct('settings_save',{key:'attendance_guard', value:g}).then(function(r){
         if(r.ok){ toast('حُفظت إعدادات الحماية ✔'); ADMIN.settings(v); } else toast(r.error||'خطأ',true);
@@ -1719,8 +1859,7 @@ ADMIN.settings=function(v){
     }
     $('#agSave',v).addEventListener('click', function(){ busyWrap(this, saveGuard); });
     $('#agLoc',v).addEventListener('click', function(){
-      var btn=this;
-      busyWrap(btn, function(){
+      busyWrap(this, function(){
         return new Promise(function(resolve){
           getGeo(function(geo){
             if(!geo){ toast('تعذر تحديد الموقع — فعّلي إذن الموقع وحاولي داخل الكافيه', true); resolve(); return; }
@@ -1729,22 +1868,6 @@ ADMIN.settings=function(v){
         });
       });
     });
-    $('#agDevAdd',v).addEventListener('click', function(){
-      if(devs.some(function(dd){return dd.id===myDev;})){ toast('هذا الجهاز معتمد أصلاً'); return; }
-      var label=prompt('اسم الجهاز (مثال: تابلت الكافيه):','تابلت الكافيه'); if(label===null) return;
-      var next=devs.concat([{id:myDev, label:label||'جهاز', ts:new Date().toISOString()}]);
-      aAct('settings_save',{key:'trusted_devices', value:next}).then(function(r){
-        if(r.ok){ toast('اعتُمد الجهاز ✔'); ADMIN.settings(v); } else toast(r.error||'خطأ',true);
-      });
-    });
-    $$('[data-rmdev]',v).forEach(function(b){ b.addEventListener('click', function(){
-      var i=+b.getAttribute('data-rmdev');
-      if(!confirm('إزالة اعتماد «'+(devs[i].label||'جهاز')+'»؟')) return;
-      var next=devs.slice(); next.splice(i,1);
-      aAct('settings_save',{key:'trusted_devices', value:next}).then(function(r){
-        if(r.ok){ toast('أُزيل ✔'); ADMIN.settings(v); } else toast(r.error||'خطأ',true);
-      });
-    });});
     $$('[data-sv]',v).forEach(function(b){ b.addEventListener('click', function(){
       var k=b.getAttribute('data-sv'), ta=$$('.stg',v).filter(function(t){return t.getAttribute('data-k')===k;})[0];
       var val; try{ val=JSON.parse(ta.value); }catch(e){ toast('صيغة JSON غير صحيحة', true); return; }
