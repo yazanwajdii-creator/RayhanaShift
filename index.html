@@ -470,7 +470,8 @@ var IC={
   shift: svgi('<path d="M7 8h10l-3-3"/><path d="M17 16H7l3 3"/>'),
   grow:  svgi('<path d="M12 21v-7"/><path d="M12 14c0-4.2-3.1-7-8-7 0 4.2 3.1 7 8 7Z"/><path d="M12 12.2c0-3.4 2.5-5.7 6.8-5.7 0 3.4-2.5 5.7-6.8 5.7Z"/>'),
   more:  svgi('<circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/>'),
-  refresh: svgi('<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 3.5V8h-4.5"/>')
+  refresh: svgi('<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 3.5V8h-4.5"/>'),
+  user:  svgi('<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.6 3.6-5.4 7-5.4s5.8 1.8 7 5.4"/>')
 };
 
 /* ---------- هيكل تحميل (شيمر) ---------- */
@@ -593,7 +594,7 @@ function startStaff(){
       '<button data-t="now"><span class="ic">'+IC.home+'</span>الآن</button>'+
       '<button data-t="tasks"><span class="ic">'+IC.tasks+'</span>المهام</button>'+
       '<button data-t="shift"><span class="ic">'+IC.shift+'</span>الشفت</button>'+
-      '<button data-t="grow"><span class="ic">'+IC.grow+'</span>تطوّري</button>'+
+      '<button data-t="grow"><span class="ic">'+IC.user+'</span>ملفّي</button>'+
       '<button data-t="more"><span class="ic">'+IC.more+'</span>المزيد</button>'+
     '</nav>';
   var hh=new Date().getHours();
@@ -922,13 +923,7 @@ function loadGrow(v){
         '<div class="stat"><div class="v">'+(tk.done||0)+'/'+(tk.total||0)+'</div><div class="l">مهام منجزة</div></div>'+
       '</div>'+((mm.coverage||0)>0?'<div class="card soft" style="padding:10px 12px">🤝 غطّيتِ زميلاتك <b>'+mm.coverage+'</b> مرة هذا الشهر — الإدارة تراه وتقدّره</div>':''));
     }
-    out.push('<div class="card"><h3>🌱 مهاراتي</h3>'+
-      '<div class="muted small" style="margin-bottom:6px">كل مهارة رحلة خاصة بك — لا مقارنة مع أحد.</div>'+
-      ((res.skills||[]).length ? res.skills.map(function(s){
-        return '<div class="row" style="justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line)">'+
-          '<div>'+esc(s.name)+'</div>'+
-          (s.approved?'<span class="chip green">معتمدة ✔</span>':s.level>0?'<span class="chip orange">قيد الاعتماد</span>':'<span class="chip">قيد التعلّم</span>')+'</div>';
-      }).join('') : '<div class="muted small">لم تُسجَّل مهارات بعد — تُعتمد المهارات بعد التطبيق الفعلي</div>')+'</div>');
+    // المهارات لا تُعرض للموظفات إطلاقاً — إدارتها ومستوياتها لدى الإدارة فقط
     if((res.learning||[]).length){
       out.push('<div class="card"><h3>📚 قيد التعلّم</h3>'+res.learning.map(function(l){
         return '<div style="padding:4px 0">'+esc(l.skill)+' — مع '+esc(l.trainer)+' <span class="chip">'+(TRSTAT[l.status]||l.status)+'</span></div>';
@@ -1008,13 +1003,17 @@ function wireTab(v){
       }
       else if(a==='rqSend'){
         var det=$('#rqDet').value.trim(), rqd=($('#rqDate')||{}).value;
+        var ty=$('#rqType').value;
         if(!det && !rqd){ toast('اكتبي تفاصيل الطلب أو حددي التاريخ', true); return; }
-        if(rqd) det='📅 التاريخ المطلوب: '+rqd+(det?' — '+det:'');
-        sAct('request_send',{type:$('#rqType').value, details:det}, true).then(function(res){ toast(res.msg||'أُرسل — سيصلك الرد في «طلباتي السابقة»'); $('#rqDet').value=''; if($('#rqDate'))$('#rqDate').value=''; });
+        if(ty==='إجازة' && !rqd){ toast('حددي تاريخ الإجازة حتى يفحص النظام التعارض مع الزميلات', true); return; }
+        sAct('request_send',{type:ty, details:det, date:rqd||null}, false).then(function(res){
+          if(res.ok){ toast(res.msg||'أُرسل — سيصلك الرد في «طلباتي السابقة»'); $('#rqDet').value=''; if($('#rqDate'))$('#rqDate').value=''; }
+          else toast(res.error||'خطأ', true);
+        });
       }
       else if(a==='rqMine') sAct('my_requests',{}).then(function(res){
         sheet('طلباتي', (res.requests||[]).map(function(r){
-          return '<div style="border-bottom:1px dashed var(--line);padding:7px 0"><b>'+esc(r.type)+'</b> <span class="chip '+(r.status==='approved'?'green':r.status==='rejected'?'red':'')+'">'+(REQSTAT[r.status]||r.status)+'</span>'+
+          return '<div style="border-bottom:1px dashed var(--line);padding:7px 0"><b>'+esc(r.type)+'</b>'+(r.date?' <span class="chip">📅 '+esc(r.date)+'</span>':'')+' <span class="chip '+(r.status==='approved'?'green':r.status==='rejected'?'red':'')+'">'+(REQSTAT[r.status]||r.status)+'</span>'+
             '<div class="small">'+esc(r.details||'')+'</div>'+(r.admin_note?'<div class="small muted">رد الإدارة: '+esc(r.admin_note)+'</div>':'')+'</div>';
         }).join('')||'<div class="empty">لا طلبات</div>');
       });
@@ -1763,7 +1762,7 @@ ADMIN.requests=function(v){
     out.push('<h3>طلبات تحتاج قرارك ('+pend.length+')</h3>');
     if(!pend.length) out.push('<div class="card center muted">لا طلبات معلقة</div>');
     pend.forEach(function(r){
-      out.push('<div class="card" style="padding:10px 12px"><b>'+esc(r.employee)+'</b> — '+esc(r.type)+'<div class="small">'+esc(r.details||'')+'</div><div class="muted small">'+fmtD(r.ts)+'</div>'+
+      out.push('<div class="card" style="padding:10px 12px"><b>'+esc(r.employee)+'</b> — '+esc(r.type)+(r.date?' <span class="chip orange">📅 '+esc(r.date)+'</span>':'')+'<div class="small">'+esc(r.details||'')+'</div><div class="muted small">'+fmtD(r.ts)+'</div>'+
         '<div class="btnrow"><button class="btn sm" data-rq="'+r.id+'" data-d="approved">قبول</button><button class="btn sm ghost red" data-rq="'+r.id+'" data-d="rejected">رفض</button></div></div>');
     });
     var notes=(res.notes||[]).filter(function(n){return !n.seen;});
