@@ -51,6 +51,9 @@ a{color:var(--green)}
 .top .sub{font-size:12.5px;opacity:.75}
 .top .left{position:absolute;left:14px;top:16px;display:flex;gap:8px;align-items:center}
 .dot{width:10px;height:10px;border-radius:50%;background:#7FBF8E;display:inline-block}
+.presdot{width:9px;height:9px;border-radius:50%;display:inline-block;background:rgba(255,255,255,.35)}
+.presdot.in{background:#7FBF8E;box-shadow:0 0 0 3px rgba(127,191,142,.25)}
+.presdot.out{background:var(--red);box-shadow:0 0 0 3px rgba(180,83,58,.25);animation:pulse 1.2s infinite}
 .dot.off{background:var(--orange);animation:pulse 1.2s infinite}
 @keyframes pulse{50%{opacity:.4}}
 .pill{background:rgba(255,255,255,.16);border:none;color:var(--paper);border-radius:20px;padding:6px 13px;font-size:12.5px;cursor:pointer;transition:transform .1s, background .15s;font-weight:500}
@@ -226,6 +229,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
    ⚙️ قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
+var BUILD = "2026-07-16.6";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4d3JlZWp2Y29rd2tiZ3dicmRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDczMTAsImV4cCI6MjA5MjE4MzMxMH0.dPlZm6RdE5Hvlxe_SBBPgP6CvR-i88uYjTi7L5sN_2Y"
@@ -596,7 +600,7 @@ function startStaff(){
   S.tab='now';
   APP.innerHTML =
     '<div class="top"><div class="brand"><div class="logo">ر</div><div><h1 id="hiName"></h1><div class="sub" id="hiSub"></div><div class="sub" style="opacity:.6">'+new Date().toLocaleDateString('ar-JO',{weekday:'long',day:'numeric',month:'long'})+'</div></div></div>'+
-    '<div class="left"><span class="dot" id="syncdot"></span><button class="pill icbtn" id="rfBtn" aria-label="تحديث">'+IC.refresh+'</button><button class="pill" id="lockBtn">قفل</button></div></div>'+
+    '<div class="left"><span class="presdot" id="presDot" title="تأكيد التواجد"></span><span class="dot" id="syncdot"></span><button class="pill icbtn" id="rfBtn" aria-label="تحديث">'+IC.refresh+'</button><button class="pill" id="lockBtn">قفل</button></div></div>'+
     '<div class="wrap" id="view"></div>'+
     '<nav class="bottom">'+
       '<button data-t="now"><span class="ic">'+IC.home+'</span>الآن</button>'+
@@ -621,16 +625,48 @@ function startStaff(){
   try{ var c=JSON.parse(localStorage.getItem('rko_state')||'null'); if(c){ S.state=c; drawTab(); } }catch(e){}
   refresh();
   clearInterval(tickT); tickT=setInterval(function(){ if(S.role==='staff' && (S.tab==='tasks'||S.tab==='now')) updateTimers(); }, 1000);
+  startPresence();
   qSync();
 }
 function paintTabs(){
   $$('nav.bottom button').forEach(function(b){ b.className = b.getAttribute('data-t')===S.tab ? 'on' : ''; });
+}
+/* تأكيد تواجد شفّاف ومُعلن: أثناء الشفت فقط، ومؤشر ظاهر للموظفة نفسها. لا تتبع خارج الدوام. */
+var hbT=null, hbGuard=null;
+function setPresenceDot(state){
+  var d=$('#presDot'); if(!d) return;
+  d.className='presdot '+(state||'');
+  d.title = state==='in' ? 'داخل نطاق الكافيه' : state==='out' ? 'خارج نطاق الكافيه' : 'يُحدَّث…';
+}
+function beat(){
+  if(S.role!=='staff' || !S.token) return;
+  var st=S.state, sh=st&&st.shift, att=st&&st.attendance;
+  if(!sh || !att || !att['in'] || att.out){ setPresenceDot(''); return; } // فقط بعد الحضور وقبل الانصراف
+  if(document.hidden) return;
+  var g=(st&&st.guard)||hbGuard;
+  getGeo(function(geo){
+    var inGeo=null;
+    if(g && g.lat && geo){
+      var R=6371000, dLat=(geo.lat-g.lat)*Math.PI/180, dLng=(geo.lng-g.lng)*Math.PI/180;
+      var aa=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(g.lat*Math.PI/180)*Math.cos(geo.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+      inGeo=(2*R*Math.asin(Math.sqrt(aa))) <= (g.radius_m||250);
+    }
+    setPresenceDot(inGeo===false?'out':'in');
+    sAct('heartbeat',{geo:geo, in_geo:inGeo}, false).catch(function(){});
+  });
+}
+function startPresence(){
+  clearInterval(hbT);
+  hbT=setInterval(beat, 60000);
+  beat();
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) beat(); });
 }
 function refresh(){
   if(S.role==='staff'){
     sAct('state',{}).then(function(res){
       if(!res.ok){ toast(res.error||'خطأ', true); return; }
       S.state=res; S.cacheTs=Date.now();
+      if(res.guard) hbGuard=res.guard;
       try{ localStorage.setItem('rko_state', JSON.stringify(res)); }catch(e){}
       var st=res.shift;
       $('#hiSub').textContent = st ? (st.name+' · '+(st.area||'بلا منطقة')) : 'لا يوجد شفت لكِ اليوم';
@@ -666,14 +702,14 @@ function viewNow(){
   // تسليم وارد
   if(st.handover_in){
     var items=st.handover_in.items||{};
-    out.push('<div class="card beige"><h3>📥 تسليم شفت من '+esc(st.handover_in.from)+'</h3>'+
+    out.push('<div class="card beige"><h3>تسليم شفت من '+esc(st.handover_in.from)+'</h3>'+
       handoverItemsHtml(items)+
       '<label class="f">ملاحظتك (اختياري)</label><input class="f" id="hoNote">'+
       '<div class="btnrow"><button class="btn block" data-a="hoConfirm" data-id="'+st.handover_in.id+'">استلمت وفهمت ✔</button></div></div>');
   }
   // عرض تغطية غياب بانتظار موافقتها
   if(st.cover_offer){
-    out.push('<div class="card beige"><h3>🤝 طلب تغطية غياب</h3>'+
+    out.push('<div class="card beige"><h3>طلب تغطية غياب</h3>'+
       '<div>الإدارة تطلب منك تغطية غياب <b>'+esc(st.cover_offer.from)+'</b> اليوم'+(st.cover_offer.area?' في <b>'+esc(st.cover_offer.area)+'</b>':'')+'.</div>'+
       '<div class="muted small" style="margin:6px 0">موافقتك تُسجَّل لصالحك في التغطيات. الاعتذار حقك ولن يُحسب ضدك.</div>'+
       '<div class="btnrow"><button class="btn block" data-a="covAccept" data-id="'+st.cover_offer.id+'">أوافق على التغطية ✔</button>'+
@@ -707,7 +743,7 @@ function viewNow(){
   if(inT && !outT){
     var done=(st.breaks||[]).filter(function(b){return b.end;}).length;
     var openBr=(st.breaks||[]).filter(function(b){return !b.end;})[0];
-    out.push('<div class="card"><h3>☕ الاستراحة'+(st.break_open&&openBr?' <span class="chip orange">جارية <b class="timer" data-brk="'+esc(openBr.start)+'">00:00</b></span>':'')+'</h3>'+
+    out.push('<div class="card"><h3>الاستراحة'+(st.break_open&&openBr?' <span class="chip orange">جارية <b class="timer" data-brk="'+esc(openBr.start)+'">00:00</b></span>':'')+'</h3>'+
       '<div class="muted small">المأخوذ اليوم: '+done+' من '+(sh.break_parts||1)+' · المخصص: '+mins(sh.break_minutes)+'</div>'+
       '<div class="btnrow">'+
       (st.break_open
@@ -719,7 +755,7 @@ function viewNow(){
   var myP=null; (st.pressure||[]).forEach(function(p){ if(p.area_id===sh.area_id) myP=p; });
   if(sh.area_id && (sh.tables||0)>0){
     var occ=myP?myP.occupied:0, wait=myP?myP.waiting:'none';
-    out.push('<div class="card"><h3>📊 ضغط منطقتك '+(myP&&myP.stale?'<span class="chip orange">التحديث قديم</span>':'')+'</h3>'+
+    out.push('<div class="card"><h3>ضغط منطقتك '+(myP&&myP.stale?'<span class="chip orange">التحديث قديم</span>':'')+'</h3>'+
       '<div class="muted small">طاولات مشغولة من أصل '+sh.tables+'</div>'+
       '<div class="step" style="margin:8px 0"><button data-a="occ" data-d="-1">−</button><div class="val" id="occV" data-v="'+occ+'" data-max="'+sh.tables+'">'+occ+'</div><button data-a="occ" data-d="1">+</button></div>'+
       '<div class="seg" id="waitSeg">'+['none','low','high'].map(function(w){return '<button data-w="'+w+'" class="'+(w===wait?'on':'')+'">'+WAIT[w]+'</button>';}).join('')+'</div>'+
@@ -727,9 +763,19 @@ function viewNow(){
       '<div class="check"><input type="checkbox" id="supC" '+(myP&&myP.needs_support?'checked':'')+'><span>أحتاج دعماً الآن</span></div>'+
       '<div class="btnrow"><button class="btn block" data-a="pSend">تحديث الضغط</button></div></div>');
   }
+  // مهام متكررة (جلي، تشطيب طاولات...) — يشترك فيها الجميع بعدّاد مشترك وتُنسب لكل من نفّذتها
+  (st.recurring||[]).forEach(function(rt){
+    var pct = rt.target>0 ? Math.min(100, Math.round(100*rt.done/rt.target)) : 0;
+    out.push('<div class="card"><h3>'+esc(rt.name)+' <span class="muted small" style="font-weight:400">'+esc(rt.area||'')+'</span></h3>'+
+      (rt.target>0
+        ? '<div class="muted small">المطلوب اليوم: '+rt.done+' من '+rt.target+' · نصيبك: '+rt.mine+'</div><div class="pbar"><i style="width:'+pct+'%"></i></div>'
+        : '<div class="muted small">أُنجزت اليوم: '+rt.done+' مرة · نصيبك: '+rt.mine+'</div>')+
+      ((rt.recent&&rt.recent.length)?'<div class="small muted" style="margin-top:6px">آخر من نفّذها: '+rt.recent.map(function(x){return esc(x.who)+' ('+fmtT(x.ts)+')';}).join('، ')+'</div>':'')+
+      '<div class="btnrow"><button class="btn sm block" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'"'+((rt.target>0&&rt.done>=rt.target)?' disabled':'')+'>'+((rt.target>0&&rt.done>=rt.target)?'اكتمل المطلوب ✔':'أنجزتُها الآن')+'</button></div></div>');
+  });
   // نداءات المساعدة
   var helps=st.help_open||[];
-  out.push('<div class="card"><h3>🆘 نداءات المساعدة</h3>'+
+  out.push('<div class="card"><h3>نداءات المساعدة</h3>'+
     (helps.length ? helps.map(function(h){
       return '<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:6px 0">'+
         '<div><b>'+esc(h.area)+'</b> <span class="muted small">'+esc(h.note||'')+'</span>'+(h.mine?' <span class="chip">ندائي</span>':'')+'</div>'+
@@ -849,22 +895,22 @@ function completeFlow(t){
 function viewShift(){
   var st=S.state, sh=st.shift, out=[];
   if(!sh) return '<div class="empty">لا يوجد شفت اليوم</div>';
-  out.push('<div class="card beige"><h3>🔄 تفاصيل الشفت</h3>'+
+  out.push('<div class="card beige"><h3>تفاصيل الشفت</h3>'+
     '<div>'+esc(sh.name)+' · '+esc(sh.area||'')+((sh.extra_areas&&sh.extra_areas.length)?' <span class="chip green">+ '+sh.extra_areas.map(esc).join(' + ')+'</span>':'')+'</div>'+
     '<div class="muted">'+fmtT(sh.start)+' → '+fmtT(sh.end)+'</div>'+
     (sh.daily_role?'<div style="margin-top:6px">🎯 <b>دورك اليوم:</b> '+esc(sh.daily_role)+'</div>':'')+'</div>');
   // زميلات اليوم
   var cols=st.colleagues||[];
-  out.push('<div class="card"><h3>👭 زميلات اليوم</h3>'+(cols.length?cols.map(function(c){return '<span class="chip green" style="margin:2px">'+esc(c.name)+'</span>';}).join(' '):'<div class="muted small">وحدك اليوم</div>')+'</div>');
+  out.push('<div class="card"><h3>زميلات اليوم</h3>'+(cols.length?cols.map(function(c){return '<span class="chip green" style="margin:2px">'+esc(c.name)+'</span>';}).join(' '):'<div class="muted small">وحدك اليوم</div>')+'</div>');
   // تسليم الشفت
   if(sh.requires_handover){
-    out.push('<div class="card"><h3>📤 تسليم الشفت</h3>'+
+    out.push('<div class="card"><h3>تسليم الشفت</h3>'+
       (st.handover_sent
         ? '<div class="chip green">أرسلتِ التسليم — بانتظار تأكيد الزميلة</div>'
         : '<div class="muted small">قبل الانصراف: سلّمي الشفت لزميلة موجودة، وتأكيدها شرط.</div><div class="btnrow"><button class="btn block" data-a="hoNew">تعبئة نموذج التسليم</button></div>')+'</div>');
   }
   // اختيار الأكثر تعاوناً
-  out.push('<div class="card"><h3>🤝 الأكثر تعاوناً معي اليوم</h3>'+
+  out.push('<div class="card"><h3>الأكثر تعاوناً معي اليوم</h3>'+
     (st.coop_done
       ? '<div class="chip green">تم اختيارك لهذا اليوم — النتائج سرية وتظهر للإدارة فقط</div>'
       : '<div class="muted small">بنهاية شفتك: اختاري موظفة أو اثنتين ساعدتاك فعلاً اليوم. سري تماماً.</div><div class="btnrow"><button class="btn ghost block" data-a="coopNew">اختيار الآن</button></div>')+'</div>');
@@ -925,7 +971,7 @@ function loadGrow(v){
     var out=[];
     if(mm.ok){
       var at=mm.attendance||{}, tk=mm.tasks||{};
-      out.push('<h3 style="margin:2px 2px 8px">📊 شهري بلمحة</h3><div class="statgrid">'+
+      out.push('<h3 style="margin:2px 2px 8px">شهري بلمحة</h3><div class="statgrid">'+
         '<div class="stat"><div class="v">'+(at.days||0)+'</div><div class="l">يوم حضور</div></div>'+
         '<div class="stat'+((at.late_times||0)>2?' warn':'')+'"><div class="v">'+(at.late_min||0)+'</div><div class="l">دقائق تأخير</div></div>'+
         '<div class="stat"><div class="v">'+(tk.done||0)+'/'+(tk.total||0)+'</div><div class="l">مهام منجزة</div></div>'+
@@ -933,16 +979,16 @@ function loadGrow(v){
     }
     // المهارات لا تُعرض للموظفات إطلاقاً — إدارتها ومستوياتها لدى الإدارة فقط
     if((res.learning||[]).length){
-      out.push('<div class="card"><h3>📚 قيد التعلّم</h3>'+res.learning.map(function(l){
+      out.push('<div class="card"><h3>قيد التعلّم</h3>'+res.learning.map(function(l){
         return '<div style="padding:4px 0">'+esc(l.skill)+' — مع '+esc(l.trainer)+' <span class="chip">'+(TRSTAT[l.status]||l.status)+'</span></div>';
       }).join('')+'</div>');
     }
     if((res.trained_others||[]).length){
-      out.push('<div class="card"><h3>🎓 علّمتُ زميلاتي</h3><div class="muted small" style="margin-bottom:6px">ما علّمتِه لغيرك يُحسب لك عند اعتماده</div>'+res.trained_others.map(function(l){
+      out.push('<div class="card"><h3>علّمتُ زميلاتي</h3><div class="muted small" style="margin-bottom:6px">ما علّمتِه لغيرك يُحسب لك عند اعتماده</div>'+res.trained_others.map(function(l){
         return '<div style="padding:4px 0">'+esc(l.skill)+' → '+esc(l.trainee)+' '+(l.approved?'<span class="chip green">اعتُمد ✔</span>':'<span class="chip">قيد المتابعة</span>')+'</div>';
       }).join('')+'</div>');
     }
-    out.push('<div class="card"><h3>🌟 سجل التقدير</h3>'+
+    out.push('<div class="card"><h3>سجل التقدير</h3>'+
       ((res.recognitions||[]).length ? res.recognitions.map(function(r){
         return '<div style="padding:5px 0;border-bottom:1px dashed var(--line)">'+esc(r.text)+'<div class="muted small">'+fmtD(r.ts)+'</div></div>';
       }).join('') : '<div class="muted small">سيظهر هنا كل تقدير يصلك من الإدارة</div>')+'</div>');
@@ -954,21 +1000,21 @@ function loadGrow(v){
 function viewMore(){
   var st=S.state;
   return ''+
-  '<div class="card"><h3>🕐 نسيتِ تسجيل الحضور/الانصراف؟</h3>'+
+  '<div class="card"><h3>نسيتِ تسجيل الحضور/الانصراف؟</h3>'+
     '<div class="muted small">يُرسل للإدارة للمراجعة ولا يُعتمد تلقائياً.</div>'+
     '<label class="f">النوع</label><select class="f" id="fgKind"><option value="in">نسيت تسجيل الحضور</option><option value="out">نسيت تسجيل الانصراف</option></select>'+
     '<label class="f">الوقت التقريبي</label><input class="f" id="fgTime" type="time">'+
     '<label class="f">السبب</label><input class="f" id="fgReason" placeholder="مثال: كان في ضغط على الباب">'+
     '<div class="btnrow"><button class="btn ghost block" data-a="fgSend">إرسال للمراجعة</button></div></div>'+
-  '<div class="card"><h3>📨 طلب إجازة / إذن / تبديل</h3>'+
+  '<div class="card"><h3>طلب إجازة / إذن / تبديل</h3>'+
     '<label class="f">نوع الطلب</label><select class="f" id="rqType">'+(st.request_types||['إجازة','إذن تأخير','مغادرة مبكرة','تبديل شفت','ملاحظة تشغيلية','أخرى']).map(function(t){return '<option>'+esc(t)+'</option>';}).join('')+'</select>'+
     '<label class="f">التاريخ المطلوب (اختياري)</label><input class="f" id="rqDate" type="date">'+
     '<label class="f">التفاصيل</label><textarea class="f" id="rqDet" placeholder="مثال: أحتاج إجازة يوم الجمعة لظرف عائلي"></textarea>'+
     '<div class="btnrow"><button class="btn block" data-a="rqSend">إرسال الطلب</button><button class="btn ghost" data-a="rqMine">طلباتي السابقة</button></div></div>'+
-  '<div class="card"><h3>💬 ملاحظة سريعة للإدارة</h3>'+
+  '<div class="card"><h3>ملاحظة سريعة للإدارة</h3>'+
     '<textarea class="f" id="ntText" placeholder="أي شيء تريدين إيصاله"></textarea>'+
     '<div class="btnrow"><button class="btn ghost block" data-a="ntSend">إرسال الملاحظة</button></div></div>'+
-  '<div class="card beige small"><b>🔒 خصوصيتك:</b> '+esc(st.privacy||'النظام يسجل الحضور والمهام داخل المقهى فقط، ولا يتتبعك خارج الدوام إطلاقاً. اختيارات التعاون سرية. لا خصومات تلقائية — أي قرار يمر بمراجعة بشرية.')+'</div>'+
+  '<div class="card beige small"><b>خصوصيتك بوضوح:</b> أثناء شفتك فقط — بين تسجيل حضورك وانصرافك — يؤكّد التطبيق تواجدك داخل نطاق الكافيه (ترين المؤشر الملوّن أعلى الشاشة). خارج هذه الفترة لا يُسجَّل موقعك إطلاقاً. الحضور والمهام تُسجَّل داخل العمل فقط، اختيارات التعاون سرية، ولا خصومات تلقائية — كل قرار بمراجعة بشرية.</div>'+
   '<div class="btnrow"><button class="btn red block" data-a="logout">تسجيل الخروج</button></div>';
 }
 
@@ -1026,6 +1072,17 @@ function wireTab(v){
         }).join('')||'<div class="empty">لا طلبات</div>');
       });
       else if(a==='ntSend'){ var x=$('#ntText').value.trim(); if(!x){toast('اكتبي الملاحظة',true);return;} sAct('note_send',{text:x},true).then(function(){ toast('وصلت ملاحظتك 💬'); $('#ntText').value=''; }); }
+      else if(a==='recDone'){
+        var needPhoto=b.getAttribute('data-photo')==='1', nm=b.getAttribute('data-name');
+        function send(photo){
+          sAct('recurring_done',{template_id:id, photo:photo||''}, false).then(function(res){
+            if(res.ok){ toast(res.msg||'سُجّلت ✔'); refresh(); }
+            else toast(res.error||'خطأ', true);
+          });
+        }
+        if(needPhoto) cameraSheet({facing:'environment', title:'توثيق: '+nm, watermark:(S.me?S.me.name:'')+' · '+nm}, function(d){ send(d); });
+        else send('');
+      }
       else if(a==='logout'){ sAct('logout',{}); clearSess(); renderLogin(); }
     });
   });
@@ -1048,7 +1105,7 @@ function startAdmin(){
   updateDot(); S.adminSec=null; drawAdmin();
 }
 var SECS=[
-  ['dash','🏠','اليوم'],['employees','👭','الموظفات'],['shifts','🗓','الشفتات'],
+  ['dash','🏠','اليوم'],['live','📡','المتابعة الحية'],['employees','👭','الموظفات'],['shifts','🗓','الشفتات'],
   ['types','⏱','أنواع الشفتات'],['areas','📍','المناطق'],['templates','🧩','قوالب المهام'],
   ['tasks','✅','مهام اليوم'],['attendance','🕐','الحضور'],['skills','🌱','المهارات'],
   ['training','🎓','التدريب'],['absence','🚨','الغياب والتغطية'],['coop','🤝','التعاون'],
@@ -1058,7 +1115,7 @@ var SECS=[
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
-  ['تشغيل اليوم','g1',['shifts','tasks','attendance','absence','handovers']],
+  ['تشغيل اليوم','g1',['live','shifts','tasks','attendance','absence','handovers']],
   ['الفريق','g2',['employees','skills','training','coop','evals','awards','requests']],
   ['الإعداد والجودة','g3',['types','areas','templates','reports','flags']],
   ['النظام','g4',['devices','settings','audit']]
@@ -1364,7 +1421,7 @@ ADMIN.templates=function(v){
         ts.map(function(t){
           return '<div class="card" style="padding:10px 12px'+(t.active?'':';opacity:.5')+'"><div class="row" style="justify-content:space-between">'+
             '<div><b>'+esc(t.name)+'</b> '+(t.is_core?'<span class="chip orange">أساسية</span>':'')+
-            '<div class="muted small">'+esc(t.area||'')+' · '+PHASE[t.phase]+' · '+mins(t.expected)+' · '+esc(t.method)+(t.needs_photo?' 📷':'')+(t.needs_two?' 👭':'')+'</div></div>'+
+            '<div class="muted small">'+esc(t.area||'')+' · '+(t.recurring?'متكررة'+(t.target_count?' ('+t.target_count+')':''):PHASE[t.phase])+' · '+mins(t.expected)+(t.needs_photo?' · صورة':'')+'</div></div>'+
             '<button class="btn sm ghost" data-ed="'+t.id+'">تعديل</button></div></div>';
         }).join('');
       $('#tpNew').addEventListener('click', function(){ form(null); });
@@ -1381,6 +1438,9 @@ ADMIN.templates=function(v){
           '<div class="check"><input type="checkbox" id="pTwo" '+(t&&t.needs_two?'checked':'')+'><span>تحتاج موظفتين</span></div>'+
           '<div class="check"><input type="checkbox" id="pRev" '+(t&&t.needs_review?'checked':'')+'><span>تحتاج مراجعة إدارة</span></div>'+
           '<div class="check"><input type="checkbox" id="pCore" '+(t&&t.is_core?'checked':'')+'><span>أساسية (تمنع الانصراف)</span></div>'+
+          '<hr class="sep"><div class="check"><input type="checkbox" id="pRec" '+(t&&t.recurring?'checked':'')+'><span>متكررة (يؤديها أكثر من موظفة عدة مرات — مثل الجلي وتشطيب الطاولات)</span></div>'+
+          '<div class="row"><div class="grow"><label class="f">العدد المطلوب يومياً (0 = بلا سقف)</label><input class="f" id="pTgt" type="number" value="'+(t?(t.target_count||0):0)+'"></div>'+
+          '<div class="grow"><label class="f">أقل فاصل بين المرات (دقيقة)</label><input class="f" id="pCd" type="number" value="'+(t?(t.cooldown_min||0):0)+'"></div></div>'+
           '<label class="f">لماذا هذه المهمة مهمة</label><input class="f" id="pRe" value="'+(t?esc(t.reason||''):'')+'">'+
           '<label class="f">أثر إهمالها</label><input class="f" id="pIm" value="'+(t?esc(t.impact||''):'')+'">'+
           (t?'<div class="check"><input type="checkbox" id="pAct" '+(t.active?'checked':'')+'><span>مفعّل</span></div>':'')+
@@ -1390,7 +1450,8 @@ ADMIN.templates=function(v){
               var cl=$('#pC',ov).value.split('\n').map(function(x){return x.trim();}).filter(Boolean);
               var p={name:$('#pN',ov).value, area_id:+$('#pA',ov).value, phase:$('#pPh',ov).value, expected:+$('#pX',ov).value,
                 method:$('#pM',ov).value, checklist:cl, needs_photo:$('#pPhoto',ov).checked, needs_two:$('#pTwo',ov).checked,
-                needs_review:$('#pRev',ov).checked, is_core:$('#pCore',ov).checked, reason:$('#pRe',ov).value, impact:$('#pIm',ov).value};
+                needs_review:$('#pRev',ov).checked, is_core:$('#pCore',ov).checked, reason:$('#pRe',ov).value, impact:$('#pIm',ov).value,
+                recurring:$('#pRec',ov).checked, target_count:+$('#pTgt',ov).value||0, cooldown_min:+$('#pCd',ov).value||0};
               if(!p.name.trim()){ toast('اكتبي اسم المهمة', true); return; }
               if(p.method==='checklist' && !cl.length){ toast('طريقة «قائمة فحص» تحتاج بنوداً — سطر لكل بند', true); return; }
               if(!(p.expected>0)){ toast('الدقائق المتوقعة يجب أن تكون أكبر من صفر', true); return; }
@@ -1537,7 +1598,7 @@ ADMIN.skills=function(v){
   aAct('skills_matrix',{}).then(function(res){
     if(!res.ok){ v.innerHTML='<div class="empty">'+esc(res.error||'خطأ')+'</div>'; return; }
     var out=[];
-    out.push('<div class="card beige"><h3>🛡 تغطية المهارات الحرجة</h3>'+
+    out.push('<div class="card beige"><h3>تغطية المهارات الحرجة</h3>'+
       (res.coverage||[]).map(function(c){
         var h=c.holders||[];
         return '<div class="row" style="justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line)"><b>'+esc(c.skill)+'</b>'+
@@ -1675,7 +1736,7 @@ ADMIN.coop=function(v){
   function load(){
     aAct('coop_overview',{month:$('#cpM').value}).then(function(res){
       var out=[];
-      out.push('<div class="card"><h3>🤝 عدد الترشيحات (سري — لا يُعرض للموظفات)</h3>'+
+      out.push('<div class="card"><h3>عدد الترشيحات (سري — لا يُعرض للموظفات)</h3>'+
         ((res.counts||[]).length? res.counts.map(function(c){
           return '<div class="row" style="justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line)"><b>'+esc(c.employee)+'</b><span class="chip green">'+c.votes+'</span></div>';
         }).join(''):'<div class="muted small">لا ترشيحات هذا الشهر</div>')+'</div>');
@@ -1715,11 +1776,11 @@ ADMIN.evals=function(v){
 ADMIN.awards=function(v){
   lookups(function(){
     var cats=['نجمة التشغيل','سيدة الهدوء وقت الضغط','المعلّمة','الأدق التزاماً','روح الفريق','الأكثر تطوراً','مبادرة الشهر'];
-    v.innerHTML='<div class="card"><h3>🌟 إرسال تقدير فوري</h3>'+
+    v.innerHTML='<div class="card"><h3>إرسال تقدير فوري</h3>'+
       '<select class="f" id="rgE">'+staffOpts()+'</select>'+
       '<input class="f" id="rgT" style="margin-top:8px" placeholder="نص محدد: «إدارتك للفحم أمس وقت الذروة كانت مثالية»">'+
       '<div class="btnrow"><button class="btn block" id="rgGo">إرسال (يظهر لها وحدها)</button></div></div>'+
-      '<div class="card"><h3>🏅 جائزة شهرية</h3>'+
+      '<div class="card"><h3>جائزة شهرية</h3>'+
       '<label class="f">الشهر</label><input class="f" id="awM" type="month" value="'+thisMonth()+'">'+
       '<label class="f">الموظفة</label><select class="f" id="awE">'+staffOpts()+'</select>'+
       '<label class="f">الفئة</label><select class="f" id="awC">'+cats.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'+
@@ -1848,6 +1909,46 @@ ADMIN.reports=function(v){
   });
 };
 
+/* ---------- المتابعة الحية (نبض التواجد + المهام المتكررة) ---------- */
+ADMIN.live=function(v){
+  function load(){
+    Promise.all([aAct('live_presence',{}), aAct('recurring_day',{})]).then(function(rs){
+      var pr=rs[0]||{}, rc=rs[1]||{};
+      var out=[];
+      out.push('<div class="muted small" style="margin-bottom:8px">تأكيد تواجد شفّاف أثناء الشفت فقط — الموظفات يرين مؤشره على شاشتهن. يتحدث تلقائياً.</div>');
+      var rows=pr.rows||[];
+      out.push('<h3 style="margin:2px">على الشفت الآن ('+rows.filter(function(r){return r.checked_in&&!r.checked_out;}).length+')</h3>');
+      if(!rows.length) out.push('<div class="empty">لا شفتات نشطة اليوم</div>');
+      rows.forEach(function(r){
+        var state = r.checked_out ? ['⚪','انصرفت','muted'] :
+                    !r.checked_in ? ['🟠','لم تحضر بعد','orange'] :
+                    (r.idle_min!=null && r.idle_min<3 && r.in_geo!==false) ? ['🟢','نشطة الآن','green'] :
+                    (r.in_geo===false) ? ['🔴','خارج نطاق الكافيه','red'] :
+                    (r.idle_min!=null && r.idle_min>=10) ? ['🟠','بلا نشاط '+r.idle_min+' د','orange'] : ['🟢','حاضرة','green'];
+        out.push('<div class="card" style="padding:11px 13px"><div class="row" style="justify-content:space-between"><div>'+
+          '<b>'+esc(r.employee)+'</b> <span class="muted small">'+esc(r.area||'')+'</span>'+
+          '<div class="small" style="margin-top:3px"><span class="chip '+state[2]+'">'+state[0]+' '+state[1]+'</span> '+
+          (r.away_count>0?'<span class="chip orange">غادرت النطاق '+r.away_count+'×</span> ':'')+
+          '</div></div>'+
+          '<div class="center small muted">مهام: <b>'+(r.done_tasks||0)+'</b>'+(r.recurring_done?' · متكررة: <b>'+r.recurring_done+'</b>':'')+'<br>نشاط: '+(r.active_min||0)+' د</div>'+
+          '</div></div>');
+      });
+      var rr=rc.rows||[];
+      if(rr.length){
+        out.push('<h3 style="margin:14px 2px 6px">المهام المتكررة اليوم</h3>');
+        rr.forEach(function(t){
+          out.push('<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between"><b>'+esc(t.name)+'</b><span class="chip '+(t.target>0&&t.done>=t.target?'green':'')+'">'+t.done+(t.target>0?'/'+t.target:'')+'</span></div>'+
+            '<div class="muted small">'+esc(t.area||'')+'</div>'+
+            ((t.by&&t.by.length)?'<div class="small" style="margin-top:4px">'+t.by.map(function(x){return esc(x.who)+': '+x.count;}).join(' · ')+'</div>':'<div class="small muted">لم تُنفَّذ بعد</div>')+'</div>');
+        });
+      }
+      v.innerHTML=out.join('');
+    });
+  }
+  load();
+  clearInterval(window._liveT); window._liveT=setInterval(function(){ if(S.adminSec==='live'){ load(); } else clearInterval(window._liveT); }, 45000);
+};
+
 /* ---------- أجهزة الكافيه ---------- */
 ADMIN.devices=function(v){
   aAct('devices_list',{}).then(function(res){
@@ -1898,7 +1999,7 @@ ADMIN.settings=function(v){
     var st=res.settings||{};
     var guard=st.attendance_guard||{};
     var labels={terms:'المصطلحات', hours:'ساعات العمل', eval_weights:'أوزان التقييم', session:'الجلسات', coop_reasons:'أسباب التعاون', request_types:'أنواع الطلبات', theme:'الألوان', privacy_note:'نص الخصوصية', phone_policy:'سياسة الهاتف'};
-    var guardCard='<div class="card beige"><h3>🛡 حماية الحضور والانصراف</h3>'+
+    var guardCard='<div class="card beige"><h3>حماية الحضور والانصراف</h3>'+
       '<div class="small muted">التسجيل يوثَّق تلقائياً بمعرّف الجهاز والموقع الجغرافي. أي شذوذ (جهاز غريب، موقع بعيد، بلا موقع) يظهر في «إشارات المراجعة» بلا عقوبة تلقائية — ويمكن تفعيل طبقات إضافية عند الحاجة.</div>'+
       '<div class="check"><input type="checkbox" id="agPin" '+(guard.require_pin?'checked':'')+'><span>طلب كلمة السر عند كل تسجيل (طبقة إضافية اختيارية)</span></div>'+
       '<div class="check"><input type="checkbox" id="agSelf" '+(guard.require_selfie?'checked':'')+'><span>صورة تحقق مباشرة إلزامية (طبقة إضافية اختيارية)</span></div>'+
@@ -1910,7 +2011,7 @@ ADMIN.settings=function(v){
         '<button class="btn sm" id="agLoc">📍 اعتماد موقعي الحالي</button>'+
         '<button class="btn sm orange" id="agSave">حفظ إعدادات الحماية</button></div>'+
       '</div>';
-    var resetCard='<div class="card" style="border:1.5px solid #E5B8AB;background:#FBF1EE"><h3 style="color:var(--red)">🧹 تصفير بيانات التجربة</h3>'+
+    var resetCard='<div class="card" style="border:1.5px solid #E5B8AB;background:#FBF1EE"><h3 style="color:var(--red)">تصفير بيانات التجربة</h3>'+
       '<div class="small muted">لمرحلة التجربة: يحذف السجلات المحددة نهائياً ولا يمس البنية (الموظفات، المناطق، أنواع الشفتات، قوالب المهام، المهارات، الأجهزة، الإعدادات).</div>'+
       '<div class="check"><input type="checkbox" id="rsOps" checked><span>العمليات اليومية: شفتات، حضور، مهام، استراحات، ضغط، نداءات، تسليمات، غياب وتغطية، تعاون، إشارات</span></div>'+
       '<div class="check"><input type="checkbox" id="rsReq"><span>الطلبات والملاحظات</span></div>'+
@@ -1998,14 +2099,21 @@ ADMIN.flags=function(v){
 };
 
 /* ============================ الإقلاع ============================ */
-// ?reset=1 يمسح الجلسة والكاش (نمط النشر المعتاد) — ?reset=all يمسح المفتاح أيضاً
+// تحديث تلقائي: عند تغيّر نسخة البناء يُنظَّف الكاش القديم ذاتياً دون تدخل
 (function(){
+  try{
+    var prev=localStorage.getItem('rko_build');
+    if(prev && prev!==BUILD){
+      localStorage.removeItem('rko_state');   // كاش العرض فقط — الجلسة تبقى
+      if('caches' in window){ caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k); }); }); }
+    }
+    localStorage.setItem('rko_build', BUILD);
+  }catch(e){}
+  // دعم رابط الطوارئ ?reset=1 (اختياري) دون الاعتماد عليه
   var q=location.search||'';
   if(q.indexOf('reset=')>-1){
-    try{
-      localStorage.removeItem('rko_sess'); localStorage.removeItem('rko_state'); localStorage.removeItem('rko_q');
-      if(q.indexOf('reset=all')>-1) localStorage.removeItem('rko_key');
-    }catch(e){}
+    try{ localStorage.removeItem('rko_sess'); localStorage.removeItem('rko_state'); localStorage.removeItem('rko_q');
+      if(q.indexOf('reset=all')>-1){ localStorage.removeItem('rko_key'); localStorage.removeItem('rko_devtok'); } }catch(e){}
     history.replaceState(null,'',location.pathname);
   }
 })();
@@ -2014,7 +2122,7 @@ function boot(){
   if(!K || K.indexOf('هنا')>-1){
     document.body.className='no-nav';
     APP.innerHTML='<div class="login-hero"><div class="logo">ر</div><h1 style="font-size:24px;margin:0">ريحانة</h1><div style="opacity:.75;font-size:13.5px">إعداد أول مرة</div></div>'+
-      '<div class="wrap"><div class="card" style="margin-top:14px"><h3>⚙️ ربط قاعدة البيانات</h3>'+
+      '<div class="wrap"><div class="card" style="margin-top:14px"><h3>ربط قاعدة البيانات</h3>'+
       '<div class="small muted">من Supabase: Settings ← API ← انسخي مفتاح <b>anon public</b> والصقيه هنا. يُحفظ على هذا الجهاز فقط ولا يُطلب مرة أخرى.</div>'+
       '<label class="f">مفتاح anon</label><textarea class="f" id="setKey" style="direction:ltr;text-align:left;font-size:12px"></textarea>'+
       '<div class="btnrow"><button class="btn block" id="setGo">حفظ وبدء التشغيل</button></div></div></div>';
@@ -2037,7 +2145,22 @@ function boot2(){
 // عامل الخدمة: يخزن الهيكل للعمل دون اتصال ويتيح التثبيت على الشاشة الرئيسية
 if('serviceWorker' in navigator && location.protocol==='https:'){
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      // فحص دوري لنسخة جديدة كل 5 دقائق
+      setInterval(function(){ reg.update(); }, 300000);
+      reg.addEventListener('updatefound', function(){
+        var nw=reg.installing;
+        if(nw) nw.addEventListener('statechange', function(){
+          if(nw.state==='installed' && navigator.serviceWorker.controller){
+            toast('يُحدَّث التطبيق لأحدث نسخة…');
+          }
+        });
+      });
+    }).catch(function(){});
+    var reloaded=false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(reloaded) return; reloaded=true; location.reload();
+    });
   });
 }
 boot();
