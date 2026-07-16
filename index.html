@@ -11,19 +11,21 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#22382B;        /* أخضر ريحاني داكن */
+  --ink:#20362A;        /* أخضر ريحاني داكن */
   --green:#3E6B4C;      /* أخضر أساسي */
-  --green-soft:#E4EEE6;
+  --green-2:#4E8060;
+  --green-soft:#E3EEE6;
   --beige:#EDE4D3;      /* بيج دافئ */
-  --paper:#FBF7EF;      /* خلفية ورقية */
+  --paper:#FAF6EE;      /* خلفية ورقية */
   --orange:#D98E3B;     /* برتقالي هادئ */
   --red:#B4533A;
-  --line:#DED3BF;
-  --radius:14px;
-  --shadow:0 2px 10px rgba(34,56,43,.08);
+  --line:#E0D6C4;
+  --muted:#75816F;
+  --radius:16px;
+  --shadow:0 1px 2px rgba(34,56,43,.05), 0 4px 14px rgba(34,56,43,.07);
   --font:'IBM Plex Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -31,7 +33,8 @@ html,body{margin:0;padding:0}
 body{font-family:var(--font);background:var(--paper);color:var(--ink);font-size:15.5px;line-height:1.55;
   padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 body.no-nav{padding-bottom:0}
-h1,h2,h3{margin:0 0 .4em;line-height:1.3}
+h1,h2,h3{margin:0 0 .4em;line-height:1.3;letter-spacing:-.1px}
+h3{font-weight:700}
 button,input,select,textarea{font-family:inherit;font-size:inherit}
 a{color:var(--green)}
 .wrap{max-width:640px;margin:0 auto;padding:14px 14px 24px}
@@ -50,7 +53,8 @@ a{color:var(--green)}
 .dot{width:10px;height:10px;border-radius:50%;background:#7FBF8E;display:inline-block}
 .dot.off{background:var(--orange);animation:pulse 1.2s infinite}
 @keyframes pulse{50%{opacity:.4}}
-.pill{background:rgba(255,255,255,.14);border:none;color:var(--paper);border-radius:20px;padding:5px 12px;font-size:12.5px;cursor:pointer}
+.pill{background:rgba(255,255,255,.16);border:none;color:var(--paper);border-radius:20px;padding:6px 13px;font-size:12.5px;cursor:pointer;transition:transform .1s, background .15s;font-weight:500}
+.pill:active{transform:scale(.92);background:rgba(255,255,255,.28)}
 .pill.icbtn{padding:5px 8px;display:inline-flex;align-items:center}
 .pill.icbtn svg{width:16px;height:16px}
 .spin svg{animation:rot .9s linear infinite}
@@ -61,7 +65,7 @@ a{color:var(--green)}
 .card.soft{background:var(--green-soft);border-color:#CBDCCF}
 .card.beige{background:var(--beige);border-color:var(--line)}
 .card h3{font-size:15.5px;display:flex;align-items:center;gap:8px}
-.muted{color:#6E7A6F;font-size:13px}
+.muted{color:var(--muted);font-size:13px}
 .small{font-size:12.5px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .grow{flex:1}
@@ -70,19 +74,20 @@ hr.sep{border:0;border-top:1px dashed var(--line);margin:12px 0}
 
 /* ===== أزرار ===== */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;
-  background:var(--green);color:#fff;border-radius:12px;padding:11px 16px;font-weight:600;font-size:15px;min-height:44px}
+  background:linear-gradient(180deg,var(--green-2),var(--green));color:#fff;border-radius:13px;padding:11px 16px;font-weight:600;font-size:15px;min-height:44px;
+  box-shadow:0 2px 8px rgba(62,107,76,.28)}
 .btn:active{transform:scale(.98)}
 .btn.block{width:100%}
-.btn.orange{background:var(--orange)}
-.btn.red{background:var(--red)}
-.btn.ghost{background:transparent;color:var(--green);border:1.5px solid var(--green)}
+.btn.orange{background:linear-gradient(180deg,#E09A48,var(--orange));box-shadow:0 2px 8px rgba(217,142,59,.3)}
+.btn.red{background:linear-gradient(180deg,#C26049,var(--red));box-shadow:0 2px 8px rgba(180,83,58,.3)}
+.btn.ghost{background:transparent;color:var(--green);border:1.5px solid var(--green);box-shadow:none}
 .btn.ghost.red{color:var(--red);border-color:var(--red)}
 .btn.sm{padding:7px 12px;min-height:36px;font-size:13.5px;border-radius:10px}
 .btn[disabled]{opacity:.5;pointer-events:none}
 .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 
 /* ===== شارات ===== */
-.chip{display:inline-block;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600;background:var(--beige);color:var(--ink)}
+.chip{display:inline-block;border-radius:20px;padding:3px 11px;font-size:12px;font-weight:600;background:var(--beige);color:var(--ink);line-height:1.5}
 .chip.green{background:var(--green-soft);color:var(--green)}
 .chip.orange{background:#F6E3CB;color:#8A5514}
 .chip.red{background:#F3DCD5;color:var(--red)}
@@ -158,9 +163,9 @@ nav.bottom .bdg::after{content:'';position:absolute;top:4px;left:calc(50% - 16px
 .menu button .n{position:absolute;top:6px;left:8px;background:var(--red);color:#fff;border-radius:12px;font-size:11px;min-width:20px;text-align:center;padding:1px 6px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.2)}
 
 /* ===== تنبيهات ===== */
-.alert{border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:13.5px;border-right:4px solid}
-.alert.high{background:#F7E5DE;border-color:var(--red)}
-.alert.mid{background:#F7ECD9;border-color:var(--orange)}
+.alert{border-radius:14px;padding:11px 13px;margin-bottom:9px;font-size:13.5px;border-right:4px solid;box-shadow:var(--shadow)}
+.alert.high{background:linear-gradient(180deg,#FAEBE5,#F7E5DE);border-color:var(--red)}
+.alert.mid{background:linear-gradient(180deg,#FAF0DD,#F7ECD9);border-color:var(--orange)}
 .alert .impact{display:block;font-size:12px;opacity:.75;margin-top:2px}
 
 /* ===== نافذة منبثقة ===== */
@@ -200,11 +205,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 /* ===== إحصائيات لوحة الإدارة ===== */
 .statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
-.stat{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 8px;text-align:center}
-.stat .v{font-size:22px;font-weight:700;color:var(--green)}
+.stat{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow);padding:12px 6px;text-align:center;
+  cursor:pointer;font-family:inherit;color:inherit;transition:transform .12s, box-shadow .12s}
+.stat:active{transform:scale(.95)}
+.stat:hover{box-shadow:0 4px 18px rgba(34,56,43,.14)}
+.stat .v{font-size:23px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums}
 .stat.warn .v{color:var(--orange)}
 .stat.bad .v{color:var(--red)}
-.stat .l{font-size:12px;color:#6E7A6F;margin-top:2px}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:3px;font-weight:600}
 
 @media(min-width:520px){.tiles{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
@@ -1105,9 +1113,9 @@ function loadDash(v){
     var doneN=tks.filter(function(t){return t.status==='done'||t.status==='approved';}).length;
     var highN=(res.alerts||[]).filter(function(a){return a.sev==='high';}).length;
     out.push('<div class="statgrid">'+
-      '<div class="stat"><div class="v">'+inN+'/'+onshift.length+'</div><div class="l">حاضرات الآن</div></div>'+
-      '<div class="stat'+(tks.length&&doneN<tks.length?' warn':'')+'"><div class="v">'+doneN+'/'+tks.length+'</div><div class="l">مهام اليوم منجزة</div></div>'+
-      '<div class="stat'+(highN?' bad':'')+'"><div class="v">'+(res.alerts||[]).length+'</div><div class="l">تنبيهات ('+highN+' عاجلة)</div></div>'+
+      '<button class="stat" data-go="attendance"><div class="v">'+inN+'/'+onshift.length+'</div><div class="l">🕐 حاضرات الآن</div></button>'+
+      '<button class="stat'+(tks.length&&doneN<tks.length?' warn':'')+'" data-go="tasks"><div class="v">'+doneN+'/'+tks.length+'</div><div class="l">✅ مهام منجزة</div></button>'+
+      '<button class="stat'+(highN?' bad':'')+'" data-go="#alerts"><div class="v">'+(res.alerts||[]).length+'</div><div class="l">🔔 تنبيهات ('+highN+' عاجلة)</div></button>'+
     '</div>');
     out.push('<div class="card soft arch" style="padding-top:20px"><h3 style="justify-content:center">في الشفت الآن</h3>'+
       ((res.onshift||[]).length ? '<div class="row" style="justify-content:center">'+res.onshift.map(function(o){
@@ -1115,7 +1123,7 @@ function loadDash(v){
         return '<span class="chip">'+st+' '+esc(o.name)+' · '+esc(o.area||'')+'</span>';
       }).join('')+'</div>' : '<div class="center muted small">لا شفتات اليوم</div>')+'</div>');
     var al=res.alerts||[];
-    out.push('<h3 style="margin:4px 2px 8px">التنبيهات ('+al.length+')</h3>');
+    out.push('<h3 id="alertsH" style="margin:4px 2px 8px">التنبيهات ('+al.length+')</h3>');
     if(!al.length) out.push('<div class="card center muted">كل شيء تحت السيطرة ✔</div>');
     al.forEach(function(a){
       out.push('<div class="alert '+(a.sev==='high'?'high':'mid')+'"><b>'+esc(a.what)+'</b>'+
@@ -1133,6 +1141,7 @@ function loadDash(v){
     });
     $$('[data-go]',v).forEach(function(b){ b.addEventListener('click', function(){
       var sec=b.getAttribute('data-go');
+      if(sec==='#alerts'){ var h=$('#alertsH'); if(h) h.scrollIntoView({behavior:'smooth'}); return; }
       // الأقسام غير المعروفة أو «dash» ترجع للوحة الرئيسية بدل شاشة معلقة
       S.adminSec = (sec && ADMIN[sec]) ? sec : null;
       drawAdmin();
@@ -1901,7 +1910,16 @@ ADMIN.settings=function(v){
         '<button class="btn sm" id="agLoc">📍 اعتماد موقعي الحالي</button>'+
         '<button class="btn sm orange" id="agSave">حفظ إعدادات الحماية</button></div>'+
       '</div>';
-    v.innerHTML=guardCard+
+    var resetCard='<div class="card" style="border:1.5px solid #E5B8AB;background:#FBF1EE"><h3 style="color:var(--red)">🧹 تصفير بيانات التجربة</h3>'+
+      '<div class="small muted">لمرحلة التجربة: يحذف السجلات المحددة نهائياً ولا يمس البنية (الموظفات، المناطق، أنواع الشفتات، قوالب المهام، المهارات، الأجهزة، الإعدادات).</div>'+
+      '<div class="check"><input type="checkbox" id="rsOps" checked><span>العمليات اليومية: شفتات، حضور، مهام، استراحات، ضغط، نداءات، تسليمات، غياب وتغطية، تعاون، إشارات</span></div>'+
+      '<div class="check"><input type="checkbox" id="rsReq"><span>الطلبات والملاحظات</span></div>'+
+      '<div class="check"><input type="checkbox" id="rsRec"><span>التقدير والجوائز</span></div>'+
+      '<div class="check"><input type="checkbox" id="rsTr"><span>خطط التدريب</span></div>'+
+      '<div class="check"><input type="checkbox" id="rsAud"><span>سجل التدقيق</span></div>'+
+      '<label class="f">كلمة سر الإدارة (للتأكيد)</label><input class="f" id="rsPw" type="password" autocomplete="off">'+
+      '<div class="btnrow"><button class="btn red block" id="rsGo">تصفير البيانات المحددة نهائياً</button></div></div>';
+    v.innerHTML=guardCard+resetCard+
       '<div class="muted small" style="margin:12px 0 8px">إعدادات متقدمة (JSON) — عدّلي بحذر ثم احفظي.</div>'+
       Object.keys(st).filter(function(k){return k!=='attendance_guard'&&k!=='trusted_devices';}).map(function(k){
         return '<div class="card" style="padding:10px 12px"><b>'+esc(labels[k]||k)+'</b> <span class="chip">'+esc(k)+'</span>'+
@@ -1931,6 +1949,19 @@ ADMIN.settings=function(v){
       var val; try{ val=JSON.parse(ta.value); }catch(e){ toast('صيغة JSON غير صحيحة', true); return; }
       aAct('settings_save',{key:k, value:val}).then(function(r){ if(r.ok) toast('حُفظ ✔'); else toast(r.error||'خطأ',true); });
     });});
+    $('#rsGo',v).addEventListener('click', function(){
+      var scopes={ops:$('#rsOps',v).checked, requests:$('#rsReq',v).checked, recognition:$('#rsRec',v).checked, training:$('#rsTr',v).checked, audit:$('#rsAud',v).checked};
+      if(!scopes.ops && !scopes.requests && !scopes.recognition && !scopes.training && !scopes.audit){ toast('حددي ما تريدين تصفيره', true); return; }
+      var pw=$('#rsPw',v).value;
+      if(!pw){ toast('أدخلي كلمة سر الإدارة للتأكيد', true); return; }
+      if(!confirm('تأكيد نهائي: ستُحذف السجلات المحددة ولا يمكن استرجاعها. متابعة؟')) return;
+      busyWrap(this, function(){
+        return aAct('data_reset', Object.assign({password:pw}, scopes)).then(function(r){
+          if(r.ok){ toast(r.msg||'تم التصفير ✔'); $('#rsPw',v).value=''; }
+          else toast(r.error||'خطأ', true);
+        });
+      });
+    });
   });
 };
 
