@@ -229,7 +229,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
    ⚙️ قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-16.6";
+var BUILD = "2026-07-16.7";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4d3JlZWp2Y29rd2tiZ3dicmRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDczMTAsImV4cCI6MjA5MjE4MzMxMH0.dPlZm6RdE5Hvlxe_SBBPgP6CvR-i88uYjTi7L5sN_2Y"
@@ -631,6 +631,39 @@ function startStaff(){
 function paintTabs(){
   $$('nav.bottom button').forEach(function(b){ b.className = b.getAttribute('data-t')===S.tab ? 'on' : ''; });
 }
+/* فحص نشاط سريع مُعلن: يظهر في وقت غير متوقّع ويطلب إثبات عمل حقيقي (صورة منطقتك الآن) خلال مهلة قصيرة */
+var scOpen=false;
+function showSpotcheck(sc){
+  if(!sc || !sc.id || scOpen) return;
+  scOpen=true;
+  var secs=sc.seconds_left||480, timerEl;
+  var close=sheet('فحص نشاط سريع',
+    '<div class="muted small">هذا الفحص يظهر في أوقات غير متوقّعة أثناء شفتك. صوّري منطقتك/محطتك الآن لإثبات نشاطك. مهلة: <b id="scTimer">'+secFmt(secs)+'</b></div>'+
+    '<div class="btnrow"><button class="btn block" id="scGo">تصوير منطقتي الآن</button></div>'+
+    '<div class="small muted center" style="margin-top:6px">تجاهل الفحص يُسجَّل للإدارة (بلا عقوبة تلقائية).</div>',
+    function(ov, closeFn){
+      timerEl=$('#scTimer',ov);
+      $('#scGo',ov).addEventListener('click', function(){
+        cameraSheet({facing:'environment', title:'صورة إثبات النشاط', watermark:(S.me?S.me.name:'')+' · فحص نشاط'},
+          function(d){
+            sAct('spotcheck_answer',{id:sc.id, photo:d}, false).then(function(res){
+              if(res.ok){ toast(res.msg||'سُجّل نشاطك ✔'); scDone(); refresh(); }
+              else toast(res.error||'خطأ', true);
+            });
+          });
+      });
+    });
+  function scDone(){ scOpen=false; clearInterval(scT); if(close) close(); }
+  var scT=setInterval(function(){
+    secs--; if(timerEl) timerEl.textContent=secFmt(Math.max(0,secs));
+    if(secs<=0){ clearInterval(scT); }
+  }, 1000);
+  // إن أغلقتها الموظفة يدوياً نُبقي الحالة قابلة لإعادة الظهور بالنبضة التالية
+  scOpen=true;
+  window._scReset=function(){ scOpen=false; clearInterval(scT); };
+}
+function maybeSpotcheck(sc){ if(sc && sc.id && !scOpen) showSpotcheck(sc); }
+
 /* تأكيد تواجد شفّاف ومُعلن: أثناء الشفت فقط، ومؤشر ظاهر للموظفة نفسها. لا تتبع خارج الدوام. */
 var hbT=null, hbGuard=null;
 function setPresenceDot(state){
@@ -652,7 +685,7 @@ function beat(){
       inGeo=(2*R*Math.asin(Math.sqrt(aa))) <= (g.radius_m||250);
     }
     setPresenceDot(inGeo===false?'out':'in');
-    sAct('heartbeat',{geo:geo, in_geo:inGeo}, false).catch(function(){});
+    sAct('heartbeat',{geo:geo, in_geo:inGeo}, false).then(function(res){ if(res&&res.spotcheck) maybeSpotcheck(res.spotcheck); }).catch(function(){});
   });
 }
 function startPresence(){
@@ -667,6 +700,7 @@ function refresh(){
       if(!res.ok){ toast(res.error||'خطأ', true); return; }
       S.state=res; S.cacheTs=Date.now();
       if(res.guard) hbGuard=res.guard;
+      if(res.spotcheck) maybeSpotcheck(res.spotcheck); else if(window._scReset) window._scReset();
       try{ localStorage.setItem('rko_state', JSON.stringify(res)); }catch(e){}
       var st=res.shift;
       $('#hiSub').textContent = st ? (st.name+' · '+(st.area||'بلا منطقة')) : 'لا يوجد شفت لكِ اليوم';
@@ -766,7 +800,8 @@ function viewNow(){
   // مهام متكررة (جلي، تشطيب طاولات...) — يشترك فيها الجميع بعدّاد مشترك وتُنسب لكل من نفّذتها
   (st.recurring||[]).forEach(function(rt){
     var pct = rt.target>0 ? Math.min(100, Math.round(100*rt.done/rt.target)) : 0;
-    out.push('<div class="card"><h3>'+esc(rt.name)+' <span class="muted small" style="font-weight:400">'+esc(rt.area||'')+'</span></h3>'+
+    var overdue = rt.cadence_min>0 && (!rt.last_ts || (Date.now()-new Date(rt.last_ts).getTime())/60000 >= rt.cadence_min);
+    out.push('<div class="card'+(overdue?' beige':'')+'"><h3>'+esc(rt.name)+' <span class="muted small" style="font-weight:400">'+esc(rt.area||'')+'</span>'+(overdue?' <span class="chip orange">حان وقتها</span>':'')+'</h3>'+
       (rt.target>0
         ? '<div class="muted small">المطلوب اليوم: '+rt.done+' من '+rt.target+' · نصيبك: '+rt.mine+'</div><div class="pbar"><i style="width:'+pct+'%"></i></div>'
         : '<div class="muted small">أُنجزت اليوم: '+rt.done+' مرة · نصيبك: '+rt.mine+'</div>')+
@@ -1930,7 +1965,9 @@ ADMIN.live=function(v){
           '<div class="small" style="margin-top:3px"><span class="chip '+state[2]+'">'+state[0]+' '+state[1]+'</span> '+
           (r.away_count>0?'<span class="chip orange">غادرت النطاق '+r.away_count+'×</span> ':'')+
           '</div></div>'+
-          '<div class="center small muted">مهام: <b>'+(r.done_tasks||0)+'</b>'+(r.recurring_done?' · متكررة: <b>'+r.recurring_done+'</b>':'')+'<br>نشاط: '+(r.active_min||0)+' د</div>'+
+          '<div class="center small muted">مهام: <b>'+(r.done_tasks||0)+'</b>'+(r.recurring_done?' · متكررة: <b>'+r.recurring_done+'</b>':'')+
+          '<br>فحوصات: <b class="'+((r.sc_missed||0)>0?'':'')+'">'+(r.sc_ok||0)+'</b> ✔'+((r.sc_missed||0)>0?' · <b style="color:var(--red)">'+r.sc_missed+'</b> فائت':'')+
+          (r.sc_avg_sec!=null?'<br>ردّ خلال '+r.sc_avg_sec+' ث':'')+'</div>'+
           '</div></div>');
       });
       var rr=rc.rows||[];
@@ -1997,7 +2034,7 @@ ADMIN.devices=function(v){
 ADMIN.settings=function(v){
   aAct('settings_get',{}).then(function(res){
     var st=res.settings||{};
-    var guard=st.attendance_guard||{};
+    var guard=st.attendance_guard||{}; var sc=st.spotcheck||{};
     var labels={terms:'المصطلحات', hours:'ساعات العمل', eval_weights:'أوزان التقييم', session:'الجلسات', coop_reasons:'أسباب التعاون', request_types:'أنواع الطلبات', theme:'الألوان', privacy_note:'نص الخصوصية', phone_policy:'سياسة الهاتف'};
     var guardCard='<div class="card beige"><h3>حماية الحضور والانصراف</h3>'+
       '<div class="small muted">التسجيل يوثَّق تلقائياً بمعرّف الجهاز والموقع الجغرافي. أي شذوذ (جهاز غريب، موقع بعيد، بلا موقع) يظهر في «إشارات المراجعة» بلا عقوبة تلقائية — ويمكن تفعيل طبقات إضافية عند الحاجة.</div>'+
@@ -2006,6 +2043,10 @@ ADMIN.settings=function(v){
       '<div class="check"><input type="checkbox" id="agGeo" '+(guard.require_geo?'checked':'')+'><span>إشارة مراجعة عند التسجيل بدون موقع</span></div>'+
       '<div class="check"><input type="checkbox" id="agDev" '+(guard.enforce_device?'checked':'')+'><span>الوضع الصارم: لا دخول ولا حضور إلا من أجهزة الكافيه المفعّلة (قسم «الأجهزة»)</span></div>'+
       '<label class="f">نصف قطر السماح حول الكافيه (متر)</label><input class="f" id="agRad" type="number" value="'+(guard.radius_m||250)+'">'+
+      '<hr class="sep"><div class="check"><input type="checkbox" id="agSc" '+(sc.enabled?'checked':'')+'><span>فحوصات نشاط أثناء الشفت (تكشف من يتواجد دون عمل — معلنة للموظفة)</span></div>'+
+      '<div class="row"><div class="grow"><label class="f">كل (دقيقة) تقريباً</label><input class="f" id="agScEvery" type="number" value="'+(sc.every_min||45)+'"></div>'+
+      '<div class="grow"><label class="f">تفاوت عشوائي ±</label><input class="f" id="agScJit" type="number" value="'+(sc.jitter_min||20)+'"></div>'+
+      '<div class="grow"><label class="f">مهلة الرد (دقيقة)</label><input class="f" id="agScWin" type="number" value="'+(sc.window_min||8)+'"></div></div>'+
       '<div class="small muted" style="margin-top:4px">📍 موقع الكافيه: '+(guard.lat?('محدد ('+guard.lat+', '+guard.lng+')'):'<b>غير محدد — حدديه من داخل الكافيه</b>')+'</div>'+
       '<div class="btnrow">'+
         '<button class="btn sm" id="agLoc">📍 اعتماد موقعي الحالي</button>'+
@@ -2022,7 +2063,7 @@ ADMIN.settings=function(v){
       '<div class="btnrow"><button class="btn red block" id="rsGo">تصفير البيانات المحددة نهائياً</button></div></div>';
     v.innerHTML=guardCard+resetCard+
       '<div class="muted small" style="margin:12px 0 8px">إعدادات متقدمة (JSON) — عدّلي بحذر ثم احفظي.</div>'+
-      Object.keys(st).filter(function(k){return k!=='attendance_guard'&&k!=='trusted_devices';}).map(function(k){
+      Object.keys(st).filter(function(k){return k!=='attendance_guard'&&k!=='trusted_devices'&&k!=='spotcheck';}).map(function(k){
         return '<div class="card" style="padding:10px 12px"><b>'+esc(labels[k]||k)+'</b> <span class="chip">'+esc(k)+'</span>'+
           '<textarea class="f stg" data-k="'+esc(k)+'" style="margin-top:6px;direction:ltr;text-align:left;font-size:12.5px">'+esc(JSON.stringify(st[k],null,1))+'</textarea>'+
           '<div class="btnrow"><button class="btn sm" data-sv="'+esc(k)+'">حفظ</button></div></div>';
@@ -2034,7 +2075,12 @@ ADMIN.settings=function(v){
         if(r.ok){ toast('حُفظت إعدادات الحماية ✔'); ADMIN.settings(v); } else toast(r.error||'خطأ',true);
       });
     }
-    $('#agSave',v).addEventListener('click', function(){ busyWrap(this, saveGuard); });
+    $('#agSave',v).addEventListener('click', function(){
+      busyWrap(this, function(){
+        var scv={enabled:$('#agSc',v).checked, every_min:+$('#agScEvery',v).value||45, jitter_min:+$('#agScJit',v).value||20, window_min:+$('#agScWin',v).value||8, photo:true};
+        return Promise.all([saveGuard(), aAct('settings_save',{key:'spotcheck', value:scv})]);
+      });
+    });
     $('#agLoc',v).addEventListener('click', function(){
       busyWrap(this, function(){
         return new Promise(function(resolve){
