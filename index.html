@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   color-scheme: light dark;
@@ -22,7 +22,7 @@
   --radius:16px;
   --shadow:0 1px 2px rgba(60,45,20,.05), 0 6px 18px rgba(60,45,20,.08);
   --hero:linear-gradient(155deg,#274233,#335640 62%,#3C6349);
-  --font:'IBM Plex Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif;
+  --font:'Tajawal','IBM Plex Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif;
 }
 :root[data-theme="dark"]{
   --ink:#EFE7D6; --paper:#14110D; --surface:#201B15; --surface-2:#2A241B;
@@ -43,9 +43,9 @@
   }
 }
 .font-lg{font-size:17px} .font-lg .card{padding:16px}
-:root{--font:'IBM Plex Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
 body{font-family:var(--font);background:var(--paper);color:var(--ink);font-size:15.5px;line-height:1.55;
   padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 body.no-nav{padding-bottom:0}
@@ -62,7 +62,8 @@ a{color:var(--green)}
 /* ===== الترويسة ===== */
 .top{background:var(--hero);color:#F4EFE4;padding:14px 16px 20px;position:relative;border-radius:0 0 24px 24px;box-shadow:0 6px 20px rgba(20,15,8,.2)}
 .top .brand{display:flex;align-items:center;gap:10px}
-.logo{width:40px;height:46px;background:var(--beige);border-radius:20px 20px 6px 6px;display:flex;align-items:flex-end;justify-content:center;color:var(--ink);font-weight:700;font-size:19px;padding-bottom:3px;user-select:none}
+.logo{display:flex;align-items:center;justify-content:center;user-select:none}
+.logo svg{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.15))}
 .top h1{font-size:19px;margin:0}
 .top .sub{font-size:12.5px;opacity:.75}
 .top .left{position:absolute;left:14px;top:16px;display:flex;gap:8px;align-items:center}
@@ -125,7 +126,7 @@ textarea.f{min-height:70px;resize:vertical}
 
 /* ===== الدخول ===== */
 .login-hero{background:var(--hero);color:#F4EFE4;padding:38px 18px 48px;text-align:center;border-radius:0 0 36px 36px;box-shadow:0 8px 26px rgba(20,15,8,.2)}
-.login-hero .logo{margin:0 auto 10px;width:56px;height:66px;font-size:27px;border-radius:28px 28px 8px 8px}
+.login-hero .logo{margin:0 auto 12px}
 .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:-26px;padding:0 16px}
 .tile{background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);padding:22px 8px 14px;text-align:center;cursor:pointer;font-weight:700;font-size:16px}
 .tile .avatar{width:46px;height:46px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;font-weight:700}
@@ -208,7 +209,17 @@ nav.bottom .bdg::after{content:'';position:absolute;top:4px;left:calc(50% - 16px
 .empty{text-align:center;color:var(--muted);padding:24px 8px;font-size:14px}
 .sdot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-left:5px;vertical-align:middle}
 .sdot.g{background:#4F9E6A}.sdot.o{background:var(--amber)}.sdot.r{background:var(--red)}.sdot.w{background:#9AA0A6}
+.tl{position:relative;padding-right:6px}
+.tl-i{display:flex;gap:10px;position:relative;padding-bottom:12px}
+.tl-i::before{content:'';position:absolute;right:5px;top:14px;bottom:-2px;width:2px;background:var(--line)}
+.tl-i:last-child::before{display:none}
+.tl-dot{width:12px;height:12px;border-radius:50%;margin-top:3px;flex:0 0 auto;z-index:1;background:var(--amber)}
+.tl-dot.g{background:#4F9E6A}.tl-dot.o{background:var(--amber)}.tl-dot.r{background:var(--red)}.tl-dot.w{background:#9AA0A6}
+.tl-c{flex:1;font-size:13.5px}.tl-t{color:var(--muted);font-size:12px;margin-bottom:2px}
 .recog{background:var(--amber-soft);border:1px solid transparent}
+.moodb{flex:1;margin:0 3px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 0;font-size:24px;cursor:pointer;transition:transform .1s}
+.moodb:active{transform:scale(.9)}
+.moodb.on{border-color:var(--amber);background:var(--amber-soft)}
 
 /* ===== تحسينات عامة ===== */
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.tile:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
@@ -251,7 +262,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-17.1";
+var BUILD = "2026-07-17.2";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -339,7 +350,7 @@ function sAct(action, p, mut){ if(mut){ p=p||{}; if(!p.op_id) p.op_id=uid(); } r
 function aAct(action, p){ return rpc('rko_admin', action, p, false); }
 
 /* ---------- قفل الخمول (جهاز مشترك) ---------- */
-var idleT=null, IDLE_MIN=3;
+var idleT=null, IDLE_MIN=25;
 function idleReset(){
   if(S.role!=='staff') return;
   clearTimeout(idleT);
@@ -524,6 +535,14 @@ function pinSheet(kind, selfie){
 }
 
 /* ---------- أيقونات SVG ---------- */
+function brandMark(sz){ sz=sz||44; return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 64 64" aria-hidden="true">'+
+  '<rect x="2" y="2" width="60" height="60" rx="17" fill="#2F5140"/>'+
+  '<path d="M20 30h20a2 2 0 0 1 2 2v3a11 11 0 0 1-11 11h-2A11 11 0 0 1 18 35v-3a2 2 0 0 1 2-2Z" fill="#EFE6D5"/>'+
+  '<path d="M42 32h3a5 5 0 0 1 0 10h-1" fill="none" stroke="#EFE6D5" stroke-width="2.4"/>'+
+  '<path d="M32 30c0-6 3-10 9-11-0.5 6-3.5 10-9 11Z" fill="#D2892C"/>'+
+  '<path d="M32 30c0-5-2.6-8.5-7.5-9.5C25 25 27.6 29 32 30Z" fill="#4E8060"/>'+
+  '<path d="M32 22v9" stroke="#2F5140" stroke-width="1.6" fill="none"/>'+
+  '</svg>'; }
 function svgi(body){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+body+'</svg>'; }
 var MI={
   _def: svgi('<circle cx="12" cy="12" r="8"/>'),
@@ -585,7 +604,7 @@ function renderLogin(){
   document.body.className='no-nav';
   APP.innerHTML =
     '<div class="login-hero">'+
-      '<div class="logo" id="loginLogo">ر</div>'+
+      '<div class="logo hero" id="loginLogo">'+brandMark(72)+'</div>'+
       '<h1 style="font-size:24px;margin:0">ريحانة</h1>'+
       '<div style="opacity:.75;font-size:13.5px">نظام التشغيل اليومي</div>'+
     '</div>'+
@@ -682,7 +701,7 @@ function startStaff(){
   document.body.className='';
   S.tab='now';
   APP.innerHTML =
-    '<div class="top"><div class="brand"><div class="logo">ر</div><div><h1 id="hiName"></h1><div class="sub" id="hiSub"></div><div class="sub" style="opacity:.6">'+new Date().toLocaleDateString('ar-JO',{weekday:'long',day:'numeric',month:'long'})+'</div></div></div>'+
+    '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div><h1 id="hiName"></h1><div class="sub" id="hiSub"></div><div class="sub" style="opacity:.6">'+new Date().toLocaleDateString('ar-JO',{weekday:'long',day:'numeric',month:'long'})+'</div></div></div>'+
     '<div class="left"><span class="presdot" id="presDot" title="تأكيد التواجد"></span><span class="dot" id="syncdot"></span><button class="pill icbtn" id="thBtn" aria-label="السمة">'+THI()+'</button><button class="pill icbtn bellbtn" id="bellBtn" aria-label="الإشعارات">'+IC.bell+'<span class="bellcount" id="bellCount"></span></button><button class="pill icbtn" id="rfBtn" aria-label="تحديث">'+IC.refresh+'</button><button class="pill" id="lockBtn">قفل</button></div></div>'+
     '<div class="wrap" id="view"></div>'+
     '<nav class="bottom">'+
@@ -802,7 +821,7 @@ function beat(){
       var aa=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(g.lat*Math.PI/180)*Math.cos(geo.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
       inGeo=(2*R*Math.asin(Math.sqrt(aa))) <= (g.radius_m||250);
     }
-    setPresenceDot(inGeo===false?'out':'in');
+    setPresenceDot(inGeo===false?'out':'in'); idleReset();
     sAct('heartbeat',{geo:geo, in_geo:inGeo}, false).then(function(res){ if(res&&res.spotcheck) maybeSpotcheck(res.spotcheck); }).catch(function(){});
   });
 }
@@ -1067,6 +1086,9 @@ function viewShift(){
     (st.coop_done
       ? '<div class="chip green">تم اختيارك لهذا اليوم — النتائج سرية وتظهر للإدارة فقط</div>'
       : '<div class="muted small">بنهاية شفتك: اختاري موظفة أو اثنتين ساعدتاك فعلاً اليوم. سري تماماً.</div><div class="btnrow"><button class="btn ghost block" data-a="coopNew">اختيار الآن</button></div>')+'</div>');
+  out.push('<div class="card"><h3>نبض يومك (سري)</h3><div class="muted small">كيف كان شعورك في العمل اليوم؟ يظهر للإدارة مجمّعاً فقط.</div>'+
+    '<div class="row" id="moodRow" style="justify-content:space-between;margin-top:8px">'+
+    [['1','😟'],['2','😕'],['3','😐'],['4','🙂'],['5','😄']].map(function(m){return '<button class="moodb" data-a="mood" data-m="'+m[0]+'">'+m[1]+'</button>';}).join('')+'</div></div>');
   out.push('<div class="btnrow"><button class="btn ghost block" data-a="goMore">طلب إجازة / إذن تأخير من الإدارة</button></div>');
   return out.join('');
 }
@@ -1197,6 +1219,7 @@ function wireTab(v){
       else if(a==='checkin') doAttendance('in');
       else if(a==='checkout') doAttendance('out');
       else if(a==='goMore'){ S.tab='more'; paintTabs(); drawTab(); }
+      else if(a==='mood'){ sAct('pulse_send',{mood:+b.getAttribute('data-m')},true).then(function(res){ toast(res.msg||'شكراً'); $$('.moodb').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }); }
       else if(a==='covAccept') sAct('coverage_respond',{id:id, accept:true}, false).then(function(res){ if(res.ok) toast(res.msg||'شكراً لكِ'); else toast(res.error||'خطأ',true); refresh(); });
       else if(a==='covDecline'){
         if(!confirm('تأكيد الاعتذار عن التغطية اليوم؟')) return;
@@ -1293,7 +1316,7 @@ var A = { emps:null, areas:null, types:null, skills:null };
 function startAdmin(){
   document.body.className='';
   APP.innerHTML =
-    '<div class="top"><div class="brand"><div class="logo">ر</div><div><h1>لوحة الإدارة</h1><div class="sub">ريحانة — نظام التشغيل</div></div></div>'+
+    '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div><h1>لوحة الإدارة</h1><div class="sub">ريحانة — نظام التشغيل</div></div></div>'+
     '<div class="left"><button class="pill icbtn" id="thBtnA" aria-label="السمة">'+THI()+'</button><button class="pill" id="admHome">الرئيسية</button><button class="pill" id="admOut">خروج</button></div></div>'+
     '<div class="wrap" id="view"></div>';
   $('#admOut').addEventListener('click', function(){ aAct('logout',{}); clearSess(); renderLogin(); });
@@ -1387,6 +1410,10 @@ function loadDash(v){
         (a.action?'<div class="btnrow"><button class="btn sm ghost" data-go="'+esc(mapAction(a.action))+'">فتح القسم</button></div>':'')+'</div>');
     });
     v.innerHTML=out.join('');
+    aAct('briefing',{}).then(function(bf){ var w=$('#briefWrap'); if(!w||!bf.ok) return;
+      w.innerHTML='<div class="card" style="background:var(--hero);color:#F4EFE4;border:none"><h3 style="color:#F4EFE4;display:flex;gap:8px;align-items:center">'+brandMark(26)+' موجز اليوم</h3>'+
+        (bf.lines||[]).map(function(l){ return '<div style="padding:3px 0;font-size:14px;opacity:.95">• '+esc(l)+'</div>'; }).join('')+'</div>';
+    }).catch(function(){});
     // شارات العدادات على أزرار الأقسام
     var bc={};
     (res.alerts||[]).forEach(function(a2){ var s2=mapAction(a2.action||''); if(s2 && s2!=='dash') bc[s2]=(bc[s2]||0)+1; });
@@ -1439,13 +1466,14 @@ ADMIN.employees=function(v){
       '<label class="f">اللون</label><input class="f" id="eC" type="color" value="'+(e&&e.color?esc(e.color):'#3E6B4C')+'" style="height:46px">'+
       (e?'':'<label class="f">كلمة السر الأولى</label><input class="f" id="eP" value="0000">')+
       (e?'<div class="check"><input type="checkbox" id="eA" '+(e.active?'checked':'')+'><span>مفعّلة</span></div>'+
-         '<div class="check"><input type="checkbox" id="eF" '+(e.flexible?'checked':'')+'><span>مرنة (جوكر) — يظهر للإدارة فقط</span></div>':'')+
+         '<div class="check"><input type="checkbox" id="eF" '+(e.flexible?'checked':'')+'><span>مرنة (جوكر) — يظهر للإدارة فقط</span></div>'+
+         '<div class="check"><input type="checkbox" id="eNR" '+(e.no_rotate?'checked':'')+'><span>استثناء من التدوير التلقائي للمهام</span></div>':'')+
       '<div class="btnrow"><button class="btn block" id="eGo">حفظ</button></div>',
       function(ov, close){
         $('#eGo',ov).addEventListener('click', function(){
           var p={name:$('#eN',ov).value.trim(), color:$('#eC',ov).value, username:$('#eU',ov).value.trim()};
           if(!p.name){ toast('اكتبي الاسم', true); return; }
-          if(e){ p.id=e.id; p.active=$('#eA',ov).checked; p.flexible=$('#eF',ov).checked; }
+          if(e){ p.id=e.id; p.active=$('#eA',ov).checked; p.flexible=$('#eF',ov).checked; p.no_rotate=$('#eNR',ov).checked; }
           else{
             p.password=$('#eP',ov).value;
             if(!p.password || p.password.length<4){ toast('كلمة السر ٤ خانات على الأقل', true); return; }
@@ -1640,6 +1668,8 @@ ADMIN.templates=function(v){
           '<hr class="sep"><div class="check"><input type="checkbox" id="pRec" '+(t&&t.recurring?'checked':'')+'><span>متكررة (يؤديها أكثر من موظفة عدة مرات — مثل الجلي وتشطيب الطاولات)</span></div>'+
           '<div class="row"><div class="grow"><label class="f">العدد المطلوب يومياً (0 = بلا سقف)</label><input class="f" id="pTgt" type="number" value="'+(t?(t.target_count||0):0)+'"></div>'+
           '<div class="grow"><label class="f">أقل فاصل بين المرات (دقيقة)</label><input class="f" id="pCd" type="number" value="'+(t?(t.cooldown_min||0):0)+'"></div></div>'+
+          '<label class="f">تدوير يومي على الموظفات — عدد المكلَّفات (0 = بلا تدوير، 2 = مثل مسح الواجهة)</label><input class="f" id="pRot" type="number" min="0" value="'+(t?(t.rotate_size||0):0)+'">'+
+          '<div class="muted small">يُسنِد المهمة تلقائياً لهذا العدد من الموظفات بالتناوب العادل يومياً بين الحاضرات (يستثني المستثنيات).</div>'+
           '<label class="f">لماذا هذه المهمة مهمة</label><input class="f" id="pRe" value="'+(t?esc(t.reason||''):'')+'">'+
           '<label class="f">أثر إهمالها</label><input class="f" id="pIm" value="'+(t?esc(t.impact||''):'')+'">'+
           (t?'<div class="check"><input type="checkbox" id="pAct" '+(t.active?'checked':'')+'><span>مفعّل</span></div>':'')+
@@ -1650,7 +1680,7 @@ ADMIN.templates=function(v){
               var p={name:$('#pN',ov).value, area_id:+$('#pA',ov).value, phase:$('#pPh',ov).value, expected:+$('#pX',ov).value,
                 method:$('#pM',ov).value, checklist:cl, needs_photo:$('#pPhoto',ov).checked, needs_two:$('#pTwo',ov).checked,
                 needs_review:$('#pRev',ov).checked, is_core:$('#pCore',ov).checked, reason:$('#pRe',ov).value, impact:$('#pIm',ov).value,
-                recurring:$('#pRec',ov).checked, target_count:+$('#pTgt',ov).value||0, cooldown_min:+$('#pCd',ov).value||0};
+                recurring:$('#pRec',ov).checked, target_count:+$('#pTgt',ov).value||0, cooldown_min:+$('#pCd',ov).value||0, rotate_size:+$('#pRot',ov).value||0};
               if(!p.name.trim()){ toast('اكتبي اسم المهمة', true); return; }
               if(p.method==='checklist' && !cl.length){ toast('طريقة «قائمة فحص» تحتاج بنوداً — سطر لكل بند', true); return; }
               if(!(p.expected>0)){ toast('الدقائق المتوقعة يجب أن تكون أكبر من صفر', true); return; }
@@ -2108,6 +2138,56 @@ ADMIN.reports=function(v){
   });
 };
 
+/* ---------- قصة اليوم (Timeline) ---------- */
+ADMIN.timeline=function(v){
+  v.innerHTML='<div class="row"><input class="f grow" id="tlDay" type="date" value="'+today()+'"><button class="btn sm" id="tlGo">عرض</button></div><div id="tlB" style="margin-top:12px"></div>';
+  var KIND={in:['حضور','g'],out:['انصراف','w'],task:['مهمة','g'],recurring:['متكررة','g'],help:['مساعدة','o'],issue:['بلاغ','o'],miss:['فحص فائت','r']};
+  function load(){
+    aAct('timeline',{day:$('#tlDay').value}).then(function(res){
+      var ev=res.events||[];
+      if(!ev.length){ $('#tlB').innerHTML='<div class="empty">لا أحداث بهذا اليوم</div>'; return; }
+      $('#tlB').innerHTML='<div class="tl">'+ev.map(function(e){ var k=KIND[e.kind]||['',''];
+        return '<div class="tl-i"><div class="tl-dot '+k[1]+'"></div><div class="tl-c"><div class="tl-t">'+fmtT(e.ts)+' <span class="chip">'+k[0]+'</span></div><div>'+(e.who?'<b>'+esc(e.who)+'</b> — ':'')+esc(e.text)+'</div></div></div>';
+      }).join('')+'</div>';
+    });
+  }
+  $('#tlGo').addEventListener('click', load); load();
+};
+
+/* ---------- نبض الفريق (Wellbeing) ---------- */
+ADMIN.pulse=function(v){
+  aAct('pulse_overview',{}).then(function(res){
+    if(!res.ok){ v.innerHTML='<div class="empty">خطأ</div>'; return; }
+    var em=['','😟','😕','😐','🙂','😄'];
+    var out=[];
+    out.push('<div class="statgrid"><div class="stat"><div class="v">'+(res.today_avg!=null?res.today_avg:'—')+'</div><div class="l">مزاج اليوم /5</div></div>'+
+      '<div class="stat"><div class="v">'+(res.today_count||0)+'</div><div class="l">شاركن اليوم</div></div>'+
+      '<div class="stat'+((res.low_streak||0)>=3?' bad':'')+'"><div class="v">'+(res.low_streak||0)+'</div><div class="l">أيام منخفضة (7)</div></div></div>');
+    if((res.low_streak||0)>=3) out.push('<div class="alert high">مؤشر إرهاق: مزاج الفريق منخفض عدة أيام — بادري بالتخفيف والتقدير.</div>');
+    var tr=res.trend||[]; if(tr.length){
+      var mx=5, bars=tr.map(function(t){ var h=Math.round((t.avg/mx)*60); return '<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px"><div style="width:70%;height:'+h+'px;background:linear-gradient(180deg,var(--amber-2),var(--amber));border-radius:4px"></div><div class="muted" style="font-size:9px">'+(''+t.day).slice(8)+'</div></div>'; }).join('');
+      out.push('<div class="card"><h3>اتجاه المزاج (أسبوعان)</h3><div style="display:flex;gap:4px;height:80px;align-items:flex-end">'+bars+'</div></div>');
+    }
+    out.push('<div class="card"><h3>ملاحظات سرية من الفريق</h3>'+((res.recent_notes||[]).length?res.recent_notes.map(function(n){return '<div style="padding:5px 0;border-bottom:1px dashed var(--line)">'+(em[n.mood]||'')+' '+esc(n.note)+'<div class="muted small">'+fmtD(n.ts)+'</div></div>';}).join(''):'<div class="muted small">لا ملاحظات</div>')+'</div>');
+    v.innerHTML=out.join('');
+  });
+};
+
+/* ---------- تقييم الزبائن (QR) ---------- */
+ADMIN.feedback=function(v){
+  aAct('feedback_overview',{}).then(function(res){
+    var out=[], url=location.origin+location.pathname+'?fb=1';
+    out.push('<div class="statgrid"><div class="stat"><div class="v">'+(res.avg7!=null?res.avg7:'—')+'</div><div class="l">متوسط 7 أيام /5</div></div>'+
+      '<div class="stat"><div class="v">'+(res.count7||0)+'</div><div class="l">تقييمات الأسبوع</div></div>'+
+      '<div class="stat"><div class="v">'+(function(){var d=res.dist||{};return (d["5"]||0)+(d["4"]||0);})()+'</div><div class="l">إيجابية (30ي)</div></div></div>');
+    out.push('<div class="card center"><h3>رمز تقييم الزبائن</h3><div class="muted small" style="margin-bottom:8px">اطبعي هذا الرمز وضعيه على الطاولات — يمسحه الزبون فيقيّم خدمتكم فوراً.</div>'+
+      '<img alt="QR" style="width:190px;height:190px;background:#fff;border-radius:12px;padding:8px" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data='+encodeURIComponent(url)+'">'+
+      '<div class="small muted" style="margin-top:6px;direction:ltr">'+esc(url)+'</div></div>');
+    out.push('<div class="card"><h3>أحدث التقييمات</h3>'+((res.recent||[]).length?res.recent.map(function(f){var st='';for(var i=0;i<5;i++)st+=(i<f.rating?'★':'☆');return '<div style="padding:6px 0;border-bottom:1px dashed var(--line)"><span style="color:var(--amber)">'+st+'</span> '+(f.area?'<span class="chip">'+esc(f.area)+'</span>':'')+(f.comment?'<div class="small">'+esc(f.comment)+'</div>':'')+'<div class="muted small">'+fmtD(f.ts)+'</div></div>';}).join(''):'<div class="muted small">لا تقييمات بعد</div>')+'</div>');
+    v.innerHTML=out.join('');
+  });
+};
+
 /* ---------- لوحة العمليات (شاشة تابلت الكافيه) ---------- */
 ADMIN.board=function(v){
   function load(){
@@ -2504,7 +2584,30 @@ ADMIN.flags=function(v){
 var deferredPrompt=null;
 window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferredPrompt=e; });
 function applyFont(){ try{ document.documentElement.classList.toggle('font-lg', localStorage.getItem('rko_font')==='lg'); }catch(e){} }
+function renderFeedback(){
+  document.body.className='no-nav';
+  applyTheme();
+  var picked=0;
+  APP.innerHTML='<div class="login-hero"><div class="logo hero">'+brandMark(64)+'</div><h1 style="font-size:22px;margin:6px 0 0">كافيه ريحانة</h1><div style="opacity:.8;font-size:13px">قيّم تجربتك معنا</div></div>'+
+    '<div class="wrap" style="max-width:420px"><div class="card" style="margin-top:-24px;position:relative;z-index:2">'+
+    '<h3 style="justify-content:center">كيف كانت خدمتنا اليوم؟</h3>'+
+    '<div class="row" id="fbStars" style="justify-content:center;font-size:38px;gap:6px;margin:6px 0">'+[1,2,3,4,5].map(function(i){return '<span class="fbstar" data-s="'+i+'" style="cursor:pointer;color:var(--line)">★</span>';}).join('')+'</div>'+
+    '<label class="f">منطقة الجلوس (اختياري)</label><select class="f" id="fbArea"><option value="">— اختياري —</option></select>'+
+    '<label class="f">ملاحظة (اختياري)</label><textarea class="f" id="fbComment" placeholder="أخبرنا رأيك"></textarea>'+
+    '<div class="btnrow"><button class="btn block" id="fbGo">إرسال التقييم</button></div>'+
+    '<div class="center small muted" style="margin-top:10px">شكراً لاختيارك ريحانة</div></div></div>';
+  rawRpc('rko_staff','fb_areas',{}).then(function(r){ if(r&&r.ok){ $('#fbArea').innerHTML='<option value="">— اختياري —</option>'+(r.areas||[]).map(function(a){return '<option value="'+a.id+'">'+esc(a.name)+'</option>';}).join(''); } } }).catch(function(){});
+  $$('.fbstar').forEach(function(st){ st.addEventListener('click', function(){ picked=+st.getAttribute('data-s'); $$('.fbstar').forEach(function(x){ x.style.color=(+x.getAttribute('data-s')<=picked)?'#E29A3C':'var(--line)'; }); }); });
+  $('#fbGo').addEventListener('click', function(){
+    if(!picked){ toast('اختر عدد النجوم', true); return; }
+    var dev=devId();
+    busyWrap(this, function(){ return rawRpc('rko_staff','fb_submit',{rating:picked, area_id:$('#fbArea').value||null, comment:$('#fbComment').value, device_id:dev}).then(function(r){
+      APP.innerHTML='<div class="login-hero" style="min-height:60vh;display:flex;flex-direction:column;justify-content:center"><div class="logo hero">'+brandMark(72)+'</div><h1 style="margin-top:12px">شكراً لك 🌿</h1><div style="opacity:.85">تقييمك وصل ويسعدنا خدمتك دائماً</div></div>';
+    }); });
+  });
+}
 function boot(){
+  if((location.search||'').indexOf('fb=1')>-1){ renderFeedback(); return; }
   applyTheme(); applyFont();
   var K=getKey();
   if(!K || K.indexOf('هنا')>-1){
