@@ -300,6 +300,20 @@ nav.bottom button.on{position:relative}
 /* شريط علوي متدرّج رفيع كإطار علامة */
 .login-hero .logo,.top .brand{position:relative;z-index:1}
 
+/* ===== زر التخاطب الصوتي (Push-to-Talk) ===== */
+.ptt{position:fixed;left:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;width:62px;height:62px;border-radius:50%;border:none;
+  background:linear-gradient(180deg,var(--amber-2),var(--amber));color:#fff;box-shadow:0 6px 18px rgba(200,130,30,.45);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .12s,box-shadow .18s}
+.ptt .ic svg{width:24px;height:24px}
+.ptt .ptt-l{font-size:9.5px;font-weight:800;letter-spacing:.2px}
+.ptt:active{transform:scale(.94)}
+.ptt.rec{background:linear-gradient(180deg,#E4573C,#C0392B);transform:scale(1.14);box-shadow:0 0 0 7px rgba(224,87,60,.22),0 8px 22px rgba(192,57,43,.5);animation:pttpulse 1s infinite}
+@keyframes pttpulse{50%{box-shadow:0 0 0 13px rgba(224,87,60,.06),0 8px 22px rgba(192,57,43,.5)}}
+.ptt.speaking{background:linear-gradient(180deg,var(--green-2),var(--green));box-shadow:0 0 0 7px rgba(62,107,76,.2),0 8px 22px rgba(62,107,76,.45)}
+.ptt-toast{position:fixed;left:14px;bottom:calc(154px + env(safe-area-inset-bottom));z-index:60;background:#26332B;color:#F4EFE4;border-radius:12px;
+  padding:8px 13px;font-size:12.5px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.32);display:none;max-width:62vw}
+.ptt-toast.show{display:block;animation:tin .2s}
+
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}}
 </style>
 </head>
@@ -311,7 +325,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-17.8";
+var BUILD = "2026-07-17.9";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -632,6 +646,7 @@ var IC={
   grow:  svgi('<path d="M12 21v-7"/><path d="M12 14c0-4.2-3.1-7-8-7 0 4.2 3.1 7 8 7Z"/><path d="M12 12.2c0-3.4 2.5-5.7 6.8-5.7 0 3.4-2.5 5.7-6.8 5.7Z"/>'),
   more:  svgi('<circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/>'),
   refresh: svgi('<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 3.5V8h-4.5"/>'),
+  mic: svgi('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
   user:  svgi('<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.6 3.6-5.4 7-5.4s5.8 1.8 7 5.4"/>'),
   bell:  svgi('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
   moon:  svgi('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>'),
@@ -761,7 +776,9 @@ function startStaff(){
       '<button data-t="shift"><span class="ic">'+IC.shift+'</span>الشفت</button>'+
       '<button data-t="grow"><span class="ic">'+IC.user+'</span>ملفّي</button>'+
       '<button data-t="more"><span class="ic">'+IC.more+'</span>المزيد</button>'+
-    '</nav>';
+    '</nav>'+
+    '<div id="pttToast" class="ptt-toast"></div>'+
+    '<button id="pttBtn" class="ptt" aria-label="اضغطي مع الاستمرار للتحدث"><span class="ic">'+IC.mic+'</span><span class="ptt-l">تحدّثي</span></button>';
   var hh=new Date().getHours();
   $('#hiName').textContent=(hh<12?'صباح الخير ':hh<17?'نهارك سعيد ':'مساء الخير ')+(S.me?S.me.name:'');
   $('#lockBtn').addEventListener('click', function(){ clearSess(); renderLogin(); });
@@ -783,11 +800,96 @@ function startStaff(){
   refresh();
   clearInterval(tickT); tickT=setInterval(function(){ if(S.role==='staff' && (S.tab==='tasks'||S.tab==='now')) updateTimers(); }, 1000);
   startPresence();
+  pttInit();
   qSync();
 }
 function paintTabs(){
   $$('nav.bottom button').forEach(function(b){ b.className = b.getAttribute('data-t')===S.tab ? 'on' : ''; });
 }
+
+/* ============ التخاطب الصوتي المباشر بين الموظفات (Push-to-Talk) ============ */
+var PTT = { rec:null, chunks:[], stream:null, since:0, primed:false, playing:false, queue:[], timer:null, recording:false, t0:0, unlock:null };
+function pttSupported(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); }
+function pttInit(){
+  var btn=$('#pttBtn'); if(!btn) return;
+  if(!pttSupported()){ btn.style.display='none'; return; }
+  PTT.queue=[]; PTT.playing=false; PTT.primed=false;
+  var down=function(e){ if(e){ e.preventDefault(); } pttUnlock(); pttStart(); };
+  var up=function(e){ if(e){ e.preventDefault(); } pttStop(); };
+  btn.onpointerdown=down; btn.onpointerup=up;
+  btn.onpointerleave=function(){ if(PTT.recording) pttStop(); };
+  btn.onpointercancel=function(){ if(PTT.recording) pttStop(); };
+  clearInterval(PTT.timer); PTT.timer=setInterval(pttPollTick, 2500); pttPollTick();
+}
+function pttUnlock(){
+  try{
+    if(!PTT.actx){ var AC=window.AudioContext||window.webkitAudioContext; if(AC) PTT.actx=new AC(); }
+    if(PTT.actx && PTT.actx.state==='suspended') PTT.actx.resume();
+    // إلغاء قفل تشغيل الصوت على الجوال بتشغيل نغمة صامتة داخل إيماءة المستخدم
+    if(!PTT.unlock){ PTT.unlock=new Audio('data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'); PTT.unlock.volume=0; }
+    var pr=PTT.unlock.play(); if(pr&&pr.catch) pr.catch(function(){});
+    PTT.audioOK=true;
+  }catch(e){}
+}
+function pttStart(){
+  if(PTT.recording || !pttSupported()) return;
+  PTT.recording=true; PTT.t0=Date.now();
+  var btn=$('#pttBtn'); if(btn) btn.classList.add('rec');
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    if(!PTT.recording){ stream.getTracks().forEach(function(t){t.stop();}); return; }
+    PTT.stream=stream; PTT.chunks=[];
+    var mr; try{ mr=new MediaRecorder(stream, {mimeType:'audio/webm;codecs=opus'}); }catch(e){ try{ mr=new MediaRecorder(stream); }catch(e2){ PTT.recording=false; if(btn) btn.classList.remove('rec'); stream.getTracks().forEach(function(t){t.stop();}); toast('التسجيل غير مدعوم هنا', true); return; } }
+    PTT.rec=mr;
+    mr.ondataavailable=function(ev){ if(ev.data && ev.data.size) PTT.chunks.push(ev.data); };
+    mr.onstop=function(){ pttFinish(); };
+    mr.start();
+  }).catch(function(){ PTT.recording=false; var b=$('#pttBtn'); if(b) b.classList.remove('rec'); toast('اسمحي بالوصول للميكروفون لاستخدام التخاطب', true); });
+}
+function pttStop(){
+  if(!PTT.recording) return;
+  PTT.recording=false; var btn=$('#pttBtn'); if(btn) btn.classList.remove('rec');
+  try{ if(PTT.rec && PTT.rec.state && PTT.rec.state!=='inactive') PTT.rec.stop(); }catch(e){}
+}
+function pttFinish(){
+  var dur=(Date.now()-PTT.t0)/1000;
+  if(PTT.stream){ PTT.stream.getTracks().forEach(function(t){t.stop();}); PTT.stream=null; }
+  if(!PTT.chunks.length || dur<0.35){ return; }
+  var blob=new Blob(PTT.chunks, {type:(PTT.rec&&PTT.rec.mimeType)||'audio/webm'});
+  var rd=new FileReader();
+  rd.onload=function(){
+    var b64=rd.result||'';
+    if(b64.length>400000){ pttFlash('المقطع طويل — اجعليه أقصر'); return; }
+    pttFlash('يُرسل صوتك…');
+    var area=(S.state && S.state.shift && S.state.shift.area_id) || null;
+    sAct('ptt_send', {audio:b64, dur:Math.round(dur*10)/10, area_id:area}, false).then(function(r){
+      if(r && r.ok){ pttFlash('وصل صوتك للفريق ✓'); if(r.id && r.id>PTT.since) PTT.since=r.id; }
+      else pttFlash((r&&r.error)||'تعذّر الإرسال');
+    }).catch(function(){ pttFlash('لا اتصال — أعيدي المحاولة'); });
+  };
+  rd.readAsDataURL(blob);
+}
+function pttPollTick(){
+  if(S.role!=='staff'){ clearInterval(PTT.timer); return; }
+  sAct('ptt_poll', {since:PTT.since}).then(function(r){
+    if(!r || !r.ok) return;
+    if(!PTT.primed){ PTT.primed=true; if(typeof r.last==='number') PTT.since=r.last; return; }
+    (r.clips||[]).forEach(function(c){ PTT.queue.push(c); });
+    if(typeof r.last==='number' && r.last>PTT.since) PTT.since=r.last;
+    pttDrain();
+  }).catch(function(){});
+}
+function pttDrain(){
+  if(PTT.playing || !PTT.queue.length) return;
+  var c=PTT.queue.shift(); PTT.playing=true;
+  var btn=$('#pttBtn'); if(btn) btn.classList.add('speaking');
+  pttFlash('🎙 '+esc(c.from)+(c.area?' · '+esc(c.area):''));
+  var a=new Audio(c.audio);
+  var done=function(){ PTT.playing=false; if(btn) btn.classList.remove('speaking'); pttDrain(); };
+  a.onended=done; a.onerror=done;
+  var pr=a.play();
+  if(pr && pr.catch) pr.catch(function(){ PTT.playing=false; if(btn) btn.classList.remove('speaking'); PTT.queue.unshift(c); pttFlash('اضغطي زر التحدث مرة لتفعيل سماع الفريق'); });
+}
+function pttFlash(msg){ var t=$('#pttToast'); if(!t) return; t.innerHTML=msg; t.classList.add('show'); clearTimeout(PTT._ft); PTT._ft=setTimeout(function(){ t.classList.remove('show'); }, 2800); }
 var notifT=null, notifCache=[];
 function applyTheme(t){ try{ if(t) localStorage.setItem('rko_theme', t); }catch(e){} var m=t||curTheme();
   var root=document.documentElement;
