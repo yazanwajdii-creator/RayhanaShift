@@ -301,7 +301,10 @@ nav.bottom button.on{position:relative}
 .login-hero .logo,.top .brand{position:relative;z-index:1}
 
 /* ===== زر التخاطب الصوتي (Push-to-Talk) ===== */
-.ptt{position:fixed;left:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;width:62px;height:62px;border-radius:50%;border:none;
+.ptt-wrap{position:fixed;left:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;display:flex;flex-direction:column;align-items:center;gap:7px}
+.ptt-target{border:none;background:rgba(38,51,43,.92);color:#F4EFE4;border-radius:16px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.28);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptt-target:active{transform:scale(.95)}
+.ptt{width:62px;height:62px;border-radius:50%;border:none;
   background:linear-gradient(180deg,var(--amber-2),var(--amber));color:#fff;box-shadow:0 6px 18px rgba(200,130,30,.45);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .12s,box-shadow .18s}
 .ptt .ic svg{width:24px;height:24px}
@@ -325,7 +328,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-17.9";
+var BUILD = "2026-07-17.10";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -637,7 +640,8 @@ var MI={
   flags: svgi('<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>'),
   hours: svgi('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>'),
   sops: svgi('<path d="M6 3h9l4 4v14H6V3Z"/><path d="M14 3v4h4M9 12h6M9 16h4"/>'),
-  digest: svgi('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/>')
+  digest: svgi('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/>'),
+  ptt: svgi('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>')
 };
 var IC={
   home:  svgi('<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5h4v5"/>'),
@@ -778,7 +782,8 @@ function startStaff(){
       '<button data-t="more"><span class="ic">'+IC.more+'</span>المزيد</button>'+
     '</nav>'+
     '<div id="pttToast" class="ptt-toast"></div>'+
-    '<button id="pttBtn" class="ptt" aria-label="اضغطي مع الاستمرار للتحدث"><span class="ic">'+IC.mic+'</span><span class="ptt-l">تحدّثي</span></button>';
+    '<div id="pttWrap" class="ptt-wrap"><button id="pttTarget" class="ptt-target">🔊 للكل</button>'+
+    '<button id="pttBtn" class="ptt" aria-label="اضغطي مع الاستمرار للتحدث"><span class="ic">'+IC.mic+'</span><span class="ptt-l">تحدّثي</span></button></div>';
   var hh=new Date().getHours();
   $('#hiName').textContent=(hh<12?'صباح الخير ':hh<17?'نهارك سعيد ':'مساء الخير ')+(S.me?S.me.name:'');
   $('#lockBtn').addEventListener('click', function(){ clearSess(); renderLogin(); });
@@ -808,7 +813,7 @@ function paintTabs(){
 }
 
 /* ============ التخاطب الصوتي المباشر بين الموظفات (Push-to-Talk) ============ */
-var PTT = { rec:null, chunks:[], stream:null, since:0, primed:false, playing:false, queue:[], timer:null, recording:false, t0:0, unlock:null };
+var PTT = { rec:null, chunks:[], stream:null, since:0, primed:false, playing:false, queue:[], timer:null, recording:false, t0:0, unlock:null, target:{t:'all',label:'الجميع'} };
 function pttSupported(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); }
 function pttInit(){
   var btn=$('#pttBtn'); if(!btn) return;
@@ -819,7 +824,30 @@ function pttInit(){
   btn.onpointerdown=down; btn.onpointerup=up;
   btn.onpointerleave=function(){ if(PTT.recording) pttStop(); };
   btn.onpointercancel=function(){ if(PTT.recording) pttStop(); };
+  var tg=$('#pttTarget'); if(tg) tg.onclick=pttPickTarget;
+  pttUpdateTarget();
   clearInterval(PTT.timer); PTT.timer=setInterval(pttPollTick, 2500); pttPollTick();
+}
+function pttUpdateTarget(){ var b=$('#pttTarget'); if(!b) return; var tg=PTT.target||{t:'all'};
+  b.textContent = tg.t==='all' ? 'الجميع' : (tg.t==='area' ? ('منطقة: '+(tg.label||'')) : ('لـ '+(tg.label||''))); }
+function pttPickTarget(){
+  pttUnlock();
+  sAct('ptt_targets',{}).then(function(r){
+    if(!r || !r.ok){ toast('التخاطب متاح أثناء شفتك', true); return; }
+    var opts=[['all','الجميع — كل من على الشفت']];
+    (r.areas||[]).forEach(function(a){ opts.push(['area:'+a.id+':'+a.name, 'منطقة: '+a.name]); });
+    (r.mates||[]).forEach(function(m){ opts.push(['emp:'+m.id+':'+m.name, 'زميلة: '+m.name]); });
+    var html='<div class="muted small" style="margin-bottom:8px">اختاري من يسمع رسالتك الصوتية</div>'+
+      opts.map(function(o){ return '<button class="btn ghost block pttopt" data-v="'+esc(o[0])+'" style="margin-bottom:8px;justify-content:flex-start">'+esc(o[1])+'</button>'; }).join('');
+    sheet('من يسمع؟', html, function(ov, close){
+      $$('.pttopt',ov).forEach(function(b){ b.addEventListener('click', function(){
+        var v=b.getAttribute('data-v');
+        if(v==='all') PTT.target={t:'all',label:'الجميع'};
+        else { var parts=v.split(':'); PTT.target={t:(parts[0]==='area'?'area':'emp'), id:+parts[1], label:parts.slice(2).join(':')}; }
+        pttUpdateTarget(); close();
+      }); });
+    });
+  });
 }
 function pttUnlock(){
   try{
@@ -859,10 +887,12 @@ function pttFinish(){
   rd.onload=function(){
     var b64=rd.result||'';
     if(b64.length>400000){ pttFlash('المقطع طويل — اجعليه أقصر'); return; }
-    pttFlash('يُرسل صوتك…');
+    var tg=PTT.target||{t:'all'};
+    pttFlash('يُرسل صوتك… ('+(tg.t==='all'?'للجميع':(tg.label||''))+')');
     var area=(S.state && S.state.shift && S.state.shift.area_id) || null;
-    sAct('ptt_send', {audio:b64, dur:Math.round(dur*10)/10, area_id:area}, false).then(function(r){
-      if(r && r.ok){ pttFlash('وصل صوتك للفريق ✓'); if(r.id && r.id>PTT.since) PTT.since=r.id; }
+    sAct('ptt_send', {audio:b64, dur:Math.round(dur*10)/10, area_id:area,
+      to_emp:(tg.t==='emp'?tg.id:null), to_area:(tg.t==='area'?tg.id:null)}, false).then(function(r){
+      if(r && r.ok){ pttFlash('وصل صوتك ✓'); if(r.id && r.id>PTT.since) PTT.since=r.id; }
       else pttFlash((r&&r.error)||'تعذّر الإرسال');
     }).catch(function(){ pttFlash('لا اتصال — أعيدي المحاولة'); });
   };
@@ -872,6 +902,7 @@ function pttPollTick(){
   if(S.role!=='staff'){ clearInterval(PTT.timer); return; }
   sAct('ptt_poll', {since:PTT.since}).then(function(r){
     if(!r || !r.ok) return;
+    var wrap=$('#pttWrap'); if(wrap) wrap.style.display = r.off ? 'none' : 'flex';
     if(!PTT.primed){ PTT.primed=true; if(typeof r.last==='number') PTT.since=r.last; return; }
     (r.clips||[]).forEach(function(c){ PTT.queue.push(c); });
     if(typeof r.last==='number' && r.last>PTT.since) PTT.since=r.last;
@@ -882,7 +913,7 @@ function pttDrain(){
   if(PTT.playing || !PTT.queue.length) return;
   var c=PTT.queue.shift(); PTT.playing=true;
   var btn=$('#pttBtn'); if(btn) btn.classList.add('speaking');
-  pttFlash('🎙 '+esc(c.from)+(c.area?' · '+esc(c.area):''));
+  pttFlash((c.direct?'رسالة خاصة من ':'يتحدّث ')+esc(c.from)+(c.area?' · '+esc(c.area):''));
   var a=new Audio(c.audio);
   var done=function(){ PTT.playing=false; if(btn) btn.classList.remove('speaking'); pttDrain(); };
   a.onended=done; a.onerror=done;
@@ -1499,7 +1530,7 @@ function startAdmin(){
 }
 var SECS=[
   ['dash','','اليوم'],['board','','لوحة العمليات'],['live','','المتابعة الحية'],['broadcast','','الإعلانات'],
-  ['issues','','البلاغات'],['logbook','','سجل الشفت'],['digest','','تقرير إغلاق اليوم'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
+  ['issues','','البلاغات'],['logbook','','سجل الشفت'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['templates','','قوالب المهام'],
   ['tasks','','مهام اليوم'],['attendance','','الحضور'],['skills','','المهارات'],
   ['training','','التدريب'],['sops','','أدلة العمل'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
@@ -1509,7 +1540,7 @@ var SECS=[
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
-  ['تشغيل اليوم','g1',['board','live','shifts','tasks','attendance','absence','handovers','issues','logbook']],
+  ['تشغيل اليوم','g1',['board','live','shifts','tasks','attendance','absence','handovers','issues','logbook','ptt']],
   ['التواصل والتحليل','g2',['digest','broadcast','analytics','hours','requests','reports']],
   ['الفريق','g2',['employees','skills','training','coop','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
@@ -2346,6 +2377,31 @@ ADMIN.pulse=function(v){
     out.push('<div class="card"><h3>ملاحظات سرية من الفريق</h3>'+((res.recent_notes||[]).length?res.recent_notes.map(function(n){return '<div style="padding:5px 0;border-bottom:1px dashed var(--line)">'+em(n.mood)+' '+esc(n.note)+'<div class="muted small">'+fmtD(n.ts)+'</div></div>';}).join(''):'<div class="muted small">لا ملاحظات</div>')+'</div>');
     v.innerHTML=out.join('');
   });
+};
+
+/* ---------- سجل التخاطب الصوتي (آخر 24 ساعة) ---------- */
+ADMIN.ptt=function(v){
+  function load(){
+    v.innerHTML=skel(3);
+    aAct('ptt_log',{}).then(function(r){
+      if(!r.ok){ v.innerHTML='<div class="empty">'+esc(r.error||'خطأ')+'</div>'; return; }
+      var cl=r.clips||[];
+      var out=['<div class="card soft" style="padding:10px 12px"><div class="muted small">كل النداءات الصوتية بين الموظفات محفوظة هنا 24 ساعة فقط ثم تُحذف تلقائياً. اضغطي «استماع» لأي نداء.</div></div>'];
+      if(!cl.length) out.push('<div class="empty">لا نداءات في آخر 24 ساعة</div>');
+      cl.forEach(function(c){
+        out.push('<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between;align-items:center">'+
+          '<div><b>'+esc(c.from)+'</b> '+(c.to?'<span class="muted">→ '+esc(c.to)+'</span>':'<span class="chip">للجميع</span>')+
+          (c.area?' <span class="chip">'+esc(c.area)+'</span>':'')+
+          '<div class="muted small">'+fmtD(c.ts)+' '+fmtT(c.ts)+(c.dur?' · '+Math.round(c.dur)+'ث':'')+'</div></div>'+
+          '<button class="btn sm ghost pttplay" data-a="'+esc(c.audio)+'">استماع</button></div></div>');
+      });
+      v.innerHTML=out.join('');
+      $$('.pttplay',v).forEach(function(b){ b.addEventListener('click', function(){
+        try{ var a=new Audio(b.getAttribute('data-a')); a.play(); b.textContent='… يُشغّل'; a.onended=function(){ b.textContent='استماع'; }; }catch(e){ toast('تعذّر التشغيل',true); }
+      }); });
+    });
+  }
+  load();
 };
 
 /* ---------- تقرير إغلاق اليوم — ملخّص تشغيلي شامل للمدير عن بُعد ---------- */
