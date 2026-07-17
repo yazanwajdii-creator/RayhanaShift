@@ -62,17 +62,20 @@ a{color:var(--green)}
 .arch-sm{border-radius:60px 60px 12px 12px;}
 
 /* ===== الترويسة ===== */
-.top{background:var(--hero);color:#F4EFE4;padding:14px 16px 20px;position:relative;border-radius:0 0 24px 24px;box-shadow:0 6px 20px rgba(20,15,8,.2)}
-.top .brand{display:flex;align-items:center;gap:10px}
-.logo{display:flex;align-items:center;justify-content:center;user-select:none}
+.top{background:var(--hero);color:#F4EFE4;padding:14px 16px 16px;border-radius:0 0 24px 24px;box-shadow:0 6px 20px rgba(20,15,8,.2);
+  display:flex;flex-direction:column;gap:11px}
+.top .brand{display:flex;align-items:center;gap:11px;min-width:0;width:100%}
+.top .brand>.binfo{min-width:0;flex:1}
+.logo{display:flex;align-items:center;justify-content:center;user-select:none;flex:0 0 auto}
 .logo svg{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.15))}
-/* لوح فاتح خلف اللوغو ليظهر بألوانه الحقيقية فوق الترويسة الداكنة */
-.top .logo{background:#FBF7EF;border-radius:13px;padding:5px;box-shadow:0 3px 10px rgba(0,0,0,.18)}
-.top .logo img{display:block}
-.login-hero .logo{background:#FBF7EF;border-radius:22px;padding:16px 20px;box-shadow:0 10px 30px rgba(0,0,0,.22)}
-.top h1{font-size:19px;margin:0}
-.top .sub{font-size:12.5px;opacity:.75}
-.top .left{position:absolute;left:14px;top:16px;display:flex;gap:8px;align-items:center}
+/* شعار على شكل أيقونة تطبيق أنيقة فوق الترويسة الداكنة */
+.top .logo{background:#FBF7EF;border-radius:14px;width:50px;height:50px;padding:5px;box-shadow:0 4px 12px rgba(0,0,0,.22);flex:0 0 auto}
+.top .logo img{display:block;width:100%;height:100%;object-fit:contain}
+.login-hero .logo{background:#FBF7EF;border-radius:24px;padding:16px 22px;box-shadow:0 12px 32px rgba(0,0,0,.24);display:inline-flex}
+.top h1{font-size:18.5px;margin:0;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .sub{font-size:12.5px;opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .left{display:flex;gap:8px;align-items:center;width:100%;flex-wrap:wrap;justify-content:flex-start}
+.top .left .spacer{flex:1}
 .dot{width:10px;height:10px;border-radius:50%;background:#7FBF8E;display:inline-block}
 .presdot{width:9px;height:9px;border-radius:50%;display:inline-block;background:rgba(255,255,255,.35)}
 .presdot.in{background:#7FBF8E;box-shadow:0 0 0 3px rgba(127,191,142,.25)}
@@ -261,6 +264,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 /* ===== لمسات سحابية — عمق وزجاج وحركة ناعمة ===== */
 html{scroll-behavior:smooth}
 ::selection{background:var(--amber-soft);color:var(--ink)}
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.vin{animation:viewIn .24s cubic-bezier(.22,.61,.36,1)}
+nav.bottom button .ic svg{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+nav.bottom button.on .ic svg{transform:translateY(-2px) scale(1.12)}
+nav.bottom button.on{position:relative}
 .card,.menu button,.stat,.tile,.task{transition:transform .18s cubic-bezier(.22,.61,.36,1),box-shadow .22s ease,border-color .18s}
 @supports ((backdrop-filter:blur(10px)) or (-webkit-backdrop-filter:blur(10px))){
   nav.bottom{background:var(--glass);-webkit-backdrop-filter:saturate(1.5) blur(16px);backdrop-filter:saturate(1.5) blur(16px)}
@@ -301,7 +309,7 @@ html{scroll-behavior:smooth}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-17.4";
+var BUILD = "2026-07-17.5";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -737,7 +745,7 @@ function startStaff(){
   document.body.className='';
   S.tab='now';
   APP.innerHTML =
-    '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div><h1 id="hiName"></h1><div class="sub" id="hiSub"></div><div class="sub" style="opacity:.6">'+new Date().toLocaleDateString('ar-JO',{weekday:'long',day:'numeric',month:'long'})+'</div></div></div>'+
+    '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div class="binfo"><h1 id="hiName"></h1><div class="sub" id="hiSub"></div><div class="sub" style="opacity:.6">'+new Date().toLocaleDateString('ar-JO',{weekday:'long',day:'numeric',month:'long'})+'</div></div></div>'+
     '<div class="left"><span class="presdot" id="presDot" title="تأكيد التواجد"></span><span class="dot" id="syncdot"></span><button class="pill icbtn" id="thBtn" aria-label="السمة">'+THI()+'</button><button class="pill icbtn bellbtn" id="bellBtn" aria-label="الإشعارات">'+IC.bell+'<span class="bellcount" id="bellCount"></span></button><button class="pill icbtn" id="rfBtn" aria-label="تحديث">'+IC.refresh+'</button><button class="pill" id="lockBtn">قفل</button></div></div>'+
     '<div class="wrap" id="view"></div>'+
     '<nav class="bottom">'+
@@ -898,8 +906,9 @@ function drawTab(){
   else if(S.tab==='shift') v.innerHTML=viewShift();
   else if(S.tab==='grow'){ v.innerHTML=skel(3); loadGrow(v); }
   else v.innerHTML=viewMore();
-  wireTab(v);
+  wireTab(v); animIn(v);
 }
+function animIn(el){ if(!el) return; el.classList.remove('vin'); void el.offsetWidth; el.classList.add('vin'); }
 
 /* ---------- تبويب: الآن ---------- */
 function viewNow(){
@@ -1371,7 +1380,7 @@ var A = { emps:null, areas:null, types:null, skills:null };
 function startAdmin(){
   document.body.className='';
   APP.innerHTML =
-    '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div><h1>لوحة الإدارة</h1><div class="sub">ريحانة — نظام التشغيل</div></div></div>'+
+    '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div class="binfo"><h1>لوحة الإدارة</h1><div class="sub">ريحانة — نظام التشغيل</div></div></div>'+
     '<div class="left"><button class="pill icbtn" id="thBtnA" aria-label="السمة">'+THI()+'</button><button class="pill" id="admHome">الرئيسية</button><button class="pill" id="admOut">خروج</button></div></div>'+
     '<div class="wrap" id="view"></div>';
   $('#admOut').addEventListener('click', function(){ aAct('logout',{}); clearSess(); renderLogin(); });
@@ -1411,6 +1420,7 @@ function drawAdmin(){
     }).join('');
     v.innerHTML='<div id="dashTop">'+skel(2)+'</div>'+menuHtml;
     $$('.menu button',v).forEach(function(b){ b.addEventListener('click', function(){ S.adminSec=b.getAttribute('data-sec'); drawAdmin(); }); });
+    animIn(v);
     loadDash($('#dashTop'));
     // تحديث تلقائي للوحة اليوم كل دقيقة
     dashT=setInterval(function(){
@@ -1422,6 +1432,7 @@ function drawAdmin(){
   v.innerHTML='<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" id="backB">→ رجوع</button><h2 style="margin:0;font-size:18px">'+secTitle(S.adminSec)+'</h2></div><div id="sec"></div>';
   $('#backB').addEventListener('click', function(){ S.adminSec=null; drawAdmin(); });
   $('#sec').innerHTML=skel(3);
+  animIn(v);
   var r=ADMIN[S.adminSec]; if(r) r($('#sec'));
 }
 function lookups(cb){
