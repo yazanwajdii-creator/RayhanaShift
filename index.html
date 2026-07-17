@@ -316,6 +316,7 @@ nav.bottom button.on{position:relative}
 .ptt-toast{position:fixed;left:14px;bottom:calc(154px + env(safe-area-inset-bottom));z-index:60;background:#26332B;color:#F4EFE4;border-radius:12px;
   padding:8px 13px;font-size:12.5px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.32);display:none;max-width:62vw}
 .ptt-toast.show{display:block;animation:tin .2s}
+.btn.rec{background:linear-gradient(180deg,#E4573C,#C0392B)!important;box-shadow:0 0 0 4px rgba(224,87,60,.18)!important}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}}
 </style>
@@ -328,7 +329,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-17.10";
+var BUILD = "2026-07-17.11";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -2379,6 +2380,35 @@ ADMIN.pulse=function(v){
   });
 };
 
+/* ---------- بثّ صوتي من الإدارة للفريق ---------- */
+var ADMCAST={rec:null,chunks:[],stream:null,recording:false,t0:0};
+function admCastStart(btn){
+  if(ADMCAST.recording || !(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)){ if(!window.MediaRecorder) toast('التسجيل غير مدعوم هنا',true); return; }
+  ADMCAST.recording=true; ADMCAST.t0=Date.now(); btn.classList.add('rec'); btn.textContent='… جارٍ التسجيل — أفلتي للإرسال';
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    if(!ADMCAST.recording){ stream.getTracks().forEach(function(t){t.stop();}); return; }
+    ADMCAST.stream=stream; ADMCAST.chunks=[];
+    var mr; try{ mr=new MediaRecorder(stream,{mimeType:'audio/webm;codecs=opus'}); }catch(e){ try{ mr=new MediaRecorder(stream); }catch(e2){ ADMCAST.recording=false; btn.classList.remove('rec'); return; } }
+    ADMCAST.rec=mr; mr.ondataavailable=function(ev){ if(ev.data&&ev.data.size) ADMCAST.chunks.push(ev.data); };
+    mr.onstop=function(){ admCastFinish(btn); }; mr.start();
+  }).catch(function(){ ADMCAST.recording=false; btn.classList.remove('rec'); btn.textContent='اضغطي مع الاستمرار للبثّ الصوتي'; toast('اسمحي بالوصول للميكروفون',true); });
+}
+function admCastStop(btn){ if(!ADMCAST.recording) return; ADMCAST.recording=false; btn.classList.remove('rec'); btn.textContent='… يُرسل';
+  try{ if(ADMCAST.rec&&ADMCAST.rec.state!=='inactive') ADMCAST.rec.stop(); }catch(e){} }
+function admCastFinish(btn){
+  var dur=(Date.now()-ADMCAST.t0)/1000;
+  if(ADMCAST.stream){ ADMCAST.stream.getTracks().forEach(function(t){t.stop();}); ADMCAST.stream=null; }
+  var reset=function(){ btn.textContent='اضغطي مع الاستمرار للبثّ الصوتي'; };
+  if(!ADMCAST.chunks.length || dur<0.35){ reset(); return; }
+  var blob=new Blob(ADMCAST.chunks,{type:(ADMCAST.rec&&ADMCAST.rec.mimeType)||'audio/webm'});
+  var rd=new FileReader();
+  rd.onload=function(){ var b64=rd.result||''; if(b64.length>400000){ toast('المقطع طويل',true); reset(); return; }
+    aAct('ptt_broadcast',{audio:b64,dur:Math.round(dur*10)/10}).then(function(r){
+      if(r&&r.ok){ toast('وصل بثّك لـ '+(r.reached||0)+' على الشفت'); if(ADMIN.ptt&&$('#sec')) ADMIN.ptt($('#sec')); }
+      else toast((r&&r.error)||'تعذّر البثّ',true); reset();
+    }).catch(function(){ toast('لا اتصال',true); reset(); }); };
+  rd.readAsDataURL(blob);
+}
 /* ---------- سجل التخاطب الصوتي (آخر 24 ساعة) ---------- */
 ADMIN.ptt=function(v){
   function load(){
@@ -2386,7 +2416,8 @@ ADMIN.ptt=function(v){
     aAct('ptt_log',{}).then(function(r){
       if(!r.ok){ v.innerHTML='<div class="empty">'+esc(r.error||'خطأ')+'</div>'; return; }
       var cl=r.clips||[];
-      var out=['<div class="card soft" style="padding:10px 12px"><div class="muted small">كل النداءات الصوتية بين الموظفات محفوظة هنا 24 ساعة فقط ثم تُحذف تلقائياً. اضغطي «استماع» لأي نداء.</div></div>'];
+      var out=['<div class="card"><h3>بثّ صوتي للفريق</h3><div class="muted small" style="margin-bottom:8px">اضغطي مع الاستمرار وتحدّثي، وعند الإفلات يصل صوتك فوراً لكل من على الشفت الآن (ويصلهن إشعار إن كان التطبيق مغلقاً).</div><button id="admCast" class="btn block" style="touch-action:none;user-select:none">اضغطي مع الاستمرار للبثّ الصوتي</button></div>',
+        '<div class="card soft" style="padding:10px 12px"><div class="muted small">كل النداءات الصوتية (بين الموظفات ومن الإدارة) محفوظة هنا 24 ساعة فقط ثم تُحذف تلقائياً.</div></div>'];
       if(!cl.length) out.push('<div class="empty">لا نداءات في آخر 24 ساعة</div>');
       cl.forEach(function(c){
         out.push('<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between;align-items:center">'+
@@ -2396,6 +2427,11 @@ ADMIN.ptt=function(v){
           '<button class="btn sm ghost pttplay" data-a="'+esc(c.audio)+'">استماع</button></div></div>');
       });
       v.innerHTML=out.join('');
+      var cb=$('#admCast',v);
+      if(cb){ cb.onpointerdown=function(e){ e.preventDefault(); admCastStart(cb); };
+        cb.onpointerup=function(e){ e.preventDefault(); admCastStop(cb); };
+        cb.onpointerleave=function(){ if(ADMCAST.recording) admCastStop(cb); };
+        cb.onpointercancel=function(){ if(ADMCAST.recording) admCastStop(cb); }; }
       $$('.pttplay',v).forEach(function(b){ b.addEventListener('click', function(){
         try{ var a=new Audio(b.getAttribute('data-a')); a.play(); b.textContent='… يُشغّل'; a.onended=function(){ b.textContent='استماع'; }; }catch(e){ toast('تعذّر التشغيل',true); }
       }); });
@@ -2575,7 +2611,10 @@ ADMIN.broadcast=function(v){
       aAct('broadcast_list',{}).then(function(res){
         var SC={all_staff:'الكل',shift_today:'شفت اليوم',employee:'موظفة'};
         var out='<h3 style="margin-top:12px">إعلانات سابقة</h3>'+((res.rows||[]).map(function(n){
-          return '<div class="card" style="padding:9px 12px"><b>'+esc(n.title)+'</b> <span class="chip">'+esc(SC[n.scope]||n.scope)+'</span> <span class="chip green">قرأها '+n.reads+'</span>'+(n.body?'<div class="small">'+esc(n.body)+'</div>':'')+'<div class="muted small">'+fmtD(n.ts)+'</div></div>';
+          var rdrs=n.readers||[];
+          return '<div class="card" style="padding:9px 12px"><b>'+esc(n.title)+'</b> <span class="chip">'+esc(SC[n.scope]||n.scope)+'</span> <span class="chip '+(n.reads>0?'green':'')+'">قرأها '+n.reads+'</span>'+(n.body?'<div class="small">'+esc(n.body)+'</div>':'')+
+            (rdrs.length?'<div class="muted small" style="margin-top:3px">قرأنها: '+rdrs.map(esc).join('، ')+'</div>':'<div class="muted small" style="margin-top:3px">لم تُقرأ بعد</div>')+
+            '<div class="muted small">'+fmtD(n.ts)+'</div></div>';
         }).join('')||'<div class="muted small">لا إعلانات</div>');
         if((res.admin_alerts||[]).length){
           out+='<h3 style="margin-top:12px">تنبيهات وصلتك</h3>'+res.admin_alerts.map(function(a){
