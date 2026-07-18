@@ -341,7 +341,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-18.1";
+var BUILD = "2026-07-18.2";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -668,7 +668,8 @@ var MI={
   hours: svgi('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>'),
   sops: svgi('<path d="M6 3h9l4 4v14H6V3Z"/><path d="M14 3v4h4M9 12h6M9 16h4"/>'),
   digest: svgi('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/>'),
-  ptt: svgi('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>')
+  ptt: svgi('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+  cover: svgi('<path d="M7 8h11l-3-3M17 16H6l3 3"/>')
 };
 var IC={
   home:  svgi('<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5h4v5"/>'),
@@ -1454,6 +1455,60 @@ function loadGrow(v){
 }
 
 /* ---------- تبويب: المزيد ---------- */
+var COVST={open:'مفتوح',pending:'بانتظار الإدارة',approved:'اعتُمد',rejected:'مرفوض',cancelled:'ملغى'};
+function openCover(){
+  Promise.all([sAct('cover_board',{}), sAct('cover_mine',{})]).then(function(rs){
+    var board=(rs[0]&&rs[0].rows)||[], mine=(rs[1]&&rs[1].rows)||[];
+    var html='<div class="btnrow"><button class="btn block" id="cvNew">أحتاج تغطية / تبديل شفت</button></div>'+
+      '<h3 style="margin-top:14px">طلبات يمكنكِ تغطيتها</h3>'+
+      (board.length? board.map(function(c){
+        return '<div class="card" style="padding:10px 12px"><b>'+esc(c.requester)+'</b> — '+fmtD(c.day)+' '+fmtHM(c.start)+'→'+fmtHM(c.end)+(c.area?' · '+esc(c.area):'')+(c.kind==='swap'?' <span class="chip">تبديل</span>':'')+(c.reason?'<div class="small muted">'+esc(c.reason)+'</div>':'')+'<div class="btnrow"><button class="btn sm" data-cvtake="'+c.id+'" data-kind="'+c.kind+'">'+(c.kind==='swap'?'أبادل':'أغطّي')+'</button></div></div>';
+      }).join('') : '<div class="muted small">لا طلبات مفتوحة حالياً</div>')+
+      '<h3 style="margin-top:14px">طلباتي</h3>'+
+      (mine.length? mine.map(function(c){
+        return '<div class="card" style="padding:9px 12px"><b>'+fmtD(c.day)+'</b> '+(c.kind==='swap'?'<span class="chip">تبديل</span> ':'')+'<span class="chip '+(c.status==='approved'?'green':c.status==='rejected'?'red':'')+'">'+(COVST[c.status]||c.status)+'</span>'+(c.volunteer?'<div class="small">المتطوعة: '+esc(c.volunteer)+'</div>':'')+(c.status==='open'?'<div class="btnrow"><button class="btn sm ghost red" data-cvcancel="'+c.id+'">إلغاء</button></div>':'')+'</div>';
+      }).join('') : '<div class="muted small">لا طلبات لكِ</div>');
+    sheet('تبديل وتغطية الشفتات', html, function(ov, close){
+      $('#cvNew',ov).addEventListener('click', function(){ close(); coverNew(); });
+      $$('[data-cvtake]',ov).forEach(function(b){ b.addEventListener('click', function(){
+        var id=+b.getAttribute('data-cvtake'), kind=b.getAttribute('data-kind');
+        if(kind==='swap'){ close(); coverTakeSwap(id); }
+        else busyWrap(b, function(){ return sAct('cover_take',{id:id},true).then(function(r){ if(r.ok){ toast('عرضكِ وصل للإدارة للاعتماد ✔'); close(); } else toast(r.error||'خطأ',true); }); });
+      }); });
+      $$('[data-cvcancel]',ov).forEach(function(b){ b.addEventListener('click', function(){
+        busyWrap(b, function(){ return sAct('cover_cancel',{id:+b.getAttribute('data-cvcancel')},true).then(function(){ close(); openCover(); }); });
+      }); });
+    });
+  });
+}
+function coverNew(){
+  sAct('my_upcoming',{}).then(function(r){
+    var sh=(r&&r.shifts)||[];
+    if(!sh.length){ toast('لا شفتات قادمة لكِ',true); return; }
+    var html='<label class="f">الشفت</label><select class="f" id="cvSh">'+sh.map(function(s){return '<option value="'+s.id+'">'+fmtD(s.day)+' · '+fmtHM(s.start)+'→'+fmtHM(s.end)+(s.area?' · '+esc(s.area):'')+'</option>';}).join('')+'</select>'+
+      '<label class="f">النوع</label><select class="f" id="cvKind"><option value="cover">تغطية (تأخذ زميلة شفتي)</option><option value="swap">تبديل (أبدّل بشفت زميلة)</option></select>'+
+      '<label class="f">السبب (اختياري)</label><input class="f" id="cvReason" placeholder="مثال: ظرف عائلي">'+
+      '<div class="btnrow"><button class="btn block" id="cvGo">إرسال الطلب</button></div>';
+    sheet('طلب تغطية / تبديل', html, function(ov, close){
+      $('#cvGo',ov).addEventListener('click', function(){
+        busyWrap(this, function(){ return sAct('cover_create',{shift_id:+$('#cvSh',ov).value, kind:$('#cvKind',ov).value, reason:$('#cvReason',ov).value},true).then(function(r){ if(r.ok){ toast('أُرسل طلبك — سيراه الفريق ✔'); close(); } else toast(r.error||'خطأ',true); }); });
+      });
+    });
+  });
+}
+function coverTakeSwap(id){
+  sAct('my_upcoming',{}).then(function(r){
+    var sh=(r&&r.shifts)||[];
+    if(!sh.length){ toast('تحتاجين شفتاً لتبادلي به',true); return; }
+    var html='<div class="muted small">اختاري شفتكِ الذي تعطينه مقابل هذا الشفت:</div><label class="f">شفتي</label><select class="f" id="cvGive">'+sh.map(function(s){return '<option value="'+s.id+'">'+fmtD(s.day)+' · '+fmtHM(s.start)+'→'+fmtHM(s.end)+'</option>';}).join('')+'</select>'+
+      '<div class="btnrow"><button class="btn block" id="cvSwapGo">تأكيد التبديل</button></div>';
+    sheet('تبديل شفت', html, function(ov, close){
+      $('#cvSwapGo',ov).addEventListener('click', function(){
+        busyWrap(this, function(){ return sAct('cover_take',{id:id, give_shift_id:+$('#cvGive',ov).value},true).then(function(rr){ if(rr.ok){ toast('عرض التبديل وصل للإدارة ✔'); close(); } else toast(rr.error||'خطأ',true); }); });
+      });
+    });
+  });
+}
 function viewMore(){
   var st=S.state;
   return ''+
@@ -1468,6 +1523,9 @@ function viewMore(){
     '<label class="f">التاريخ المطلوب (اختياري)</label><input class="f" id="rqDate" type="date">'+
     '<label class="f">التفاصيل</label><textarea class="f" id="rqDet" placeholder="مثال: أحتاج إجازة يوم الجمعة لظرف عائلي"></textarea>'+
     '<div class="btnrow"><button class="btn block" data-a="rqSend">إرسال الطلب</button><button class="btn ghost" data-a="rqMine">طلباتي السابقة</button></div></div>'+
+  '<div class="card"><h3>تبديل وتغطية الشفتات</h3>'+
+    '<div class="muted small">تحتاجين تغطية شفتكِ أو تبديله؟ أو تساعدين زميلة؟ نظّميها هنا — بموافقة الإدارة.</div>'+
+    '<div class="btnrow"><button class="btn ghost block" data-a="coverOpen">فتح تبديل وتغطية</button></div></div>'+
   '<div class="card"><h3>ملاحظة سريعة للإدارة</h3>'+
     '<textarea class="f" id="ntText" placeholder="أي شيء تريدين إيصاله"></textarea>'+
     '<div class="btnrow"><button class="btn ghost block" data-a="ntSend">إرسال الملاحظة</button></div></div>'+
@@ -1579,6 +1637,7 @@ function wireTab(v){
         if(needPhoto) cameraSheet({facing:'environment', title:'توثيق: '+nm, watermark:(S.me?S.me.name:'')+' · '+nm}, function(d){ send(d); });
         else send('');
       }
+      else if(a==='coverOpen') openCover();
       else if(a==='sopOpen') sAct('sops_list',{}).then(function(res){
         var rows=(res&&res.rows)||[];
         if(!rows.length){ sheet('أدلة العمل','<div class="empty">لا أدلة متاحة بعد</div>'); return; }
@@ -1628,14 +1687,14 @@ var SECS=[
   ['issues','','البلاغات'],['logbook','','سجل الشفت'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['templates','','قوالب المهام'],
   ['tasks','','مهام اليوم'],['attendance','','الحضور'],['skills','','المهارات'],
-  ['training','','التدريب'],['sops','','أدلة العمل'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
+  ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
   ['evals','','التقييم الشهري'],['awards','','التقدير'],['requests','','الطلبات'],
   ['handovers','','التسليمات'],['reports','','التقارير'],['devices','','الأجهزة'],['settings','','الإعدادات'],
   ['audit','','سجل التدقيق'],['flags','','إشارات المراجعة']
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
-  ['تشغيل اليوم','g1',['board','live','shifts','tasks','attendance','absence','handovers','issues','logbook','ptt']],
+  ['تشغيل اليوم','g1',['board','live','shifts','tasks','attendance','cover','absence','handovers','issues','logbook','ptt']],
   ['التواصل والتحليل','g2',['digest','broadcast','analytics','hours','requests','reports']],
   ['الفريق','g2',['employees','skills','training','coop','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
@@ -2524,6 +2583,29 @@ function admCastStop(btn){
     else toast((r&&r.error)||'تعذّر البثّ',true); reset();
   }).catch(function(){ toast('لا اتصال',true); reset(); });
 }
+/* ---------- تبديل وتغطية الشفتات ---------- */
+ADMIN.cover=function(v){
+  function load(){
+    v.innerHTML=skel(2);
+    aAct('cover_pending',{}).then(function(res){
+      var rows=res.rows||[];
+      var out=['<div class="card soft" style="padding:10px 12px"><div class="muted small">طلبات التغطية والتبديل بانتظار اعتمادكِ. الاعتماد يعيد إسناد الشفت تلقائياً ويُشعر الطرفين.</div></div>'];
+      if(!rows.length) out.push('<div class="empty">لا طلبات معلّقة</div>');
+      rows.forEach(function(c){
+        out.push('<div class="card" style="padding:10px 12px"><b>'+esc(c.requester)+'</b> '+(c.kind==='swap'?'<span class="chip">تبديل</span>':'<span class="chip">تغطية</span>')+
+          '<div class="small">'+fmtD(c.day)+' '+fmtHM(c.start)+'→'+fmtHM(c.end)+(c.area?' · '+esc(c.area):'')+'</div>'+
+          '<div class="small">المتطوعة: <b>'+esc(c.volunteer||'—')+'</b>'+(c.give_day?' · تعطي بالمقابل '+fmtD(c.give_day):'')+'</div>'+
+          (c.reason?'<div class="muted small">'+esc(c.reason)+'</div>':'')+
+          '<div class="btnrow"><button class="btn sm" data-cvok="'+c.id+'">اعتماد ✔</button><button class="btn sm ghost red" data-cvno="'+c.id+'">رفض</button></div></div>');
+      });
+      v.innerHTML=out.join('');
+      $$('[data-cvok]',v).forEach(function(b){ b.addEventListener('click', function(){ busyWrap(b, function(){ return aAct('cover_decide',{id:+b.getAttribute('data-cvok'),approve:true}).then(function(r){ if(r.ok){toast('اعتُمد وأُعيد الإسناد ✔');load();} else toast(r.error||'خطأ',true); }); }); }); });
+      $$('[data-cvno]',v).forEach(function(b){ b.addEventListener('click', function(){ busyWrap(b, function(){ return aAct('cover_decide',{id:+b.getAttribute('data-cvno'),approve:false}).then(function(){ toast('رُفض'); load(); }); }); }); });
+    });
+  }
+  load();
+};
+
 /* ---------- سجل التخاطب الصوتي (آخر 24 ساعة) ---------- */
 ADMIN.ptt=function(v){
   function load(){
