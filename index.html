@@ -318,7 +318,7 @@ nav.bottom button.on{position:relative}
 .ptt-toast.show{display:block;animation:tin .2s}
 .btn.rec{background:linear-gradient(180deg,#E4573C,#C0392B)!important;box-shadow:0 0 0 4px rgba(224,87,60,.18)!important}
 /* غطاء تسجيل كبير وواضح */
-.rec-ov{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(20,15,8,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.rec-ov{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(20,15,8,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);pointer-events:none}
 .rec-ov.show{display:flex;animation:fadeIn .15s}
 .rec-card{background:linear-gradient(180deg,#E4573C,#C0392B);color:#fff;border-radius:28px;padding:32px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.45);min-width:230px}
 .rec-mic{width:96px;height:96px;margin:0 auto 14px;border-radius:50%;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;animation:recpulse 1s infinite}
@@ -339,7 +339,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-17.12";
+var BUILD = "2026-07-17.13";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -356,11 +356,11 @@ var APP = $('#app');
 
 function esc(s){ if(s===null||s===undefined) return ''; return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function uid(){ try{ return crypto.randomUUID(); }catch(e){ return 'op-'+Date.now()+'-'+Math.random().toString(36).slice(2,10); } }
-function toast(msg, err){
+function toast(msg, err, dur){
   var t = $('#toast');
   t.innerHTML = '<b style="margin-inline-end:6px">'+(err?'⚠':'✔')+'</b>'+esc(msg);
   t.className = err ? 'err show' : 'show';
-  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.className=''; }, err?3800:2400);
+  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.className=''; }, dur||(err?3800:2400));
 }
 function fmtT(ts){ if(!ts) return '—'; var d=new Date(ts); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
 function fmtHM(t){ if(!t) return '—'; return String(t).slice(0,5); }
@@ -558,6 +558,19 @@ function cameraSheet(opts, cb){
       });
     });
 }
+function shiftEndCelebrate(){
+  sAct('my_engage',{}).then(function(eg){
+    if(!eg || !eg.ok) return;
+    var m=eg.month||{};
+    sheet('انتهى شفتكِ — أحسنتِ',
+      '<div class="center" style="padding:4px 0 2px"><div style="font-size:42px;font-weight:800;color:var(--amber);line-height:1">'+(eg.points||0)+'</div><div class="muted">نقاط ريحانة</div></div>'+
+      '<div class="row" style="gap:8px;margin-top:12px">'+
+      '<div class="stat" style="flex:1"><div class="v">'+(eg.shift_streak||0)+'</div><div class="l">شفت متتالٍ</div></div>'+
+      '<div class="stat" style="flex:1"><div class="v">'+(m.tasks_done||0)+'</div><div class="l">مهام هذا الشهر</div></div>'+
+      '<div class="stat" style="flex:1"><div class="v">'+(m.ontime_days||0)+'</div><div class="l">يوم التزام</div></div></div>'+
+      '<div class="card soft" style="margin-top:12px;text-align:center">شكراً لجهدكِ اليوم — نراكِ في شفتكِ القادم</div>');
+  }).catch(function(){});
+}
 function getGeo(cb){
   if(!navigator.geolocation){ cb(null); return; }
   var done=false;
@@ -585,7 +598,8 @@ function doAttendance(kind, pin, selfie){
         if(navigator.vibrate) navigator.vibrate(35);
         if(res.dup) toast('مسجّل مسبقاً');
         else if(res.unscheduled) toast('سُجّل حضورك (غير مجدول) — سيظهر للإدارة');
-        else toast(isOut?'سُجّل انصرافك — يعطيك العافية':'صباح النشاط سُجّل حضورك');
+        else if(isOut){ toast('سُجّل انصرافك — يعطيك العافية'); shiftEndCelebrate(); }
+        else toast('صباح النشاط سُجّل حضورك');
         refresh();
       } else if(res.blockers){
         sheet('لا يمكن الانصراف بعد','<ul style="padding-right:18px">'+res.blockers.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul><div class="muted small">أنهي هذه النقاط ثم أعيدي المحاولة.</div>');
@@ -727,8 +741,8 @@ function renderLogin(){
     var u=$('#luU').value.trim(), pw=$('#luP').value;
     if(!u || !pw){ toast('أدخلي اسم المستخدم وكلمة السر', true); return; }
     busyWrap($('#luGo'), function(){
-      return rpc('rko_staff','login',{username:u, password:pw, device:'shared', device_token:devTok()}).then(function(res){
-        if(!res.ok){ toast(res.error||'خطأ', true); $('#luP').value=''; return; }
+      return rpc('rko_staff','login',{username:u, password:pw, device:devId(), device_token:devTok()}).then(function(res){
+        if(!res.ok){ toast(res.error||'خطأ', true, res.device_locked?6000:0); $('#luP').value=''; return; }
         S.token=res.token; S.role='staff'; S.me=res.me; saveSess(); startStaff();
       });
     });
@@ -830,11 +844,12 @@ function pttInit(){
   var btn=$('#pttBtn'); if(!btn) return;
   if(!pttSupported()){ btn.style.display='none'; return; }
   PTT.queue=[]; PTT.playing=false; PTT.primed=false;
-  var down=function(e){ if(e){ e.preventDefault(); } pttUnlock(); pttStart(); };
+  var down=function(e){ if(e){ e.preventDefault(); try{ if(e.pointerId!=null) btn.setPointerCapture(e.pointerId); }catch(_){} } pttUnlock(); pttStart(); };
   var up=function(e){ if(e){ e.preventDefault(); } pttStop(); };
   btn.onpointerdown=down; btn.onpointerup=up;
-  btn.onpointerleave=function(){ if(PTT.recording) pttStop(); };
-  btn.onpointercancel=function(){ if(PTT.recording) pttStop(); };
+  btn.onpointercancel=up;
+  // احتياط: أي إفلات في أي مكان يُنهي التسجيل (لو خرج الإصبع عن الزر)
+  if(!PTT.upbound){ PTT.upbound=true; window.addEventListener('pointerup', function(){ if(PTT.recording) pttStop(); }, true); }
   var tg=$('#pttTarget'); if(tg) tg.onclick=pttPickTarget;
   pttUpdateTarget();
   // فتح قفل الصوت عند أول لمسة في أي مكان — ليسمع الفريق النداءات الواردة تلقائياً
@@ -941,7 +956,8 @@ function pttPollTick(){
   if(S.role!=='staff'){ clearInterval(PTT.timer); return; }
   sAct('ptt_poll', {since:PTT.since}).then(function(r){
     if(!r || !r.ok) return;
-    var wrap=$('#pttWrap'); if(wrap) wrap.style.display = r.off ? 'none' : 'flex';
+    var tgb=$('#pttTarget'); if(tgb) tgb.style.opacity = r.off ? '.5' : '1';
+    PTT.off = !!r.off;
     if(!PTT.primed){ PTT.primed=true; if(typeof r.last==='number') PTT.since=r.last; return; }
     (r.clips||[]).forEach(function(c){ PTT.queue.push(c); });
     if(typeof r.last==='number' && r.last>PTT.since) PTT.since=r.last;
@@ -1373,11 +1389,37 @@ function coopSheet(){
 }
 
 /* ---------- تبويب: تطوري ---------- */
+function tierOf(pts){ pts=pts||0; if(pts>=600) return ['بلاتينية','#5FA8C7']; if(pts>=300) return ['ذهبية','#E0A32E']; if(pts>=120) return ['فضية','#9AA0A6']; if(pts>=40) return ['برونزية','#C77B3B']; return ['بداية الطريق','#8A8172']; }
 function loadGrow(v){
-  Promise.all([sAct('my_progress',{}), sAct('my_month',{}).catch(function(){return {};})]).then(function(rs){
-    var res=rs[0], mm=rs[1]||{};
+  Promise.all([sAct('my_progress',{}), sAct('my_month',{}).catch(function(){return {};}), sAct('my_engage',{}).catch(function(){return {};})]).then(function(rs){
+    var res=rs[0], mm=rs[1]||{}, eg=rs[2]||{};
     if(!res.ok){ v.innerHTML='<div class="empty">'+esc(res.error||'خطأ')+'</div>'; return; }
     var out=[];
+    // ===== إنجازاتي: نقاط ريحانة + السلسلة =====
+    if(eg.ok){
+      var tier=tierOf(eg.points), tc=eg.team_core||{}, done=tc.done||0, tot=tc.total||0, pct=tot>0?Math.round(100*done/tot):0;
+      out.push('<div class="card" style="background:var(--hero);color:#F4EFE4;border:none">'+
+        '<div class="row" style="justify-content:space-between;align-items:center"><div><div style="font-size:13px;opacity:.85">نقاط ريحانة</div>'+
+        '<div style="font-size:34px;font-weight:800;line-height:1">'+(eg.points||0)+'</div></div>'+
+        '<div style="text-align:center"><div style="width:54px;height:54px;border-radius:50%;background:'+tier[1]+';display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;margin:0 auto">'+(eg.points>=40?'★':'٭')+'</div>'+
+        '<div style="font-size:11.5px;margin-top:4px;opacity:.9">'+tier[0]+'</div></div></div>'+
+        '<div class="row" style="gap:8px;margin-top:12px">'+
+        '<div style="flex:1;background:rgba(255,255,255,.12);border-radius:12px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:800">'+(eg.shift_streak||0)+'</div><div style="font-size:11px;opacity:.85">شفت متتالٍ بلا غياب</div></div>'+
+        '<div style="flex:1;background:rgba(255,255,255,.12);border-radius:12px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:800">'+((eg.month||{}).ontime_days||0)+'</div><div style="font-size:11px;opacity:.85">يوم التزام هذا الشهر</div></div></div>'+
+        '<div class="muted small" style="color:rgba(244,239,228,.7);margin-top:8px">نقاطك تزيد بالحضور في الوقت، إنجاز المهام، وتغطية زميلاتك.</div></div>');
+      // ===== هدف الفريق اليومي =====
+      if(tot>0){
+        out.push('<div class="card '+(pct>=100?'soft':'')+'" style="'+(pct>=100?'border:1.5px solid var(--green)':'')+'"><div class="row" style="justify-content:space-between"><b>هدف الفريق اليوم</b><span class="chip '+(pct>=100?'green':'')+'">'+done+'/'+tot+' مهمة أساسية</span></div>'+
+          '<div class="pbar" style="margin-top:8px"><i style="width:'+pct+'%"></i></div>'+
+          '<div class="small '+(pct>=100?'':'muted')+'" style="margin-top:6px">'+(pct>=100?'أنجز الفريق كل المهام الأساسية اليوم — عمل رائع منكن جميعاً':'كل مهمة أساسية تُنجزها تقرّب الفريق من الهدف.')+'</div></div>');
+      }
+      // ===== جدار الشكر =====
+      if((eg.kudos||[]).length){
+        out.push('<div class="card"><h3>جدار الشكر</h3>'+eg.kudos.map(function(k){
+          return '<div style="padding:5px 0;border-bottom:1px dashed var(--line)"><b>'+esc(k.who)+'</b> — '+esc(k.text)+'<div class="muted small">'+fmtD(k.ts)+'</div></div>';
+        }).join('')+'</div>');
+      }
+    }
     if(mm.ok){
       var at=mm.attendance||{}, tk=mm.tasks||{};
       out.push('<h3 style="margin:2px 2px 8px">شهري بلمحة</h3><div class="statgrid">'+
@@ -1720,9 +1762,11 @@ ADMIN.employees=function(v){
       (e?'':'<label class="f">كلمة السر الأولى</label><input class="f" id="eP" value="0000">')+
       (e?'<div class="check"><input type="checkbox" id="eA" '+(e.active?'checked':'')+'><span>مفعّلة</span></div>'+
          '<div class="check"><input type="checkbox" id="eF" '+(e.flexible?'checked':'')+'><span>مرنة (جوكر) — يظهر للإدارة فقط</span></div>'+
-         '<div class="check"><input type="checkbox" id="eNR" '+(e.no_rotate?'checked':'')+'><span>استثناء من التدوير التلقائي للمهام</span></div>':'')+
+         '<div class="check"><input type="checkbox" id="eNR" '+(e.no_rotate?'checked':'')+'><span>استثناء من التدوير التلقائي للمهام</span></div>'+
+         '<div class="card soft" style="padding:9px 12px;margin-top:8px"><div class="small">حساب الموظفة مرتبط بأول هاتف تدخل منه ولا يفتح على جهاز آخر. لاعتماد هاتف جديد لها اضغطي:</div><div class="btnrow"><button class="btn sm ghost" id="eUnbind" type="button">اعتماد جهاز جديد (فك الارتباط)</button></div></div>':'')+
       '<div class="btnrow"><button class="btn block" id="eGo">حفظ</button></div>',
       function(ov, close){
+        var ub=$('#eUnbind',ov); if(ub) ub.addEventListener('click', function(){ busyWrap(this, function(){ return aAct('unbind_device',{employee_id:e.id}).then(function(r){ if(r.ok) toast('تم — تستطيع الموظفة الدخول من جهازها الجديد الآن ✔'); else toast(r.error||'خطأ',true); }); }); });
         $('#eGo',ov).addEventListener('click', function(){
           var p={name:$('#eN',ov).value.trim(), color:$('#eC',ov).value, username:$('#eU',ov).value.trim()};
           if(!p.name){ toast('اكتبي الاسم', true); return; }
@@ -3005,6 +3049,24 @@ ADMIN.flags=function(v){
 })();
 var deferredPrompt=null;
 window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferredPrompt=e; });
+/* تحديث تلقائي للجميع: يسحب أحدث نسخة فور نشرها دون تدخل من المستخدم */
+var _upBusy=false;
+function checkUpdate(){
+  if(_upBusy) return; _upBusy=true;
+  try{
+    fetch('version.json?t='+Date.now(), {cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(function(j){
+      _upBusy=false;
+      if(j && j.build && j.build!==BUILD){
+        try{ localStorage.removeItem('rko_state'); }catch(e){}
+        if('caches' in window){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); }); }
+        else location.reload();
+      }
+    }).catch(function(){ _upBusy=false; });
+  }catch(e){ _upBusy=false; }
+}
+setInterval(checkUpdate, 150000);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) checkUpdate(); });
+window.addEventListener('focus', checkUpdate);
 function applyFont(){ try{ document.documentElement.classList.toggle('font-lg', localStorage.getItem('rko_font')==='lg'); }catch(e){} }
 function boot(){
   applyTheme(); applyFont();
