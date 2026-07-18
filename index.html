@@ -327,6 +327,8 @@ nav.bottom button.on{position:relative}
 .rec-sub{font-size:14px;opacity:.92;margin-top:4px}
 @keyframes recpulse{50%{box-shadow:0 0 0 18px rgba(255,255,255,.10)}}
 .ptt-toast.tap{cursor:pointer;background:var(--green);font-size:14.5px;padding:13px 18px;font-weight:800}
+.task:active{transform:scale(.992)}
+@media(hover:hover) and (pointer:fine){.task:hover{box-shadow:0 4px 16px rgba(60,45,20,.08)}}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}}
 </style>
@@ -339,7 +341,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-17.13";
+var BUILD = "2026-07-18.1";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1235,7 +1237,7 @@ function taskCard(t){
   var stChip = {open:'',running:'green',paused:'orange',done:'green',approved:'green',returned:'red'}[t.status]||'';
   var running = t.status==='running';
   var html='<div class="task'+(t.is_core?' core':'')+(t.status==='done'||t.status==='approved'?' done':'')+'" data-task="'+t.id+'">'+
-    '<div class="t-h"><div><span class="name">'+esc(t.name)+'</span>'+(t.is_core?' <span class="chip orange">أساسية</span>':'')+
+    '<div class="t-h"><div><span class="name">'+esc(t.name)+'</span>'+(t.is_core?' <span class="chip orange">أساسية</span>':'')+(t.phase==='adhoc'?' <span class="chip ink">من الإدارة</span>':'')+
     (t.needs_photo?'':'')+(t.needs_two?'':'')+
     '<div class="muted small">متوقعة '+mins(t.expected)+' · صافي <span class="timer" data-net="'+(t.net||0)+'" data-run="'+(running?1:0)+'" data-since="'+Date.now()+'">'+secFmt(t.net)+'</span></div></div>'+
     '<span class="chip '+stChip+'">'+TSTAT[t.status]+'</span></div>';
@@ -1412,6 +1414,10 @@ function loadGrow(v){
         out.push('<div class="card '+(pct>=100?'soft':'')+'" style="'+(pct>=100?'border:1.5px solid var(--green)':'')+'"><div class="row" style="justify-content:space-between"><b>هدف الفريق اليوم</b><span class="chip '+(pct>=100?'green':'')+'">'+done+'/'+tot+' مهمة أساسية</span></div>'+
           '<div class="pbar" style="margin-top:8px"><i style="width:'+pct+'%"></i></div>'+
           '<div class="small '+(pct>=100?'':'muted')+'" style="margin-top:6px">'+(pct>=100?'أنجز الفريق كل المهام الأساسية اليوم — عمل رائع منكن جميعاً':'كل مهمة أساسية تُنجزها تقرّب الفريق من الهدف.')+'</div></div>');
+      }
+      // ===== بوصلة تطويرك =====
+      if(eg.dev_focus){
+        out.push('<div class="card beige"><h3>بوصلة تطويرك هذا الأسبوع</h3><div style="font-size:15px;font-weight:600">'+esc(eg.dev_focus)+'</div><div class="muted small" style="margin-top:4px">هدف تركّزين عليه لتطوير مهاراتك — من إدارتك.</div></div>');
       }
       // ===== جدار الشكر =====
       if((eg.kudos||[]).length){
@@ -1763,6 +1769,7 @@ ADMIN.employees=function(v){
       (e?'<div class="check"><input type="checkbox" id="eA" '+(e.active?'checked':'')+'><span>مفعّلة</span></div>'+
          '<div class="check"><input type="checkbox" id="eF" '+(e.flexible?'checked':'')+'><span>مرنة (جوكر) — يظهر للإدارة فقط</span></div>'+
          '<div class="check"><input type="checkbox" id="eNR" '+(e.no_rotate?'checked':'')+'><span>استثناء من التدوير التلقائي للمهام</span></div>'+
+         '<label class="f">بوصلة التطوير (هدف أسبوعي يظهر لها)</label><input class="f" id="eDF" value="'+(e&&e.dev_focus?esc(e.dev_focus):'')+'" placeholder="مثال: إتقان تحضير اللاتيه آرت">'+
          '<div class="card soft" style="padding:9px 12px;margin-top:8px"><div class="small">حساب الموظفة مرتبط بأول هاتف تدخل منه ولا يفتح على جهاز آخر. لاعتماد هاتف جديد لها اضغطي:</div><div class="btnrow"><button class="btn sm ghost" id="eUnbind" type="button">اعتماد جهاز جديد (فك الارتباط)</button></div></div>':'')+
       '<div class="btnrow"><button class="btn block" id="eGo">حفظ</button></div>',
       function(ov, close){
@@ -1775,8 +1782,14 @@ ADMIN.employees=function(v){
             p.password=$('#eP',ov).value;
             if(!p.password || p.password.length<4){ toast('كلمة السر ٤ خانات على الأقل', true); return; }
           }
+          var dfEl=$('#eDF',ov), df=dfEl?dfEl.value:null;
           busyWrap(this, function(){
-            return aAct('employee_save',p).then(function(r){ if(r.ok){close();toast('تم الحفظ ✔');ADMIN.employees(v);} else toast(r.error||'خطأ',true); });
+            return aAct('employee_save',p).then(function(r){
+              if(!r.ok){ toast(r.error||'خطأ',true); return; }
+              var after=function(){ close(); toast('تم الحفظ ✔'); ADMIN.employees(v); };
+              if(e && dfEl && df!==(e.dev_focus||'')) aAct('set_dev_focus',{employee_id:e.id, focus:df}).then(after);
+              else after();
+            });
           });
         });
       });
@@ -1998,7 +2011,7 @@ ADMIN.templates=function(v){
 /* ---------- مهام اليوم + المراجعة ---------- */
 ADMIN.tasks=function(v){
   lookups(function(){
-    v.innerHTML='<div class="row"><input class="f grow" id="tkDay" type="date" value="'+today()+'"><button class="btn sm" id="tkAssign">+ إسناد مهمة</button></div><div id="tkList" style="margin-top:10px"></div>';
+    v.innerHTML='<div class="row"><input class="f grow" id="tkDay" type="date" value="'+today()+'"><button class="btn sm ghost" id="tkBal">التوازن</button><button class="btn sm" id="tkAssign">+ إسناد</button></div><div id="tkList" style="margin-top:10px"></div>';
     function load(){
       aAct('tasks_day',{day:$('#tkDay').value}).then(function(res){
         var ts=res.tasks||[];
@@ -2045,6 +2058,24 @@ ADMIN.tasks=function(v){
       });
     }
     $('#tkDay').addEventListener('change', load);
+    $('#tkBal').addEventListener('click', function(){
+      aAct('balance_view',{day:$('#tkDay').value}).then(function(res){
+        var rows=res.rows||[];
+        if(!rows.length){ sheet('توازن التوزيع','<div class="empty">لا طاقم مجدول لهذا اليوم</div>'); return; }
+        var maxm=Math.max.apply(null, rows.map(function(r){return r.min_total||0;}).concat([1]));
+        var html='<div class="muted small" style="margin-bottom:8px">توزيع أحمال المهام على طاقم اليوم (بالدقائق المتوقعة). الشريط الأطول = حمل أكبر.</div>'+
+          rows.map(function(r){ var w=Math.round(100*(r.min_total||0)/maxm);
+            return '<div style="margin-bottom:11px"><div class="row" style="justify-content:space-between"><b>'+esc(r.name)+(r.area?' <span class="muted small">'+esc(r.area)+'</span>':'')+'</b><span class="muted small">'+(r.done||0)+'/'+(r.total||0)+' · '+(r.min_remaining||0)+'د متبقّية</span></div><div class="pbar"><i style="width:'+w+'%"></i></div></div>';
+          }).join('')+
+          '<div class="btnrow"><button class="btn block" id="tkRebal">توزيع تلقائي متوازن (المهام غير المبدوءة)</button></div>';
+        sheet('توازن التوزيع', html, function(ov, close){
+          $('#tkRebal',ov).addEventListener('click', function(){
+            if(!confirm('سيُعاد توزيع المهام غير المبدوءة وغير الأساسية بالتوازن على طاقم اليوم. متابعة؟')) return;
+            busyWrap(this, function(){ return aAct('rebalance',{day:$('#tkDay').value}).then(function(r){ if(r.ok){ close(); toast('أُعيد التوزيع بالتوازن ✔'); load(); } else toast(r.error||'خطأ',true); }); });
+          });
+        });
+      });
+    });
     $('#tkAssign').addEventListener('click', function(){
       sheet('إسناد مهمة إضافية',
         '<label class="f">المهمة</label><input class="f" id="qN">'+
