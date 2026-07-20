@@ -341,7 +341,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-20.1";
+var BUILD = "2026-07-20.2";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -670,7 +670,8 @@ var MI={
   digest: svgi('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/>'),
   ptt: svgi('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
   cover: svgi('<path d="M7 8h11l-3-3M17 16H6l3 3"/>'),
-  prep: svgi('<path d="M9 3h6M10 3v4l-4 7a5 5 0 0 0 4.4 7.5h3.2A5 5 0 0 0 18 14l-4-7V3"/><path d="M7.5 14h9"/>')
+  prep: svgi('<path d="M9 3h6M10 3v4l-4 7a5 5 0 0 0 4.4 7.5h3.2A5 5 0 0 0 18 14l-4-7V3"/><path d="M7.5 14h9"/>'),
+  heat: svgi('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/>')
 };
 var IC={
   home:  svgi('<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5h4v5"/>'),
@@ -1750,7 +1751,7 @@ function startAdmin(){
   updateDot(); S.adminSec=null; drawAdmin();
 }
 var SECS=[
-  ['dash','','اليوم'],['board','','لوحة العمليات'],['live','','المتابعة الحية'],['broadcast','','الإعلانات'],
+  ['dash','','اليوم'],['board','','لوحة العمليات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
   ['issues','','البلاغات'],['logbook','','سجل الشفت'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['templates','','قوالب المهام'],
   ['tasks','','مهام اليوم'],['prep','','محطة التحضير'],['attendance','','الحضور'],['skills','','المهارات'],
@@ -1761,7 +1762,7 @@ var SECS=[
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
-  ['تشغيل اليوم','g1',['board','live','shifts','tasks','prep','attendance','cover','absence','handovers','issues','logbook','ptt']],
+  ['تشغيل اليوم','g1',['board','live','heat','shifts','tasks','prep','attendance','cover','absence','handovers','issues','logbook','ptt']],
   ['التواصل والتحليل','g2',['digest','broadcast','analytics','hours','requests','reports']],
   ['الفريق','g2',['employees','skills','training','coop','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
@@ -2650,6 +2651,44 @@ function admCastStop(btn){
     else toast((r&&r.error)||'تعذّر البثّ',true); reset();
   }).catch(function(){ toast('لا اتصال',true); reset(); });
 }
+/* ---------- خريطة النشاط بالمناطق (منطقة × ساعة من أحداث حقيقية) ---------- */
+ADMIN.heat=function(v){
+  v.innerHTML='<div class="row"><input class="f grow" id="htDay" type="date" value="'+today()+'"><button class="btn sm" id="htGo">عرض</button></div><div id="htB" style="margin-top:10px">'+skel(2)+'</div>';
+  function load(){
+    $('#htB').innerHTML=skel(2);
+    aAct('activity_map',{day:$('#htDay').value}).then(function(res){
+      var cells=res.cells||[], b=$('#htB'); if(!b) return;
+      if(!cells.length){ b.innerHTML='<div class="empty">لا نشاط مسجّل بهذا اليوم</div>'; return; }
+      var areas=[], hset={}, maxc=1, key={};
+      cells.forEach(function(c){ if(areas.indexOf(c.area)<0) areas.push(c.area); hset[c.hour]=1; if(c.count>maxc) maxc=c.count; key[c.area+'|'+c.hour]=c; });
+      var hours=Object.keys(hset).map(Number).sort(function(a,b2){return a-b2;});
+      var h0=hours[0], h1=hours[hours.length-1], allH=[]; for(var h=h0;h<=h1;h++) allH.push(h);
+      var html='<div class="card soft" style="padding:9px 12px"><div class="muted small">خريطة مبنية من أحداث حقيقية (مهام، متكررة، نداءات، ضغط، تحضير، حضور/انصراف) — كل خلية: منطقة×ساعة، الأغمق = نشاط أكثر. اضغطي أي خلية للتفاصيل. كلما ربطتِ الشفتات بالمناطق صارت أدق.</div></div>';
+      html+='<div class="scrollx"><table class="tbl" style="min-width:'+(90+allH.length*44)+'px"><tr><th>المنطقة</th>'+allH.map(function(h){return '<th style="text-align:center">'+h+'</th>';}).join('')+'</tr>';
+      areas.forEach(function(a){
+        html+='<tr><td style="white-space:nowrap"><b>'+esc(a)+'</b></td>'+allH.map(function(h){
+          var c=key[a+'|'+h];
+          if(!c) return '<td></td>';
+          var alpha=(0.14+0.86*(c.count/maxc)).toFixed(2);
+          return '<td style="text-align:center;padding:0"><button class="htc" data-a="'+esc(a)+'" data-h="'+h+'" style="width:100%;height:38px;border:none;cursor:pointer;font-weight:700;color:'+(c.count/maxc>0.55?'#fff':'var(--ink)')+';background:rgba(224,137,31,'+alpha+')">'+c.count+'</button></td>';
+        }).join('')+'</tr>';
+      });
+      html+='</table></div>';
+      b.innerHTML=html;
+      $$('.htc',b).forEach(function(bt){ bt.addEventListener('click', function(){
+        var c=key[bt.getAttribute('data-a')+'|'+bt.getAttribute('data-h')]; if(!c) return;
+        var kinds=c.kinds||{};
+        sheet('نشاط '+esc(c.area)+' — الساعة '+c.hour+':00',
+          '<div class="row" style="margin-bottom:8px">'+(c.emps||[]).map(function(nm){return '<span class="chip green">'+esc(nm)+'</span>';}).join('')+'</div>'+
+          Object.keys(kinds).map(function(k){ return '<div class="row" style="justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line)"><span>'+esc(k)+'</span><b>'+kinds[k]+'</b></div>'; }).join(''));
+      }); });
+    });
+  }
+  $('#htGo').addEventListener('click', load);
+  $('#htDay').addEventListener('change', load);
+  load();
+};
+
 /* ---------- محطة التحضير (Mise en Place) ---------- */
 ADMIN.prep=function(v){
   lookups(function(){
