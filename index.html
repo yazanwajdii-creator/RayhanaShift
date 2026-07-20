@@ -330,6 +330,35 @@ nav.bottom button.on{position:relative}
 .task:active{transform:scale(.992)}
 @media(hover:hover) and (pointer:fine){.task:hover{box-shadow:0 4px 16px rgba(60,45,20,.08)}}
 
+/* مذكرة صوتية مشتركة */
+.vnote{margin:8px 0 4px}
+.vn-rec{display:flex;align-items:center;gap:9px;width:100%;justify-content:center;padding:11px 14px;border-radius:14px;border:1.5px dashed var(--line);background:var(--surface-2);color:var(--ink);font-weight:700;font-size:14px;cursor:pointer;transition:background .15s,border-color .15s}
+.vn-rec svg{width:20px;height:20px;stroke:var(--brand)}
+.vn-rec:disabled{opacity:.6;cursor:default}
+.vn-rec.on{background:linear-gradient(180deg,#E4573C,#C0392B);border-color:transparent;color:#fff;animation:vnpulse 1.1s infinite}
+.vn-rec.on svg{stroke:#fff}
+@keyframes vnpulse{50%{box-shadow:0 0 0 7px rgba(224,87,60,.18)}}
+.vn-body{margin-top:8px;display:flex;align-items:center;gap:10px}
+.vn-audio{flex:1;height:38px;max-width:100%}
+.vn-del{background:none;border:none;color:var(--red);font-size:13px;font-weight:700;cursor:pointer;padding:6px;flex:none}
+.vn-play{display:flex;align-items:center;gap:9px;margin:9px 0;padding:8px 10px;border-radius:12px;background:var(--surface-2);flex-wrap:wrap}
+.vn-play .vn-ic{width:34px;height:34px;border-radius:50%;background:var(--green-soft);display:flex;align-items:center;justify-content:center;flex:none}
+.vn-play .vn-ic svg{width:18px;height:18px;stroke:var(--green)}
+.vn-play audio{flex:1;min-width:170px;height:36px;max-width:100%}
+.vn-cap{font-size:12px;color:var(--muted);font-weight:700;width:100%}
+/* بطاقة تسليم الشفت الذكية */
+.card.hb{background:var(--green-soft);border-color:var(--green-2)}
+.hb-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800;font-size:15px;color:var(--brand)}
+.hb-badge{font-size:10.5px;font-weight:700;background:var(--brand);color:#fff;border-radius:20px;padding:3px 9px;white-space:nowrap}
+.hb-shift{font-size:13px;color:var(--muted);font-weight:700;margin:2px 0 8px}
+.hb-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:14px}
+.hb-row.first{border-top:none}
+.hb-k{color:var(--muted);font-weight:700;font-size:13px;flex:none}
+.hb-v{text-align:left;font-weight:600}
+.hb-sub{padding:2px 0 5px;line-height:2.1}
+.hb-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.warn{color:var(--amber);font-weight:800}
+
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}}
 </style>
 </head>
@@ -341,7 +370,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-20.2";
+var BUILD = "2026-07-20.3";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -932,6 +961,95 @@ function recOverlay(on){ var o=document.getElementById('recOverlay');
   if(on){ if(!o){ o=document.createElement('div'); o.id='recOverlay'; o.innerHTML='<div class="rec-card"><div class="rec-mic">'+IC.mic+'</div><div class="rec-txt">يسجّل صوتك…</div><div class="rec-sub">أفلتي الزر للإرسال</div></div>'; document.body.appendChild(o); } o.className='rec-ov show'; }
   else if(o){ o.className='rec-ov'; } }
 
+/* ===== حقل مذكرة صوتية مشترك (التسليم/البلاغات/الملاحظات) — ضغطة للبدء وضغطة للإيقاف ===== */
+var VOICE={};
+function voiceFieldHtml(id, label){
+  return '<div class="vnote" id="vn_'+id+'">'+
+    '<button type="button" class="vn-rec">'+IC.mic+'<span class="vn-lab">'+esc(label||'أضيفي مذكرة صوتية')+'</span></button>'+
+    '<div class="vn-body" style="display:none"><audio class="vn-audio" controls preload="none"></audio>'+
+    '<button type="button" class="vn-del">حذف</button></div></div>';
+}
+function voiceReset(scope, id){
+  VOICE[id]=null;
+  var w=scope?$('#vn_'+id,scope):$('#vn_'+id); if(!w) return;
+  var b=$('.vn-body',w); if(b) b.style.display='none';
+  var a=$('.vn-audio',w); if(a){ try{a.pause();}catch(e){} a.removeAttribute('src'); }
+  var l=$('.vn-lab',w); if(l) l.textContent='أضيفي مذكرة صوتية';
+  var btn=$('.vn-rec',w); if(btn) btn.classList.remove('on');
+}
+function voiceWire(scope, id){
+  VOICE[id]=null;
+  var w=scope?$('#vn_'+id,scope):$('#vn_'+id); if(!w) return;
+  var btn=$('.vn-rec',w), lab=$('.vn-lab',w), body=$('.vn-body',w), au=$('.vn-audio',w), del=$('.vn-del',w);
+  if(!recSupported()){ if(btn) btn.disabled=true; if(lab) lab.textContent='التسجيل الصوتي غير مدعوم على هذا المتصفح'; return; }
+  var rec=false, t0=0, tick=null, maxT=null, base='أضيفي مذكرة صوتية';
+  function fmt(s){ var m=Math.floor(s/60), ss=s%60; return m+':'+(ss<10?'0':'')+ss; }
+  function paint(){ lab.textContent='● يسجّل '+fmt(Math.floor((Date.now()-t0)/1000))+' — اضغطي للإيقاف'; }
+  function start(){
+    if(rec) return;
+    if(REC){ try{ recStop(); }catch(e){} }
+    rec=true; t0=Date.now(); btn.classList.add('on'); paint();
+    tick=setInterval(paint,500);
+    maxT=setTimeout(function(){ if(rec) stop(); }, 60000);
+    recStart().catch(function(){ rec=false; clearInterval(tick); clearTimeout(maxT); btn.classList.remove('on'); lab.textContent='تعذّر الوصول للميكروفون — اسمحي به وأعيدي المحاولة'; });
+  }
+  function stop(){
+    if(!rec) return; rec=false; clearInterval(tick); clearTimeout(maxT); btn.classList.remove('on'); lab.textContent=base;
+    var dur=(Date.now()-t0)/1000, wav=recStop();
+    if(!wav || dur<0.4){ toast('تسجيل قصير جداً', true); return; }
+    VOICE[id]=wav; au.src=wav; body.style.display='flex';
+  }
+  btn.addEventListener('click', function(){ rec?stop():start(); });
+  if(del) del.addEventListener('click', function(){ voiceReset(scope,id); });
+}
+function voicePlayHtml(dataUrl, cap){
+  if(!dataUrl) return '';
+  return '<div class="vn-play"><span class="vn-ic">'+IC.mic+'</span><audio controls preload="none" src="'+dataUrl+'"></audio>'+(cap?'<span class="vn-cap">'+esc(cap)+'</span>':'')+'</div>';
+}
+
+/* ===== بطاقة تسليم الشفت الذكية — تُبنى من أحداث اليوم الفعلية ===== */
+function prepRemainShort(mins){
+  mins=+mins||0;
+  if(mins<=0) return '(منتهية)';
+  if(mins<60) return '('+mins+' د)';
+  var h=Math.floor(mins/60), m=mins%60;
+  return '('+h+' س'+(m?' '+m+' د':'')+')';
+}
+function handoverBriefCard(b, receiver){
+  if(!b || !b.shift) return '';
+  var rows=[], first=' first';
+  function row(k,v){ rows.push('<div class="hb-row'+first+'"><span class="hb-k">'+k+'</span><span class="hb-v">'+v+'</span></div>'); first=''; }
+  var left=(b.tasks_left||[]);
+  row('المهام', (b.tasks_done||0)+' منجزة'+(left.length?' · <b class="warn">'+left.length+' متبقّية</b>':' · لا متبقّي'));
+  if(left.length) rows.push('<div class="hb-sub">'+left.slice(0,8).map(function(t){return '<span class="chip '+(t.phase==='closing'?'red':'')+'">'+esc(t.name)+'</span>';}).join(' ')+'</div>');
+  if(b.recurring_done) row('الروتين', b.recurring_done+' مهمة اليوم');
+  var iss=(b.issues||[]);
+  if(iss.length){ row('بلاغات مفتوحة', '<b class="warn">'+iss.length+'</b>');
+    rows.push('<div class="hb-sub">'+iss.slice(0,6).map(function(i){return '<span class="chip '+(i.priority==='high'?'red':'')+'">'+esc(i.title)+'</span>';}).join(' ')+'</div>'); }
+  var prep=(b.prep||[]);
+  if(prep.length){ var soon=prep.filter(function(p){return p.soon;});
+    row('التحضيرات', prep.length+' دفعة فعّالة'+(soon.length?' · <b class="warn">'+soon.length+' قرب الانتهاء</b>':''));
+    rows.push('<div class="hb-sub">'+prep.slice(0,8).map(function(p){return '<span class="chip '+(p.soon?'red':'')+'">'+esc(p.name)+' '+prepRemainShort(p.mins_left)+'</span>';}).join(' ')+'</div>'); }
+  if((b.logbook||[]).length) row('سجل الشفت', b.logbook.length+' مدخل');
+  if(b.help) row('طلبات مساعدة', b.help);
+  if(b.pressure) row('ملاحظة', '<b class="warn">كان في ضغط/تكدّس اليوم</b>');
+  return '<div class="card hb"><div class="hb-h"><span>بطاقة تسليم الشفت الذكية</span><span class="hb-badge">تلقائي من أحداث اليوم</span></div>'+
+    (b.shift?'<div class="hb-shift">'+esc(b.shift)+'</div>':'')+rows.join('')+
+    '<div class="hb-note">'+(receiver?'هذا ملخّص الشفت الذي تسلّمتِه — مبنيّ تلقائياً من النظام.':'ملخّص يُبنى تلقائياً من النظام ويُرفق مع تسليمك — راجعيه وأضيفي ما يلزم بالأسفل.')+'</div></div>';
+}
+function handoverPrefill(b){
+  var pre={};
+  var left=(b.tasks_left||[]);
+  if(left.length) pre.pending=left.slice(0,8).map(function(t){return t.name;}).join('، ');
+  var notes=[];
+  var soon=(b.prep||[]).filter(function(p){return p.soon;});
+  if(soon.length) notes.push('تحضيرات قرب الانتهاء: '+soon.map(function(p){return p.name;}).join('، '));
+  if((b.issues||[]).length) notes.push('بلاغات مفتوحة: '+b.issues.map(function(i){return i.title;}).join('، '));
+  if(b.pressure) notes.push('كان في ضغط اليوم');
+  if(notes.length) pre.notes=notes.join(' — ');
+  return pre;
+}
+
 function pttStart(){
   if(PTT.recording) return;
   if(!recSupported()){ toast('التسجيل غير مدعوم على هذا المتصفح', true); return; }
@@ -1121,6 +1239,8 @@ function drawTab(){
   else v.innerHTML=viewMore();
   wireTab(v); animIn(v);
   if(S.tab==='now') loadPrepCard();
+  if($('#vn_nt',v)) voiceWire(v,'nt');
+  if($('#vn_is',v)) voiceWire(v,'is');
 }
 function animIn(el){ if(!el) return; el.classList.remove('vin'); void el.offsetWidth; el.classList.add('vin'); }
 
@@ -1133,11 +1253,13 @@ function viewNow(){
   });
   // تسليم وارد
   if(st.handover_in){
-    var items=st.handover_in.items||{};
-    out.push('<div class="card beige"><h3>تسليم شفت من '+esc(st.handover_in.from)+'</h3>'+
+    var hi=st.handover_in, items=hi.items||{};
+    out.push('<div class="card beige"><h3>تسليم شفت من '+esc(hi.from)+'</h3>'+
+      (hi.brief?handoverBriefCard(hi.brief,true):'')+
       handoverItemsHtml(items)+
+      voicePlayHtml(hi.voice,'مذكرة صوتية من الزميلة')+
       '<label class="f">ملاحظتك (اختياري)</label><input class="f" id="hoNote">'+
-      '<div class="btnrow"><button class="btn block" data-a="hoConfirm" data-id="'+st.handover_in.id+'">استلمت وفهمت ✔</button></div></div>');
+      '<div class="btnrow"><button class="btn block" data-a="hoConfirm" data-id="'+hi.id+'">استلمت وفهمت ✔</button></div></div>');
   }
   // عرض تغطية غياب بانتظار موافقتها
   if(st.cover_offer){
@@ -1416,21 +1538,30 @@ function viewShift(){
 function handoverSheet(){
   var cols=S.state.colleagues||[];
   if(!cols.length){ toast('لا توجد زميلة في شفت اليوم لتسليمها', true); return; }
-  var fields=[['cash','الكاش والفواتير'],['charcoal','وضع الفحم'],['pending','طلبات معلّقة'],['cleaning','نظافة المنطقة'],['notes','ملاحظات أخرى']];
-  sheet('تسليم الشفت',
-    '<label class="f">التسليم إلى</label><select class="f" id="hoTo">'+cols.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join('')+'</select>'+
-    fields.map(function(f){return '<label class="f">'+f[1]+'</label><input class="f ho-i" data-k="'+f[0]+'">';}).join('')+
-    '<div class="btnrow"><button class="btn block" id="hoGo">إرسال التسليم</button></div>',
-    function(ov, close){
-      $('#hoGo',ov).addEventListener('click', function(){
-        var items={};
-        $$('.ho-i',ov).forEach(function(i){ if(i.value.trim()) items[i.getAttribute('data-k')]=i.value.trim(); });
-        sAct('handover_send',{to_emp:+$('#hoTo',ov).value, items:items}, true).then(function(res){
-          if(res.ok){ close(); toast('أُرسل التسليم — بانتظار تأكيدها'); refresh(); }
-          else toast(res.error||'خطأ', true);
+  toast('جارٍ تجهيز ملخّص الشفت…');
+  sAct('handover_brief',{}).then(function(bres){
+    var brief=(bres&&bres.ok&&bres.brief)||{}, pre=handoverPrefill(brief);
+    var fields=[['cash','الكاش والفواتير'],['charcoal','وضع الفحم'],['pending','طلبات ومهام معلّقة'],['cleaning','نظافة المنطقة'],['notes','ملاحظات أخرى']];
+    sheet('تسليم الشفت الذكي',
+      handoverBriefCard(brief,false)+
+      '<label class="f">التسليم إلى</label><select class="f" id="hoTo">'+cols.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join('')+'</select>'+
+      fields.map(function(f){return '<label class="f">'+f[1]+'</label><input class="f ho-i" data-k="'+f[0]+'" value="'+esc(pre[f[0]]||'')+'">';}).join('')+
+      voiceFieldHtml('ho','أضيفي مذكرة صوتية للزميلة (اختياري)')+
+      '<div class="btnrow"><button class="btn block" id="hoGo">إرسال التسليم</button></div>',
+      function(ov, close){
+        voiceWire(ov,'ho');
+        $('#hoGo',ov).addEventListener('click', function(){
+          var items={};
+          $$('.ho-i',ov).forEach(function(i){ if(i.value.trim()) items[i.getAttribute('data-k')]=i.value.trim(); });
+          busyWrap(this, function(){
+            return sAct('handover_send',{to_emp:+$('#hoTo',ov).value, items:items, voice:VOICE.ho||''}, true).then(function(res){
+              if(res.ok){ close(); toast('أُرسل التسليم — بانتظار تأكيدها'); refresh(); }
+              else toast(res.error||'خطأ', true);
+            });
+          });
         });
       });
-    });
+  }).catch(function(){ toast('تعذّر تجهيز الملخّص', true); });
 }
 function coopSheet(){
   var cols=S.state.colleagues||[];
@@ -1596,6 +1727,7 @@ function viewMore(){
     '<div class="btnrow"><button class="btn ghost block" data-a="coverOpen">فتح تبديل وتغطية</button></div></div>'+
   '<div class="card"><h3>ملاحظة سريعة للإدارة</h3>'+
     '<textarea class="f" id="ntText" placeholder="أي شيء تريدين إيصاله"></textarea>'+
+    voiceFieldHtml('nt','أو سجّلي ملاحظة صوتية')+
     '<div class="btnrow"><button class="btn ghost block" data-a="ntSend">إرسال الملاحظة</button></div></div>'+
   '<div class="card"><h3>سجل الشفت</h3>'+
     '<div class="muted small">ملاحظة تشغيلية يراها الشفت التالي والإدارة (نقص مخزون، حادثة، حالة المنطقة).</div>'+
@@ -1609,6 +1741,7 @@ function viewMore(){
     '<label class="f">الأولوية</label><select class="f" id="isPri"><option value="normal">عادية</option><option value="high">عاجلة</option><option value="low">منخفضة</option></select>'+
     '<textarea class="f" id="isDet" placeholder="تفاصيل (اختياري)"></textarea>'+
     '<div class="btnrow"><button class="btn ghost block" id="isPhoto">إرفاق صورة (اختياري)</button></div><img id="isPrev" style="display:none;width:120px;border-radius:10px;margin-top:6px">'+
+    voiceFieldHtml('is','أو صِفي العطل بصوتك (اختياري)')+
     '<div class="btnrow"><button class="btn block" data-a="isSend">إرسال البلاغ</button><button class="btn ghost" data-a="isMine">بلاغاتي</button></div></div>'+
   ''+
   '<div class="card"><h3>أدلة العمل</h3>'+
@@ -1674,7 +1807,7 @@ function wireTab(v){
             '<div class="small">'+esc(r.details||'')+'</div>'+(r.admin_note?'<div class="small muted">رد الإدارة: '+esc(r.admin_note)+'</div>':'')+'</div>';
         }).join('')||'<div class="empty">لا طلبات</div>');
       });
-      else if(a==='ntSend'){ var x=$('#ntText').value.trim(); if(!x){toast('اكتبي الملاحظة',true);return;} sAct('note_send',{text:x},true).then(function(){ toast('وصلت ملاحظتك'); $('#ntText').value=''; }); }
+      else if(a==='ntSend'){ var x=$('#ntText').value.trim(); if(!x&&!VOICE.nt){toast('اكتبي الملاحظة أو سجّليها صوتاً',true);return;} sAct('note_send',{text:x, voice:VOICE.nt||''},true).then(function(){ toast('وصلت ملاحظتك'); $('#ntText').value=''; voiceReset(null,'nt'); }); }
       else if(a==='lgAdd'){ var lt=$('#lgText').value.trim(); if(!lt){toast('اكتبي التفاصيل',true);return;} sAct('logbook_add',{category:$('#lgCat').value, text:lt},true).then(function(res){ toast(res.msg||'أُضيف'); $('#lgText').value=''; }); }
       else if(a==='lgView') sAct('logbook_day',{}).then(function(res){
         var CATL={note:'ملاحظة',lowstock:'نقص مخزون',incident:'حادثة',maintenance:'عطل',cash:'كاش'};
@@ -1684,8 +1817,8 @@ function wireTab(v){
       });
       else if(a==='isSend'){
         var it=$('#isTitle').value.trim(); if(!it){toast('اكتبي عنوان البلاغ',true);return;}
-        sAct('issue_report',{title:it, category:$('#isCat').value, priority:$('#isPri').value, detail:$('#isDet').value, photo:window._isPhoto||''},true).then(function(res){
-          toast(res.msg||'أُرسل'); $('#isTitle').value=''; $('#isDet').value=''; window._isPhoto=''; var pv=$('#isPrev'); if(pv)pv.style.display='none';
+        sAct('issue_report',{title:it, category:$('#isCat').value, priority:$('#isPri').value, detail:$('#isDet').value, photo:window._isPhoto||'', voice:VOICE.is||''},true).then(function(res){
+          toast(res.msg||'أُرسل'); $('#isTitle').value=''; $('#isDet').value=''; window._isPhoto=''; var pv=$('#isPrev'); if(pv)pv.style.display='none'; voiceReset(null,'is');
         });
       }
       else if(a==='isMine') sAct('my_issues',{}).then(function(res){
@@ -2523,7 +2656,7 @@ ADMIN.requests=function(v){
     if(notes.length){
       out.push('<h3 style="margin-top:12px">ملاحظات جديدة</h3>');
       notes.forEach(function(n){
-        out.push('<div class="card beige" style="padding:10px 12px"><b>'+esc(n.employee)+':</b> '+esc(n.text)+'<div class="btnrow"><button class="btn sm ghost" data-nt="'+n.id+'">قرأتها ✔</button></div></div>');
+        out.push('<div class="card beige" style="padding:10px 12px"><b>'+esc(n.employee)+':</b> '+esc(n.text)+voicePlayHtml(n.voice,'ملاحظة صوتية')+'<div class="btnrow"><button class="btn sm ghost" data-nt="'+n.id+'">قرأتها ✔</button></div></div>');
       });
     }
     var done=(res.requests||[]).filter(function(r){return r.status!=='pending';}).slice(0,20);
@@ -2551,7 +2684,8 @@ ADMIN.handovers=function(v){
       $('#hoB').innerHTML=(res.handovers||[]).map(function(h){
         return '<div class="card" style="padding:10px 12px"><b>'+esc(h.from)+'</b> → <b>'+esc(h.to)+'</b> '+
           (h.status==='confirmed'?'<span class="chip green">مؤكَّد '+fmtT(h.confirmed)+'</span>':'<span class="chip orange">بانتظار التأكيد</span>')+
-          handoverItemsHtml(h.items)+(h.to_note?'<div class="small muted">ملاحظة المستلمة: '+esc(h.to_note)+'</div>':'')+'</div>';
+          (h.brief?handoverBriefCard(h.brief,true):'')+
+          handoverItemsHtml(h.items)+voicePlayHtml(h.voice,'مذكرة صوتية من المسلِّمة')+(h.to_note?'<div class="small muted">ملاحظة المستلمة: '+esc(h.to_note)+'</div>':'')+'</div>';
       }).join('')||'<div class="empty">لا تسليمات بهذا اليوم</div>';
     });
   }
@@ -3000,6 +3134,7 @@ ADMIN.issues=function(v){
             '<div class="muted small">'+esc(i.reporter||'')+' · '+fmtD(i.ts)+(i.area?' · '+esc(i.area):'')+'</div>'+
             (i.detail?'<div class="small" style="margin-top:3px">'+esc(i.detail)+'</div>':'')+
             (i.photo?'<div class="btnrow"><button class="btn sm ghost" data-iph="'+i.id+'">عرض الصورة</button></div>':'')+
+            voicePlayHtml(i.voice,'مذكرة صوتية من المُبلِّغة')+
             (i.admin_note?'<div class="small muted">ملاحظتك: '+esc(i.admin_note)+'</div>':'')+
             '<div class="row" style="justify-content:space-between;margin-top:6px"><span class="chip '+(i.status==='resolved'?'green':i.status==='in_progress'?'orange':'')+'">'+(IST[i.status]||i.status)+'</span>'+
             '<span class="btnrow" style="margin:0">'+(i.status!=='in_progress'&&i.status!=='resolved'?'<button class="btn sm ghost" data-is="'+i.id+'" data-st="in_progress">بدء المعالجة</button>':'')+(i.status!=='resolved'?'<button class="btn sm" data-is="'+i.id+'" data-st="resolved">حُلّ</button>':'')+'<button class="btn sm ghost" data-isn="'+i.id+'">ملاحظة</button></span></div></div>';
