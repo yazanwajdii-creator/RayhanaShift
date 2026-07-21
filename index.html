@@ -383,7 +383,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-21.1";
+var BUILD = "2026-07-21.2";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1045,7 +1045,7 @@ function handoverBriefCard(b, receiver){
     rows.push('<div class="hb-sub">'+iss.slice(0,6).map(function(i){return '<span class="chip '+(i.priority==='high'?'red':'')+'">'+esc(i.title)+'</span>';}).join(' ')+'</div>'); }
   var prep=(b.prep||[]);
   if(prep.length){ var soon=prep.filter(function(p){return p.soon;});
-    row('التحضيرات', prep.length+' دفعة فعّالة'+(soon.length?' · <b class="warn">'+soon.length+' قرب الانتهاء</b>':''));
+    row('التحضيرات', prep.length+' شاف فعّال'+(soon.length?' · <b class="warn">'+soon.length+' قرب الانتهاء</b>':''));
     rows.push('<div class="hb-sub">'+prep.slice(0,8).map(function(p){return '<span class="chip '+(p.soon?'red':'')+'">'+esc(p.name)+' '+prepRemainShort(p.mins_left)+'</span>';}).join(' ')+'</div>'); }
   if((b.logbook||[]).length) row('سجل الشفت', b.logbook.length+' مدخل');
   if(b.help) row('طلبات مساعدة', b.help);
@@ -1334,16 +1334,32 @@ function viewNow(){
       '<div class="check"><input type="checkbox" id="supC" '+(myP&&myP.needs_support?'checked':'')+'><span>أحتاج دعماً الآن</span></div>'+
       '<div class="btnrow"><button class="btn block" data-a="pSend">تحديث الضغط</button></div></div>');
   }
-  // مهام متكررة (جلي، تشطيب طاولات...) — يشترك فيها الجميع بعدّاد مشترك وتُنسب لكل من نفّذتها
+  // مهام دوّارة يتناوبها الجميع بعدالة — النظام يوجّه الدور لمن نفّذتها الأقل، وأي زميلة فاضية تقدر تسبق
   (st.recurring||[]).forEach(function(rt){
     var pct = rt.target>0 ? Math.min(100, Math.round(100*rt.done/rt.target)) : 0;
-    var overdue = rt.cadence_min>0 && (!rt.last_ts || (Date.now()-new Date(rt.last_ts).getTime())/60000 >= rt.cadence_min);
-    out.push('<div class="card'+(overdue?' beige':'')+'"><h3>'+esc(rt.name)+' <span class="muted small" style="font-weight:400">'+esc(rt.area||'')+'</span>'+(overdue?' <span class="chip orange">حان وقتها</span>':'')+'</h3>'+
-      (rt.target>0
-        ? '<div class="muted small">المطلوب اليوم: '+rt.done+' من '+rt.target+' · نصيبك: '+rt.mine+'</div><div class="pbar"><i style="width:'+pct+'%"></i></div>'
-        : '<div class="muted small">أُنجزت اليوم: '+rt.done+' مرة · نصيبك: '+rt.mine+'</div>')+
-      ((rt.recent&&rt.recent.length)?'<div class="small muted" style="margin-top:6px">آخر من نفّذها: '+rt.recent.map(function(x){return esc(x.who)+' ('+fmtT(x.ts)+')';}).join('، ')+'</div>':'')+
-      '<div class="btnrow"><button class="btn sm block" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'"'+((rt.target>0&&rt.done>=rt.target)?' disabled':'')+'>'+((rt.target>0&&rt.done>=rt.target)?'اكتمل المطلوب ✔':'أنجزتُها الآن')+'</button></div></div>');
+    var full = rt.target>0 && rt.done>=rt.target;
+    var overdue = !full && rt.cadence_min>0 && (!rt.last_ts || (Date.now()-new Date(rt.last_ts).getTime())/60000 >= rt.cadence_min);
+    var mineTurn = rt.turn && S.me && rt.turn.id===S.me.id;
+    var claim = rt.claim, claimedByOther = claim && !claim.mine, claimedByMe = claim && claim.mine;
+    var head='<h3>'+esc(rt.name)+' <span class="muted small" style="font-weight:400">'+esc(rt.area||'')+(rt.all_staff?' · للجميع':'')+'</span>'+
+      (full?' <span class="chip green">اكتمل</span>':overdue?' <span class="chip orange">حان وقتها</span>':'')+'</h3>';
+    var turnLine='';
+    if(!full && !claim){
+      if(mineTurn) turnLine='<div class="chip green" style="margin:3px 0">دورك الآن ✋</div>';
+      else if(rt.turn) turnLine='<div class="muted small" style="margin:3px 0">الدور التالي: <b>'+esc(rt.turn.name)+'</b> — وأي زميلة فاضية تقدر تسبقها</div>';
+    }
+    var counters = rt.target>0
+      ? '<div class="muted small">المطلوب اليوم: '+rt.done+' من '+rt.target+' · نصيبك: '+rt.mine+'</div><div class="pbar"><i style="width:'+pct+'%"></i></div>'
+      : '<div class="muted small">أُنجزت اليوم: '+rt.done+' مرة · نصيبك: '+rt.mine+'</div>';
+    var recent = (rt.recent&&rt.recent.length)?'<div class="small muted" style="margin-top:6px">آخر من نفّذها: '+rt.recent.map(function(x){return esc(x.who)+' ('+fmtT(x.ts)+')';}).join('، ')+'</div>':'';
+    var btns;
+    if(full) btns='<div class="btnrow"><button class="btn sm block" disabled>اكتمل المطلوب ✔</button></div>';
+    else if(claimedByOther) btns='<div class="chip orange" style="display:block;text-align:center;padding:9px;margin-top:8px"><b>'+esc(claim.who)+'</b> تقوم بها الآن</div>';
+    else if(claimedByMe) btns='<div class="btnrow"><button class="btn sm block" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'">تم، أنجزتها ✔</button>'+
+        '<button class="btn sm ghost" data-a="recRelease" data-id="'+rt.template_id+'">تراجع</button></div>';
+    else btns='<div class="btnrow"><button class="btn sm block" data-a="recClaim" data-id="'+rt.template_id+'">أنا بعملها الآن</button>'+
+        '<button class="btn sm ghost" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'">تم مباشرة ✔</button></div>';
+    out.push('<div class="card'+((mineTurn&&!claim)||overdue?' beige':'')+'">'+head+turnLine+counters+recent+btns+'</div>');
   });
   // نداءات المساعدة
   var helps=st.help_open||[];
@@ -1366,24 +1382,24 @@ function loadPrepCard(){
   sAct('prep_list',{}).then(function(r){
     var items=(r&&r.items)||[];
     if(!items.length){ w.innerHTML=''; return; }
-    var html='<div class="card"><h3>محطة التحضير</h3><div class="muted small" style="margin-bottom:6px">الدفعات المحضّرة وصلاحيتها — اكتبي رقم الدفعة على لاصق العبوة.</div>';
+    var html='<div class="card"><h3>محطة التحضير</h3><div class="muted small" style="margin-bottom:6px">الشافات المحضّرة وصلاحيتها — اكتبي رقم الشاف على لاصق العبوة.</div>';
     items.forEach(function(it){
-      html+='<div style="padding:7px 0;border-bottom:1px dashed var(--line)"><div class="row" style="justify-content:space-between"><b>'+esc(it.name)+'</b><button class="btn sm ghost" data-prepadd="'+it.id+'" data-nm="'+esc(it.name)+'">+ دفعة</button></div>';
+      html+='<div style="padding:7px 0;border-bottom:1px dashed var(--line)"><div class="row" style="justify-content:space-between"><b>'+esc(it.name)+'</b><button class="btn sm ghost" data-prepadd="'+it.id+'" data-nm="'+esc(it.name)+'">+ شاف</button></div>';
       if((it.batches||[]).length){
         html+='<div class="row" style="margin-top:5px">'+it.batches.map(function(b){
           var cls=b.state==='expired'?'red':(b.state==='near'?'orange':'green');
-          return '<button class="chip '+cls+'" data-prepb="'+b.id+'" data-item="'+esc(it.name)+'" style="border:none;cursor:pointer">د-'+b.id+' · '+prepRemain(b.expires_at)+(b.cosigned?' ✓✓':'')+'</button>';
+          return '<button class="chip '+cls+'" data-prepb="'+b.id+'" data-item="'+esc(it.name)+'" style="border:none;cursor:pointer">ش-'+b.id+' · '+prepRemain(b.expires_at)+(b.cosigned?' ✓✓':'')+'</button>';
         }).join('')+'</div>';
-      } else html+='<div class="muted small" style="margin-top:3px">لا دفعات — يلزم تحضير</div>';
+      } else html+='<div class="muted small" style="margin-top:3px">لا شافات — يلزم تحضير</div>';
       html+='</div>';
     });
     html+='</div>';
     w.innerHTML=html;
     $$('[data-prepadd]',w).forEach(function(bt){ bt.addEventListener('click', function(){
       var iid=+bt.getAttribute('data-prepadd'), nm=bt.getAttribute('data-nm');
-      sheet('دفعة جديدة: '+nm,
+      sheet('شاف جديد: '+nm,
         '<label class="f">الكمية (اختياري)</label><input class="f" id="ppQty" type="number" step="0.5" placeholder="مثال: 2">'+
-        '<div class="btnrow"><button class="btn block" id="ppGo">سجّلي الدفعة</button></div>',
+        '<div class="btnrow"><button class="btn block" id="ppGo">سجّلي الشاف</button></div>',
         function(ov, close){
           $('#ppGo',ov).addEventListener('click', function(){
             busyWrap(this, function(){ return sAct('prep_add',{item_id:iid, qty:$('#ppQty',ov).value||null}, true).then(function(r2){
@@ -1400,7 +1416,7 @@ function loadPrepCard(){
       var binfo=null; items.forEach(function(it){ (it.batches||[]).forEach(function(b){ if(b.id===bid) binfo=b; }); });
       if(!binfo) return;
       var stTxt=binfo.state==='expired'?'<span class="chip red">منتهية — لا تُستخدم</span>':(binfo.state==='near'?'<span class="chip orange">تقارب الانتهاء</span>':'<span class="chip green">طازجة</span>');
-      sheet('دفعة د-'+bid+' · '+esc(inm),
+      sheet('شاف ش-'+bid+' · '+esc(inm),
         '<div class="row" style="justify-content:space-between"><span>الحالة</span>'+stTxt+'</div>'+
         '<div class="row" style="justify-content:space-between;margin-top:6px"><span class="muted">حضّرتها</span><b>'+esc(binfo.by)+'</b></div>'+
         '<div class="row" style="justify-content:space-between;margin-top:4px"><span class="muted">تنتهي</span><b>'+fmtD(binfo.expires_at)+' '+fmtT(binfo.expires_at)+'</b></div>'+
@@ -1934,6 +1950,8 @@ function wireTab(v){
         if(needPhoto) cameraSheet({facing:'environment', title:'توثيق: '+nm, watermark:(S.me?S.me.name:'')+' · '+nm}, function(d){ send(d); });
         else send('');
       }
+      else if(a==='recClaim'){ sAct('recur_claim',{template_id:id},false).then(function(res){ if(res.ok) refresh(); else toast(res.error||'خطأ',true); }); }
+      else if(a==='recRelease'){ sAct('recur_release',{template_id:id},false).then(function(){ refresh(); }); }
       else if(a==='coverOpen') openCover();
       else if(a==='sopOpen') sAct('sops_list',{}).then(function(res){
         var rows=(res&&res.rows)||[];
@@ -2332,6 +2350,7 @@ ADMIN.templates=function(v){
           '<div class="check"><input type="checkbox" id="pRev" '+(t&&t.needs_review?'checked':'')+'><span>تحتاج مراجعة إدارة</span></div>'+
           '<div class="check"><input type="checkbox" id="pCore" '+(t&&t.is_core?'checked':'')+'><span>أساسية (تمنع الانصراف)</span></div>'+
           '<hr class="sep"><div class="check"><input type="checkbox" id="pRec" '+(t&&t.recurring?'checked':'')+'><span>متكررة (يؤديها أكثر من موظفة عدة مرات — مثل الجلي وتشطيب الطاولات)</span></div>'+
+          '<div class="check"><input type="checkbox" id="pAll" '+(t&&t.all_staff?'checked':'')+'><span>على الجميع — مهمة دوّارة يتناوبها كل الموظفات الحاضرات بالعدل (حمّام، واجهة، ساحة...)</span></div>'+
           '<div class="row"><div class="grow"><label class="f">العدد المطلوب يومياً (0 = بلا سقف)</label><input class="f" id="pTgt" type="number" value="'+(t?(t.target_count||0):0)+'"></div>'+
           '<div class="grow"><label class="f">أقل فاصل بين المرات (دقيقة)</label><input class="f" id="pCd" type="number" value="'+(t?(t.cooldown_min||0):0)+'"></div></div>'+
           '<label class="f">تدوير يومي على الموظفات — عدد المكلَّفات (0 = بلا تدوير، 2 = مثل مسح الواجهة)</label><input class="f" id="pRot" type="number" min="0" value="'+(t?(t.rotate_size||0):0)+'">'+
@@ -2346,7 +2365,7 @@ ADMIN.templates=function(v){
               var p={name:$('#pN',ov).value, area_id:+$('#pA',ov).value, phase:$('#pPh',ov).value, expected:+$('#pX',ov).value,
                 method:$('#pM',ov).value, checklist:cl, needs_photo:$('#pPhoto',ov).checked, needs_two:$('#pTwo',ov).checked,
                 needs_review:$('#pRev',ov).checked, is_core:$('#pCore',ov).checked, reason:$('#pRe',ov).value, impact:$('#pIm',ov).value,
-                recurring:$('#pRec',ov).checked, target_count:+$('#pTgt',ov).value||0, cooldown_min:+$('#pCd',ov).value||0, rotate_size:+$('#pRot',ov).value||0};
+                recurring:$('#pRec',ov).checked, target_count:+$('#pTgt',ov).value||0, cooldown_min:+$('#pCd',ov).value||0, rotate_size:+$('#pRot',ov).value||0, all_staff:$('#pAll',ov).checked};
               if(!p.name.trim()){ toast('اكتبي اسم المهمة', true); return; }
               if(p.method==='checklist' && !cl.length){ toast('طريقة «قائمة فحص» تحتاج بنوداً — سطر لكل بند', true); return; }
               if(!(p.expected>0)){ toast('الدقائق المتوقعة يجب أن تكون أكبر من صفر', true); return; }
@@ -3062,7 +3081,7 @@ ADMIN.prep=function(v){
       // لوحة النضارة
       var board=ov.board||[];
       out.push('<h3 style="margin:12px 2px 6px">لوحة النضارة الآن</h3>');
-      if(!board.length) out.push('<div class="muted small" style="margin:0 2px 8px">لا دفعات محضّرة حالياً</div>');
+      if(!board.length) out.push('<div class="muted small" style="margin:0 2px 8px">لا شافات محضّرة حالياً</div>');
       board.forEach(function(b){
         var cls=b.state==='expired'?'red':(b.state==='near'?'orange':'green');
         var lbl=b.state==='expired'?'منتهية':(b.state==='near'?'تقارب الانتهاء':'طازجة');
@@ -3094,7 +3113,7 @@ ADMIN.prep=function(v){
           (it?'<div class="btnrow"><button class="btn sm ghost red" id="pfDel" type="button">حذف الصنف</button></div>':'')+
           '<div class="btnrow"><button class="btn block" id="pfGo">حفظ</button></div>',
           function(ovv, close){
-            if(it){ $('#pfDel',ovv).addEventListener('click', function(){ if(!confirm('حذف الصنف وكل دفعاته؟')) return;
+            if(it){ $('#pfDel',ovv).addEventListener('click', function(){ if(!confirm('حذف الصنف وكل شافاته؟')) return;
               busyWrap(this, function(){ return aAct('prep_item_delete',{id:it.id}).then(function(){ close(); ADMIN.prep(v); }); }); }); }
             $('#pfGo',ovv).addEventListener('click', function(){
               var nm=$('#pfN',ovv).value.trim(); if(!nm){ toast('اكتبي اسم الصنف',true); return; }
