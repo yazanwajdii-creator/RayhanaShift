@@ -12,7 +12,102 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* ============================================================
+   ريحانة — نظام التصميم v1 (ملصوق كما هو، قبل CSS القديم)
+   ============================================================ */
+:root{
+  --c-primary-900:#14211A; --c-primary-800:#1A2C22; --c-primary-700:#22382B;
+  --c-primary-600:#2C4838; --c-primary-500:#3A5D48; --c-primary-400:#517A5F;
+  --c-primary-300:#7C9F89; --c-primary-200:#AFC7B8; --c-primary-100:#D8E4DC; --c-primary-050:#EEF3EF;
+  --c-accent-700:#8A6318; --c-accent-600:#A87A20; --c-accent-500:#C08A2E; --c-accent-300:#E0BC77; --c-accent-100:#F6EAD2;
+  --c-bg:#F2F4F0; --c-surface:#FFFFFF; --c-surface-2:#E9EDE8; --c-line:#DBE1DA; --c-line-strong:#C3CCC1;
+  --c-text-1:#16201A; --c-text-2:#4B5A50; --c-text-3:#7C8A81; --c-text-on:#F4F7F3;
+  --c-success:#2F7D4F; --c-success-bg:#E3F1E8; --c-warn:#B57614; --c-warn-bg:#FBEED6;
+  --c-danger:#A8352C; --c-danger-bg:#F8E2E0; --c-info:#2C6C8A; --c-info-bg:#DEEDF3;
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-6:24px; --s-8:32px;
+  --r-1:8px; --r-2:12px; --r-3:16px; --r-4:24px; --r-full:999px;
+  --f:"IBM Plex Sans Arabic","Segoe UI",system-ui,sans-serif;
+  --fs-xs:12px; --fs-sm:14px; --fs-md:16px; --fs-lg:20px; --fs-xl:28px;
+  --lh-tight:1.25; --lh-normal:1.6;
+  --sh-1:0 1px 2px rgba(22,32,26,.06); --sh-2:0 4px 12px rgba(22,32,26,.08);
+  --t-fast:120ms; --t-base:180ms; --t-slow:240ms; --ease:cubic-bezier(.2,.7,.3,1);
+  --tap:48px;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+/* البطاقة */
+.card--flat{box-shadow:none}
+.card--raised{box-shadow:var(--sh-2)}
+.card--accent{border-inline-start:3px solid var(--c-accent-500)}
+.card--live{border-color:var(--c-primary-300);background:var(--c-primary-050)}
+.card__label{font-size:var(--fs-xs);font-weight:500;color:var(--c-text-3);margin-bottom:var(--s-1)}
+.card__value{font-size:var(--fs-xl);font-weight:700;color:var(--c-text-1);line-height:1.1}
+.card__meta{font-size:var(--fs-sm);color:var(--c-text-3);margin-top:var(--s-1)}
+/* الأزرار (مُعدِّلات النظام الجديد) */
+.btn--block{width:100%}
+.btn--lg{min-height:56px;font-size:var(--fs-lg)}
+.btn--primary{background:var(--c-primary-700);color:var(--c-text-on)}
+.btn--secondary{background:var(--c-surface);color:var(--c-primary-700);border-color:var(--c-line-strong)}
+.btn--ghost{background:transparent;color:var(--c-primary-600)}
+.btn--danger{background:var(--c-danger);color:#fff}
+.btn--accent{background:var(--c-accent-500);color:#241A05}
+/* شارات الحالة */
+.badge{display:inline-flex;align-items:center;gap:var(--s-2);padding:5px var(--s-3);border-radius:var(--r-full);
+  font-size:var(--fs-xs);font-weight:600;line-height:1.4;white-space:nowrap}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.badge--success{background:var(--c-success-bg);color:var(--c-success)}
+.badge--warn{background:var(--c-warn-bg);color:var(--c-warn)}
+.badge--danger{background:var(--c-danger-bg);color:var(--c-danger)}
+.badge--info{background:var(--c-info-bg);color:var(--c-info)}
+.badge--muted{background:var(--c-surface-2);color:var(--c-text-3)}
+.badge--live{background:var(--c-primary-100);color:var(--c-primary-700)}
+.badge--live::before{animation:rk-pulse 2s var(--ease) infinite}
+@keyframes rk-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
+/* Skeleton */
+.sk{position:relative;overflow:hidden;background:var(--c-surface-2);border-radius:var(--r-1)}
+.sk::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent);
+  transform:translateX(-100%);animation:rk-shimmer 1.2s infinite linear}
+@keyframes rk-shimmer{to{transform:translateX(100%)}}
+.sk--line{height:14px;margin-bottom:var(--s-2)}
+.sk--title{height:22px;width:55%;margin-bottom:var(--s-3)}
+.sk--w70{width:70%} .sk--w45{width:45%}
+.sk--block{height:76px;border-radius:var(--r-3)}
+/* شريط الشفت */
+.shift{background:var(--c-primary-700);color:var(--c-text-on);border-radius:var(--r-3);padding:var(--s-4)}
+.shift__top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--s-4)}
+.shift__now{font-size:var(--fs-xl);font-weight:700;line-height:1}
+.shift__left{font-size:var(--fs-sm);color:var(--c-primary-200)}
+.rail{position:relative;height:8px;border-radius:var(--r-full);background:rgba(255,255,255,.16);overflow:hidden}
+.rail__fill{position:absolute;inset:0;border-radius:var(--r-full);background:var(--c-accent-500);
+  transform-origin:right center;transform:scaleX(0);transition:transform var(--t-slow) var(--ease)}
+.rail__marker{position:absolute;top:50%;right:0;width:14px;height:14px;margin:-7px -7px 0 0;border-radius:50%;
+  background:#fff;box-shadow:0 0 0 3px var(--c-primary-700);transition:transform var(--t-slow) var(--ease)}
+.rail__ends{display:flex;justify-content:space-between;margin-top:var(--s-2);font-size:var(--fs-xs);color:var(--c-primary-200)}
+/* صفوف القوائم */
+.list{border:1px solid var(--c-line);border-radius:var(--r-3);overflow:hidden}
+.row__avatar{width:40px;height:40px;border-radius:var(--r-full);flex:none;background:var(--c-primary-100);
+  color:var(--c-primary-700);display:grid;place-items:center;font-weight:600;font-size:var(--fs-sm)}
+.row__body{flex:1;min-width:0}
+.row__title{font-size:var(--fs-md);font-weight:600;color:var(--c-text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row__sub{font-size:var(--fs-sm);color:var(--c-text-3)}
+/* الزجاج */
+.glass{background:rgba(242,244,240,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+@supports not (backdrop-filter:blur(1px)){.glass{background:var(--c-bg)}}
+/* ===== طبقة "شاشة اليوم" فقط: رفع أولوية مكوّنات النظام الجديد فوق القديم دون المساس بالشاشات الأخرى ===== */
+.today{display:flex;flex-direction:column;gap:var(--s-3);font-family:var(--f)}
+.today .card{background:var(--c-surface);border:1px solid var(--c-line);border-radius:var(--r-3);padding:var(--s-4);box-shadow:var(--sh-1)}
+.today .shift{padding:var(--s-4)}
+.list .row{min-height:var(--tap);padding:var(--s-3) var(--s-4);background:var(--c-surface);border-bottom:1px solid var(--c-line);flex-wrap:nowrap}
+.list .row:last-child{border-bottom:none}
+.btn.btn--primary{background:var(--c-primary-700);color:var(--c-text-on);box-shadow:none}
+.btn.btn--lg{min-height:56px;font-size:var(--fs-lg)}
+.btn.btn--block{width:100%}
+
+/* ============================================================
+   CSS القديم (كما هو، بلا حذف)
+   ============================================================ */
 :root{
   color-scheme: light dark;
   --ink:#2A2621; --paper:#FAF5EC; --surface:#FFFFFF; --surface-2:#F4EDDE;
@@ -383,7 +478,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-21.2";
+var BUILD = "2026-07-21.3";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -878,8 +973,10 @@ function startStaff(){
   updateDot(); idleReset(); paintTabs();
   // كاش آخر حالة لعرض فوري
   try{ var c=JSON.parse(localStorage.getItem('rko_state')||'null'); if(c){ S.state=c; drawTab(); } }catch(e){}
+  // أثناء أول تحميل بلا كاش: هيكل تحميل (.sk) بدل شاشة فاضية
+  if(!S.state){ var _sv=$('#view'); if(_sv) _sv.innerHTML='<section class="today"><div class="sk sk--block"></div><div class="sk sk--block"></div><div class="sk sk--block"></div></section>'; }
   refresh();
-  clearInterval(tickT); tickT=setInterval(function(){ if(S.role==='staff' && (S.tab==='tasks'||S.tab==='now')) updateTimers(); }, 1000);
+  clearInterval(tickT); tickT=setInterval(function(){ if(S.role==='staff' && (S.tab==='tasks'||S.tab==='now'||S.tab==='shift')) updateTimers(); }, 1000);
   startPresence();
   pttInit();
   qSync();
@@ -1255,7 +1352,7 @@ function drawTab(){
   else if(S.tab==='grow'){ v.innerHTML=skel(3); loadGrow(v); }
   else v.innerHTML=viewMore();
   wireTab(v); animIn(v);
-  if(S.tab==='now'){ loadPrepCard(); loadOpsCard(); }
+  if(S.tab==='shift'){ loadPrepCard(); loadOpsCard(); }
   if($('#vn_nt',v)) voiceWire(v,'nt');
   if($('#vn_is',v)) voiceWire(v,'is');
 }
@@ -1263,116 +1360,63 @@ function animIn(el){ if(!el) return; el.classList.remove('vin'); void el.offsetW
 
 /* ---------- تبويب: الآن ---------- */
 function viewNow(){
-  var st=S.state, sh=st.shift, att=st.attendance, out=[];
-  // تقديرات غير مقروءة
-  (st.recognitions||[]).forEach(function(r){
-    out.push('<div class="card recog"><b>تقدير من الإدارة</b><div style="margin:6px 0">'+esc(r.text)+'</div><button class="btn sm ghost" data-a="ack">شكراً، قرأتها</button></div>');
-  });
-  // تسليم وارد
-  if(st.handover_in){
-    var hi=st.handover_in, items=hi.items||{};
-    out.push('<div class="card beige"><h3>تسليم شفت من '+esc(hi.from)+'</h3>'+
-      (hi.brief?handoverBriefCard(hi.brief,true):'')+
-      handoverItemsHtml(items)+
-      voicePlayHtml(hi.voice,'مذكرة صوتية من الزميلة')+
-      '<label class="f">ملاحظتك (اختياري)</label><input class="f" id="hoNote">'+
-      '<div class="btnrow"><button class="btn block" data-a="hoConfirm" data-id="'+hi.id+'">استلمت وفهمت ✔</button></div></div>');
-  }
-  // عرض تغطية غياب بانتظار موافقتها
-  if(st.cover_offer){
-    out.push('<div class="card beige"><h3>طلب تغطية غياب</h3>'+
-      '<div>الإدارة تطلب منك تغطية غياب <b>'+esc(st.cover_offer.from)+'</b> اليوم'+(st.cover_offer.area?' في <b>'+esc(st.cover_offer.area)+'</b>':'')+'.</div>'+
-      '<div class="muted small" style="margin:6px 0">موافقتك تُسجَّل لصالحك في التغطيات. الاعتذار حقك ولن يُحسب ضدك.</div>'+
-      '<div class="btnrow"><button class="btn block" data-a="covAccept" data-id="'+st.cover_offer.id+'">أوافق على التغطية ✔</button>'+
-      '<button class="btn ghost red block" data-a="covDecline" data-id="'+st.cover_offer.id+'">أعتذر اليوم</button></div></div>');
-  }
-  if(!sh){
-    out.push('<div class="card soft arch center" style="padding:28px 14px"><h3 style="justify-content:center">لا يوجد شفت مجدول لكِ اليوم</h3>'+
-      '<div class="muted">إن كنتِ في الكافيه فعلاً سجلي حضوراً غير مجدول — يُسجَّل وقتك الفعلي ويظهر للإدارة للمراجعة.</div>'+
-      '<div class="btnrow" style="justify-content:center">'+
-      '<button class="btn block" data-a="checkin">تسجيل حضور غير مجدول ✔</button>'+
-      '<button class="btn ghost block" data-a="goMore">مراسلة الإدارة / طلب إجازة</button></div></div>');
-    return out.join('');
-  }
-  // بطاقة الشفت
+  /* شاشة اليوم — أعيد بناؤها بمكوّنات نظام التصميم الجديد فقط (shift/rail/btn--/list/row/badge/card--accent).
+     أربع كتل بلا تمرير على شاشة 667px: شريط الشفت، زر واحد كبير، أول ٣ مهام، تنبيه واحد إن وُجد. */
+  var st=S.state, sh=st.shift, att=st.attendance;
   var inT = att && att['in'], outT = att && att.out;
-  out.push('<div class="card soft arch" style="padding-top:22px">'+
-    '<h3 style="justify-content:center;text-align:center">'+esc(sh.name)+' · '+esc(sh.area||'')+((sh.extra_areas&&sh.extra_areas.length)?' + '+sh.extra_areas.map(esc).join(' + '):'')+'</h3>'+
-    '<div class="center muted">'+fmtT(sh.start)+' → '+fmtT(sh.end)+' · استراحة '+mins(sh.break_minutes)+(sh.break_parts>1?' ('+sh.break_parts+' أجزاء)':'')+'</div>'+
-    (sh.daily_role?'<div class="center" style="margin-top:8px"><span class="chip ink">دورك اليوم: '+esc(sh.daily_role)+'</span></div>':'')+
-    '<hr class="sep">'+
-    '<div class="row" style="justify-content:space-around;text-align:center">'+
-      '<div><div class="muted small">الحضور</div><b>'+(inT?fmtT(inT):'—')+'</b>'+(att&&att.late>0?'<div class="chip orange small">تأخير '+mins(att.late)+'</div>':'')+'</div>'+
-      '<div><div class="muted small">الانصراف</div><b>'+(outT?fmtT(outT):'—')+'</b>'+(att&&att.overtime>0?'<div class="chip green small">إضافي '+mins(att.overtime)+'</div>':'')+'</div>'+
-    '</div>'+
-    '<div class="btnrow">'+
-      (!inT ? '<button class="btn block" data-a="checkin">تسجيل الحضور ✔</button>' :
-       !outT ? '<button class="btn orange block" data-a="checkout">تسجيل الانصراف</button>' :
-       '<div class="center muted grow">أُغلق يومك — تعبتِ معنا اليوم</div>')+
-    '</div></div>');
-  // الاستراحة
-  if(inT && !outT){
-    var done=(st.breaks||[]).filter(function(b){return b.end;}).length;
-    var openBr=(st.breaks||[]).filter(function(b){return !b.end;})[0];
-    out.push('<div class="card"><h3>الاستراحة'+(st.break_open&&openBr?' <span class="chip orange">جارية <b class="timer" data-brk="'+esc(openBr.start)+'">00:00</b></span>':'')+'</h3>'+
-      '<div class="muted small">المأخوذ اليوم: '+done+' من '+(sh.break_parts||1)+' · المخصص: '+mins(sh.break_minutes)+'</div>'+
-      '<div class="btnrow">'+
-      (st.break_open
-        ? '<button class="btn block" data-a="brEnd">أنهيت الاستراحة — رجعت</button>'
-        : '<button class="btn ghost" data-a="brStart">بدء استراحة</button><button class="btn ghost" data-a="brPost">تأجيل بسبب الضغط</button>')+
-      '</div></div>');
+
+  /* 1) شريط الشفت — مربوط بأوقات الشفت الحقيقية من Supabase */
+  var shiftBar;
+  if(!sh){
+    shiftBar='<div class="shift"><div class="shift__top"><div class="shift__now num">'+fmtT(Date.now())+'</div>'+
+      '<div class="shift__left">لا يوجد شفت مجدول اليوم</div></div></div>';
+  } else {
+    var now=Date.now(), s0=new Date(sh.start).getTime(), e0=new Date(sh.end).getTime();
+    var total=Math.max(1,e0-s0), pct=Math.min(1,Math.max(0,(now-s0)/total)), left;
+    if(now<s0) left='يبدأ '+fmtT(sh.start);
+    else if(now>=e0) left='انتهى الشفت';
+    else { var lm=Math.round((e0-now)/60000); left='باقٍ '+(lm>=60?Math.floor(lm/60)+' س '+(lm%60)+' د':lm+' د'); }
+    shiftBar='<div class="shift">'+
+      '<div class="shift__top"><div class="shift__now num">'+fmtT(Date.now())+'</div><div class="shift__left">'+esc(left)+'</div></div>'+
+      '<div class="rail" style="--pct:'+pct.toFixed(3)+'"><div class="rail__fill" style="transform:scaleX(var(--pct))"></div><div class="rail__marker" style="right:calc(var(--pct)*100%)"></div></div>'+
+      '<div class="rail__ends"><span class="num">'+fmtT(sh.start)+'</span><span class="num">'+fmtT(sh.end)+'</span></div>'+
+    '</div>';
   }
-  // ضغط منطقتي
-  var myP=null; (st.pressure||[]).forEach(function(p){ if(p.area_id===sh.area_id) myP=p; });
-  if(sh.area_id && (sh.tables||0)>0){
-    var occ=myP?myP.occupied:0, wait=myP?myP.waiting:'none';
-    out.push('<div class="card"><h3>ضغط منطقتك '+(myP&&myP.stale?'<span class="chip orange">التحديث قديم</span>':'')+'</h3>'+
-      '<div class="muted small">طاولات مشغولة من أصل '+sh.tables+'</div>'+
-      '<div class="step" style="margin:8px 0"><button data-a="occ" data-d="-1">−</button><div class="val" id="occV" data-v="'+occ+'" data-max="'+sh.tables+'">'+occ+'</div><button data-a="occ" data-d="1">+</button></div>'+
-      '<div class="seg" id="waitSeg">'+['none','low','high'].map(function(w){return '<button data-w="'+w+'" class="'+(w===wait?'on':'')+'">'+WAIT[w]+'</button>';}).join('')+'</div>'+
-      '<div class="check"><input type="checkbox" id="backlogC" '+(myP&&myP.backlog?'checked':'')+'><span>يوجد تراكم طلبات</span></div>'+
-      '<div class="check"><input type="checkbox" id="supC" '+(myP&&myP.needs_support?'checked':'')+'><span>أحتاج دعماً الآن</span></div>'+
-      '<div class="btnrow"><button class="btn block" data-a="pSend">تحديث الضغط</button></div></div>');
+
+  /* 2) زر واحد كبير: دخول أو خروج حسب الحالة */
+  var bigBtn;
+  if(!inT) bigBtn='<button class="btn btn--primary btn--block btn--lg" data-a="checkin">'+(sh?'تسجيل الحضور ✔':'تسجيل حضور غير مجدول ✔')+'</button>';
+  else if(!outT) bigBtn='<button class="btn btn--primary btn--block btn--lg" data-a="checkout">تسجيل الانصراف</button>';
+  else bigBtn='<div style="text-align:center"><span class="badge badge--success">أنهيتِ يومكِ — شكراً لكِ</span></div>';
+
+  /* 3) أول ٣ مهام غير منجزة */
+  var order={opening:0,during:1,adhoc:2,closing:3};
+  var pend=(st.tasks||[]).filter(function(t){return t.status!=='done'&&t.status!=='approved';})
+    .sort(function(a,b){return (order[a.phase]==null?9:order[a.phase])-(order[b.phase]==null?9:order[b.phase]);}).slice(0,3);
+  var tasksBox;
+  if(!pend.length){
+    tasksBox='<div class="list"><div class="row"><div class="row__body"><div class="row__title">لا مهام مطلوبة الآن</div><div class="row__sub">أنجزتِ كل مهامك — رائعة</div></div><span class="badge badge--success">تمام</span></div></div>';
+  } else {
+    var stMap={open:['badge--muted','لم تبدأ'],running:['badge--info','قيد التنفيذ'],paused:['badge--warn','متوقفة'],returned:['badge--danger','مُعادة']};
+    tasksBox='<div class="list">'+pend.map(function(t,i){
+      var b=stMap[t.status]||['badge--muted', (TSTAT[t.status]||'')];
+      return '<div class="row"><div class="row__avatar num">'+(i+1)+'</div>'+
+        '<div class="row__body"><div class="row__title">'+esc(t.name)+'</div>'+
+        '<div class="row__sub">'+esc(PHASE[t.phase]||'')+' · متوقعة '+mins(t.expected)+'</div></div>'+
+        '<span class="badge '+b[0]+'">'+esc(b[1])+'</span></div>';
+    }).join('')+'</div>';
   }
-  // مهام دوّارة يتناوبها الجميع بعدالة — النظام يوجّه الدور لمن نفّذتها الأقل، وأي زميلة فاضية تقدر تسبق
-  (st.recurring||[]).forEach(function(rt){
-    var pct = rt.target>0 ? Math.min(100, Math.round(100*rt.done/rt.target)) : 0;
-    var full = rt.target>0 && rt.done>=rt.target;
-    var overdue = !full && rt.cadence_min>0 && (!rt.last_ts || (Date.now()-new Date(rt.last_ts).getTime())/60000 >= rt.cadence_min);
-    var mineTurn = rt.turn && S.me && rt.turn.id===S.me.id;
-    var claim = rt.claim, claimedByOther = claim && !claim.mine, claimedByMe = claim && claim.mine;
-    var head='<h3>'+esc(rt.name)+' <span class="muted small" style="font-weight:400">'+esc(rt.area||'')+(rt.all_staff?' · للجميع':'')+'</span>'+
-      (full?' <span class="chip green">اكتمل</span>':overdue?' <span class="chip orange">حان وقتها</span>':'')+'</h3>';
-    var turnLine='';
-    if(!full && !claim){
-      if(mineTurn) turnLine='<div class="chip green" style="margin:3px 0">دورك الآن ✋</div>';
-      else if(rt.turn) turnLine='<div class="muted small" style="margin:3px 0">الدور التالي: <b>'+esc(rt.turn.name)+'</b> — وأي زميلة فاضية تقدر تسبقها</div>';
-    }
-    var counters = rt.target>0
-      ? '<div class="muted small">المطلوب اليوم: '+rt.done+' من '+rt.target+' · نصيبك: '+rt.mine+'</div><div class="pbar"><i style="width:'+pct+'%"></i></div>'
-      : '<div class="muted small">أُنجزت اليوم: '+rt.done+' مرة · نصيبك: '+rt.mine+'</div>';
-    var recent = (rt.recent&&rt.recent.length)?'<div class="small muted" style="margin-top:6px">آخر من نفّذها: '+rt.recent.map(function(x){return esc(x.who)+' ('+fmtT(x.ts)+')';}).join('، ')+'</div>':'';
-    var btns;
-    if(full) btns='<div class="btnrow"><button class="btn sm block" disabled>اكتمل المطلوب ✔</button></div>';
-    else if(claimedByOther) btns='<div class="chip orange" style="display:block;text-align:center;padding:9px;margin-top:8px"><b>'+esc(claim.who)+'</b> تقوم بها الآن</div>';
-    else if(claimedByMe) btns='<div class="btnrow"><button class="btn sm block" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'">تم، أنجزتها ✔</button>'+
-        '<button class="btn sm ghost" data-a="recRelease" data-id="'+rt.template_id+'">تراجع</button></div>';
-    else btns='<div class="btnrow"><button class="btn sm block" data-a="recClaim" data-id="'+rt.template_id+'">أنا بعملها الآن</button>'+
-        '<button class="btn sm ghost" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'">تم مباشرة ✔</button></div>';
-    out.push('<div class="card'+((mineTurn&&!claim)||overdue?' beige':'')+'">'+head+turnLine+counters+recent+btns+'</div>');
-  });
-  // نداءات المساعدة
-  var helps=st.help_open||[];
-  out.push('<div class="card"><h3>نداءات المساعدة</h3>'+
-    (helps.length ? helps.map(function(h){
-      return '<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:6px 0">'+
-        '<div><b>'+esc(h.area)+'</b> <span class="muted small">'+esc(h.note||'')+'</span>'+(h.mine?' <span class="chip">ندائي</span>':'')+'</div>'+
-        '<button class="btn sm ghost" data-a="helpClose" data-id="'+h.id+'">'+(h.mine?'إلغاء':'لبّيته ✔')+'</button></div>';
-    }).join('') : '<div class="muted small">لا نداءات الآن</div>')+
-    '<div class="btnrow"><button class="btn ghost" data-a="helpNew">طلب مساعدة لمنطقتي</button></div></div>');
-  out.push('<div id="opsWrap"></div>');
-  out.push('<div id="prepWrap"></div>');
-  return out.join('');
+
+  /* 4) تنبيه واحد فقط إن وُجد */
+  var alertBox='';
+  if(st.handover_in) alertBox='<div class="card card--accent"><div class="card__label">تنبيه — بانتظارك</div><div class="row__title">تسليم شفت من '+esc(st.handover_in.from)+'</div><div class="card__meta">افتحي تبويب «الشفت» لمراجعته وتأكيد الاستلام</div></div>';
+  else if(st.cover_offer) alertBox='<div class="card card--accent"><div class="card__label">تنبيه — بانتظارك</div><div class="row__title">طلب تغطية غياب'+(st.cover_offer.from?' — '+esc(st.cover_offer.from):'')+'</div><div class="card__meta">افتحي تبويب «الشفت» للرد</div></div>';
+  else if((st.recognitions||[]).length) alertBox='<div class="card card--accent"><div class="card__label">تقدير من الإدارة</div><div class="row__title">'+esc(st.recognitions[0].text)+'</div></div>';
+
+  // قاعدة عدم التمرير على شاشة 667px: التنبيه هو الكتلة السفلى — يُحذف عند امتلاء المهام الثلاث
+  if(alertBox && pend.length>=3) alertBox='';
+
+  return '<section class="today">'+shiftBar+bigBtn+tasksBox+alertBox+'</section>';
 }
 /* ===== محطة التحضير — تظهر فقط لمن لديها أصناف ضمن منطقتها ===== */
 function prepRemain(exp){ var ms=new Date(exp).getTime()-Date.now(); if(ms<=0) return 'منتهية';
@@ -1620,8 +1664,30 @@ function completeFlow(t){
 
 /* ---------- تبويب: الشفت ---------- */
 function viewShift(){
-  var st=S.state, sh=st.shift, out=[];
-  if(!sh) return '<div class="empty">لا يوجد شفت اليوم</div>';
+  var st=S.state, sh=st.shift, att=st.attendance, out=[];
+  // تقديرات غير مقروءة (تظهر دائماً)
+  (st.recognitions||[]).forEach(function(r){
+    out.push('<div class="card recog"><b>تقدير من الإدارة</b><div style="margin:6px 0">'+esc(r.text)+'</div><button class="btn sm ghost" data-a="ack">شكراً، قرأتها</button></div>');
+  });
+  // تسليم وارد
+  if(st.handover_in){
+    var hi=st.handover_in, hitems=hi.items||{};
+    out.push('<div class="card beige"><h3>تسليم شفت من '+esc(hi.from)+'</h3>'+
+      (hi.brief?handoverBriefCard(hi.brief,true):'')+
+      handoverItemsHtml(hitems)+
+      voicePlayHtml(hi.voice,'مذكرة صوتية من الزميلة')+
+      '<label class="f">ملاحظتك (اختياري)</label><input class="f" id="hoNote">'+
+      '<div class="btnrow"><button class="btn block" data-a="hoConfirm" data-id="'+hi.id+'">استلمت وفهمت ✔</button></div></div>');
+  }
+  // عرض تغطية غياب بانتظار موافقتها
+  if(st.cover_offer){
+    out.push('<div class="card beige"><h3>طلب تغطية غياب</h3>'+
+      '<div>الإدارة تطلب منك تغطية غياب <b>'+esc(st.cover_offer.from)+'</b> اليوم'+(st.cover_offer.area?' في <b>'+esc(st.cover_offer.area)+'</b>':'')+'.</div>'+
+      '<div class="muted small" style="margin:6px 0">موافقتك تُسجَّل لصالحك في التغطيات. الاعتذار حقك ولن يُحسب ضدك.</div>'+
+      '<div class="btnrow"><button class="btn block" data-a="covAccept" data-id="'+st.cover_offer.id+'">أوافق على التغطية ✔</button>'+
+      '<button class="btn ghost red block" data-a="covDecline" data-id="'+st.cover_offer.id+'">أعتذر اليوم</button></div></div>');
+  }
+  if(!sh){ out.push('<div class="empty">لا يوجد شفت اليوم</div>'); return out.join(''); }
   out.push('<div class="card beige"><h3>تفاصيل الشفت</h3>'+
     '<div>'+esc(sh.name)+' · '+esc(sh.area||'')+((sh.extra_areas&&sh.extra_areas.length)?' <span class="chip green">+ '+sh.extra_areas.map(esc).join(' + ')+'</span>':'')+'</div>'+
     '<div class="muted">'+fmtT(sh.start)+' → '+fmtT(sh.end)+'</div>'+
@@ -1644,6 +1710,70 @@ function viewShift(){
   out.push('<div class="card"><h3>نبض يومك (سري)</h3><div class="muted small">كيف كان شعورك في العمل اليوم؟ يظهر للإدارة مجمّعاً فقط.</div>'+
     '<div class="row" id="moodRow" style="justify-content:space-between;margin-top:8px">'+
     [1,2,3,4,5].map(function(m){return '<button class="moodb" data-a="mood" data-m="'+m+'">'+moodFace(m,28)+'</button>';}).join('')+'</div></div>');
+  // ===== عمليات الشفت (الاستراحة، الضغط، المهام الدوّارة، المساعدة، الجاهزية، التحضير) =====
+  var inT = att && att['in'], outT = att && att.out;
+  // الاستراحة
+  if(inT && !outT){
+    var done=(st.breaks||[]).filter(function(b){return b.end;}).length;
+    var openBr=(st.breaks||[]).filter(function(b){return !b.end;})[0];
+    out.push('<div class="card"><h3>الاستراحة'+(st.break_open&&openBr?' <span class="chip orange">جارية <b class="timer" data-brk="'+esc(openBr.start)+'">00:00</b></span>':'')+'</h3>'+
+      '<div class="muted small">المأخوذ اليوم: '+done+' من '+(sh.break_parts||1)+' · المخصص: '+mins(sh.break_minutes)+'</div>'+
+      '<div class="btnrow">'+
+      (st.break_open
+        ? '<button class="btn block" data-a="brEnd">أنهيت الاستراحة — رجعت</button>'
+        : '<button class="btn ghost" data-a="brStart">بدء استراحة</button><button class="btn ghost" data-a="brPost">تأجيل بسبب الضغط</button>')+
+      '</div></div>');
+  }
+  // ضغط منطقتي
+  var myP=null; (st.pressure||[]).forEach(function(p){ if(p.area_id===sh.area_id) myP=p; });
+  if(sh.area_id && (sh.tables||0)>0){
+    var occ=myP?myP.occupied:0, wait=myP?myP.waiting:'none';
+    out.push('<div class="card"><h3>ضغط منطقتك '+(myP&&myP.stale?'<span class="chip orange">التحديث قديم</span>':'')+'</h3>'+
+      '<div class="muted small">طاولات مشغولة من أصل '+sh.tables+'</div>'+
+      '<div class="step" style="margin:8px 0"><button data-a="occ" data-d="-1">−</button><div class="val" id="occV" data-v="'+occ+'" data-max="'+sh.tables+'">'+occ+'</div><button data-a="occ" data-d="1">+</button></div>'+
+      '<div class="seg" id="waitSeg">'+['none','low','high'].map(function(w){return '<button data-w="'+w+'" class="'+(w===wait?'on':'')+'">'+WAIT[w]+'</button>';}).join('')+'</div>'+
+      '<div class="check"><input type="checkbox" id="backlogC" '+(myP&&myP.backlog?'checked':'')+'><span>يوجد تراكم طلبات</span></div>'+
+      '<div class="check"><input type="checkbox" id="supC" '+(myP&&myP.needs_support?'checked':'')+'><span>أحتاج دعماً الآن</span></div>'+
+      '<div class="btnrow"><button class="btn block" data-a="pSend">تحديث الضغط</button></div></div>');
+  }
+  // مهام دوّارة يتناوبها الجميع بعدالة
+  (st.recurring||[]).forEach(function(rt){
+    var pct = rt.target>0 ? Math.min(100, Math.round(100*rt.done/rt.target)) : 0;
+    var full = rt.target>0 && rt.done>=rt.target;
+    var overdue = !full && rt.cadence_min>0 && (!rt.last_ts || (Date.now()-new Date(rt.last_ts).getTime())/60000 >= rt.cadence_min);
+    var mineTurn = rt.turn && S.me && rt.turn.id===S.me.id;
+    var claim = rt.claim, claimedByOther = claim && !claim.mine, claimedByMe = claim && claim.mine;
+    var head='<h3>'+esc(rt.name)+' <span class="muted small" style="font-weight:400">'+esc(rt.area||'')+(rt.all_staff?' · للجميع':'')+'</span>'+
+      (full?' <span class="chip green">اكتمل</span>':overdue?' <span class="chip orange">حان وقتها</span>':'')+'</h3>';
+    var turnLine='';
+    if(!full && !claim){
+      if(mineTurn) turnLine='<div class="chip green" style="margin:3px 0">دورك الآن ✋</div>';
+      else if(rt.turn) turnLine='<div class="muted small" style="margin:3px 0">الدور التالي: <b>'+esc(rt.turn.name)+'</b> — وأي زميلة فاضية تقدر تسبقها</div>';
+    }
+    var counters = rt.target>0
+      ? '<div class="muted small">المطلوب اليوم: '+rt.done+' من '+rt.target+' · نصيبك: '+rt.mine+'</div><div class="pbar"><i style="width:'+pct+'%"></i></div>'
+      : '<div class="muted small">أُنجزت اليوم: '+rt.done+' مرة · نصيبك: '+rt.mine+'</div>';
+    var recent = (rt.recent&&rt.recent.length)?'<div class="small muted" style="margin-top:6px">آخر من نفّذها: '+rt.recent.map(function(x){return esc(x.who)+' ('+fmtT(x.ts)+')';}).join('، ')+'</div>':'';
+    var btns;
+    if(full) btns='<div class="btnrow"><button class="btn sm block" disabled>اكتمل المطلوب ✔</button></div>';
+    else if(claimedByOther) btns='<div class="chip orange" style="display:block;text-align:center;padding:9px;margin-top:8px"><b>'+esc(claim.who)+'</b> تقوم بها الآن</div>';
+    else if(claimedByMe) btns='<div class="btnrow"><button class="btn sm block" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'">تم، أنجزتها ✔</button>'+
+        '<button class="btn sm ghost" data-a="recRelease" data-id="'+rt.template_id+'">تراجع</button></div>';
+    else btns='<div class="btnrow"><button class="btn sm block" data-a="recClaim" data-id="'+rt.template_id+'">أنا بعملها الآن</button>'+
+        '<button class="btn sm ghost" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'">تم مباشرة ✔</button></div>';
+    out.push('<div class="card'+((mineTurn&&!claim)||overdue?' beige':'')+'">'+head+turnLine+counters+recent+btns+'</div>');
+  });
+  // نداءات المساعدة
+  var helps=st.help_open||[];
+  out.push('<div class="card"><h3>نداءات المساعدة</h3>'+
+    (helps.length ? helps.map(function(h){
+      return '<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:6px 0">'+
+        '<div><b>'+esc(h.area)+'</b> <span class="muted small">'+esc(h.note||'')+'</span>'+(h.mine?' <span class="chip">ندائي</span>':'')+'</div>'+
+        '<button class="btn sm ghost" data-a="helpClose" data-id="'+h.id+'">'+(h.mine?'إلغاء':'لبّيته ✔')+'</button></div>';
+    }).join('') : '<div class="muted small">لا نداءات الآن</div>')+
+    '<div class="btnrow"><button class="btn ghost" data-a="helpNew">طلب مساعدة لمنطقتي</button></div></div>');
+  out.push('<div id="opsWrap"></div>');
+  out.push('<div id="prepWrap"></div>');
   out.push('<div class="btnrow"><button class="btn ghost block" data-a="goMore">طلب إجازة / إذن تأخير من الإدارة</button></div>');
   return out.join('');
 }
@@ -2489,9 +2619,9 @@ ADMIN.attendance=function(v){
             '<div class="btnrow"><button class="btn sm" data-fa="'+f.id+'">اعتماد الوقت التقريبي</button><button class="btn sm ghost red" data-fr="'+f.id+'">رفض</button></div></div>');
         });
       }
-      out.push('<h3 style="margin-top:8px">حضور اليوم</h3><div class="scrollx"><table class="tbl"><tr><th>الموظفة</th><th>المنطقة</th><th>حضور</th><th>انصراف</th><th>تأخير</th><th>إضافي</th><th>تحقق</th></tr>'+
+      out.push('<h3 style="margin-top:8px">حضور اليوم</h3><div class="scrollx"><table class="tbl"><tr><th>الموظفة</th><th>المنطقة</th><th>حضور</th><th>انصراف</th><th>تأخير</th><th>إضافي</th><th>تحقق</th><th>تعديل</th></tr>'+
         (res.rows||[]).map(function(r,ri){
-          return '<tr><td><b>'+esc(r.employee)+'</b></td><td>'+esc(r.area||'—')+'</td><td>'+fmtT(r['in'])+'</td><td>'+fmtT(r.out)+'</td><td>'+(r.late>0?'<span class="chip orange">'+r.late+' د</span>':'—')+'</td><td>'+(r.ot>0?r.ot+' د':'—')+'</td><td>'+((r.in_selfie||r.out_selfie)?'<button class="btn sm ghost" data-selfie="'+ri+'"></button>':'—')+'</td></tr>';
+          return '<tr><td><b>'+esc(r.employee)+'</b></td><td>'+esc(r.area||'—')+'</td><td>'+fmtT(r['in'])+'</td><td>'+fmtT(r.out)+'</td><td>'+(r.late>0?'<span class="chip orange">'+r.late+' د</span>':'—')+'</td><td>'+(r.ot>0?r.ot+' د':'—')+'</td><td>'+((r.in_selfie||r.out_selfie)?'<button class="btn sm ghost" data-selfie="'+ri+'"></button>':'—')+'</td><td><button class="btn sm ghost" data-edat="'+ri+'">تعديل</button></td></tr>';
         }).join('')+'</table></div>');
       var posts=(res.postpones||[]).filter(function(p){return !p.compensated;});
       if(posts.length){
@@ -2520,7 +2650,25 @@ ADMIN.attendance=function(v){
           (r.in_selfie?'<b>الحضور '+fmtT(r['in'])+'</b><div class="small muted">'+geoTxt(r.in_geo)+'</div><img src="'+r.in_selfie+'" style="width:100%;border-radius:12px;margin:6px 0">':'<div class="muted small">لا صورة حضور</div>')+
           (r.out_selfie?'<hr class="sep"><b>الانصراف '+fmtT(r.out)+'</b><div class="small muted">'+geoTxt(r.out_geo)+'</div><img src="'+r.out_selfie+'" style="width:100%;border-radius:12px;margin:6px 0">':''));
       });});
+      $$('[data-edat]',v).forEach(function(b){ b.addEventListener('click', function(){
+        var r=(res.rows||[])[+b.getAttribute('data-edat')]; if(r) attEdit(r);
+      });});
     });
+  }
+  function attEdit(r){
+    if(!r.shift_id){ toast('لا يمكن التعديل — لا يوجد شفت مرتبط', true); return; }
+    sheet('تعديل وقت — '+esc(r.employee),
+      '<div class="muted small">الأوقات بتوقيت عمّان. اتركي الحقل فارغاً لعدم تغييره.</div>'+
+      '<label class="f">الحضور</label><input class="f" id="edIn" type="time" value="'+(r['in']?fmtT(r['in']):'')+'">'+
+      '<label class="f">الانصراف</label><input class="f" id="edOut" type="time" value="'+(r.out?fmtT(r.out):'')+'">'+
+      '<div class="btnrow"><button class="btn block" id="edGo">حفظ</button></div>',
+      function(ov, close){
+        $('#edGo',ov).addEventListener('click', function(){
+          busyWrap(this, function(){ return aAct('attendance_set',{shift_id:r.shift_id, in:$('#edIn',ov).value, out:$('#edOut',ov).value}).then(function(res){
+            if(res.ok){ close(); toast('تم تعديل الوقت ✔'); load(); } else toast(res.error||'خطأ', true);
+          }); });
+        });
+      });
   }
   $('#atDay').addEventListener('change', load); load();
 };
@@ -3519,10 +3667,10 @@ ADMIN.hours=function(v){
       if(!rows.length){ $('#hrB').innerHTML='<div class="empty">لا سجلات بهذا النطاق</div>'; return; }
       var total=rows.reduce(function(a,r){return a+(r.worked_hours||0);},0);
       $('#hrB').innerHTML='<div class="btnrow" style="margin-bottom:8px"><button class="btn sm ghost" id="hrCsv">تصدير CSV</button><span class="chip green">إجمالي '+total.toFixed(1)+' ساعة</span></div>'+
-        '<div class="scrollx"><table class="tbl"><tr><th>الموظفة</th><th>شفتات</th><th>ساعات</th><th>تأخير(د)</th><th>إضافي(د)</th><th>إغلاق تلقائي</th></tr>'+
-        rows.map(function(r){return '<tr><td><b>'+esc(r.employee)+'</b></td><td>'+r.shifts+'</td><td><b>'+r.worked_hours+'</b></td><td>'+r.late_min+'</td><td>'+r.ot_min+'</td><td>'+(r.auto_closed>0?'<span class="chip orange">'+r.auto_closed+'</span>':'—')+'</td></tr>';}).join('')+'</table></div>';
+        '<div class="scrollx"><table class="tbl"><tr><th>الموظفة</th><th>أيام الدوام</th><th>شفتات</th><th>ساعات</th><th>تأخير(د)</th><th>إضافي(د)</th><th>إغلاق تلقائي</th></tr>'+
+        rows.map(function(r){return '<tr><td><b>'+esc(r.employee)+'</b></td><td><b>'+(r.days!=null?r.days:'—')+'</b></td><td>'+r.shifts+'</td><td><b>'+r.worked_hours+'</b></td><td>'+r.late_min+'</td><td>'+r.ot_min+'</td><td>'+(r.auto_closed>0?'<span class="chip orange">'+r.auto_closed+'</span>':'—')+'</td></tr>';}).join('')+'</table></div>';
       $('#hrCsv').addEventListener('click', function(){
-        var keys=['employee','shifts','worked_hours','late_min','ot_min','auto_closed'], HH=['الموظفة','شفتات','ساعات','تأخير','إضافي','إغلاق تلقائي'];
+        var keys=['employee','days','shifts','worked_hours','late_min','ot_min','auto_closed'], HH=['الموظفة','أيام الدوام','شفتات','ساعات','تأخير','إضافي','إغلاق تلقائي'];
         var lines=[HH.join(',')].concat(rows.map(function(r){return keys.map(function(k){return '"'+String(r[k]).replace(/"/g,'""')+'"';}).join(',');}));
         dlFile('سجل-الساعات-'+$('#hrFrom').value+'.csv', '\ufeff'+lines.join('\r\n'), 'text/csv');
       });
