@@ -358,6 +358,19 @@ nav.bottom button.on{position:relative}
 .hb-sub{padding:2px 0 5px;line-height:2.1}
 .hb-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
 .warn{color:var(--amber);font-weight:800}
+/* مشرف الشفت الرقمي */
+.card.ops{background:var(--surface);border-color:var(--line)}
+.ops-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:var(--brand);margin-bottom:2px}
+.ops-h svg{width:20px;height:20px;stroke:var(--brand);flex:none}
+.ops-h span{flex:1}
+.ops-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.ops-lbl{font-size:14px;font-weight:600;flex:1;line-height:1.45}
+.ops-btns{display:flex;gap:7px;flex:none}
+.ops-y,.ops-n{width:38px;height:38px;border-radius:11px;border:1.5px solid var(--line);background:var(--surface-2);font-size:18px;font-weight:800;cursor:pointer;line-height:1;color:var(--muted);transition:background .12s,border-color .12s,color .12s}
+.ops-y.on{background:var(--green);border-color:var(--green);color:#fff}
+.ops-n.on{background:var(--red);border-color:var(--red);color:#fff}
+.ops-ok{color:var(--green);font-weight:800;font-size:14px;padding:4px 0}
+.ops-tr{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}}
 </style>
@@ -370,7 +383,7 @@ nav.bottom button.on{position:relative}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-20.3";
+var BUILD = "2026-07-21.1";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -700,7 +713,8 @@ var MI={
   ptt: svgi('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
   cover: svgi('<path d="M7 8h11l-3-3M17 16H6l3 3"/>'),
   prep: svgi('<path d="M9 3h6M10 3v4l-4 7a5 5 0 0 0 4.4 7.5h3.2A5 5 0 0 0 18 14l-4-7V3"/><path d="M7.5 14h9"/>'),
-  heat: svgi('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/>')
+  heat: svgi('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/>'),
+  ops: svgi('<path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>')
 };
 var IC={
   home:  svgi('<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5h4v5"/>'),
@@ -714,7 +728,10 @@ var IC={
   bell:  svgi('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
   moon:  svgi('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>'),
   sun:   svgi('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/>'),
-  auto:  svgi('<circle cx="12" cy="12" r="8"/><path d="M12 4v16" /><path d="M12 4a8 8 0 0 0 0 16" fill="currentColor" stroke="none"/>')
+  auto:  svgi('<circle cx="12" cy="12" r="8"/><path d="M12 4v16" /><path d="M12 4a8 8 0 0 0 0 16" fill="currentColor" stroke="none"/>'),
+  ready: svgi('<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1H9V4Z"/><path d="m9.3 13 1.9 1.9 3.5-4"/>'),
+  temp:  svgi('<path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0Z"/><path d="M12 9v6"/>'),
+  lock:  svgi('<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>')
 };
 
 /* ---------- هيكل تحميل (شيمر) ---------- */
@@ -1238,7 +1255,7 @@ function drawTab(){
   else if(S.tab==='grow'){ v.innerHTML=skel(3); loadGrow(v); }
   else v.innerHTML=viewMore();
   wireTab(v); animIn(v);
-  if(S.tab==='now') loadPrepCard();
+  if(S.tab==='now'){ loadPrepCard(); loadOpsCard(); }
   if($('#vn_nt',v)) voiceWire(v,'nt');
   if($('#vn_is',v)) voiceWire(v,'is');
 }
@@ -1337,6 +1354,7 @@ function viewNow(){
         '<button class="btn sm ghost" data-a="helpClose" data-id="'+h.id+'">'+(h.mine?'إلغاء':'لبّيته ✔')+'</button></div>';
     }).join('') : '<div class="muted small">لا نداءات الآن</div>')+
     '<div class="btnrow"><button class="btn ghost" data-a="helpNew">طلب مساعدة لمنطقتي</button></div></div>');
+  out.push('<div id="opsWrap"></div>');
   out.push('<div id="prepWrap"></div>');
   return out.join('');
 }
@@ -1394,6 +1412,84 @@ function loadPrepCard(){
           $('#ppDis',ov).addEventListener('click', function(){
             var why=prompt('سبب الإتلاف (اختياري):','');
             busyWrap(this, function(){ return sAct('prep_close',{id:bid,outcome:'discarded',note:why||''},true).then(function(){ toast('سُجّل في سجل الهدر'); close(); loadPrepCard(); }); });
+          });
+        });
+    }); });
+  }).catch(function(){});
+}
+
+/* ===== مشرف الشفت الرقمي — جاهزية الافتتاح، سلامة الحرارة، توثيق الإغلاق ===== */
+function opsChecklistHtml(title, icon, items, closing){
+  var crit=items.filter(function(i){return i.critical;});
+  var critOk=crit.filter(function(i){return i.status==='ok';}).length;
+  var done=crit.length && critOk===crit.length;
+  var anyFail=items.some(function(i){return i.status==='fail';});
+  var h='<div class="card ops"><div class="ops-h">'+icon+'<span>'+title+'</span>'+
+    (done?'<span class="chip green">'+(closing?'مكتمل ✔':'جاهز ✔')+'</span>':'<span class="chip '+(anyFail?'red':'orange')+'">'+critOk+'/'+crit.length+'</span>')+'</div>';
+  if(done){
+    h+='<div class="ops-ok">'+(closing?'تم توثيق إغلاق المنطقة باسمكِ ✔':'المنطقة جاهزة لاستقبال الضيوف ✔')+'</div>';
+    if(anyFail) h+='<div class="muted small" style="margin-top:4px">بند غير مطابق رُفع للإدارة.</div>';
+  } else {
+    h+='<div class="muted small" style="margin:2px 0 7px">'+(closing?'قبل انصرافكِ أكّدي إغلاق منطقتكِ — يُوثّق باسمكِ للشفت التالي والإدارة.':'قبل الافتتاح أكّدي كل بند. أي بند غير مطابق يُرفع للإدارة فوراً كبلاغ.')+'</div>';
+    items.forEach(function(it){
+      h+='<div class="ops-item"><div class="ops-lbl">'+esc(it.label)+(it.critical?'':' <span class="muted small">(غير حرج)</span>')+
+          (it.status==='fail'?' <span class="chip red">غير مطابق</span>':'')+'</div>'+
+        '<div class="ops-btns">'+
+          '<button class="ops-y'+(it.status==='ok'?' on':'')+'" data-rdy="'+it.id+'" data-s="ok" aria-label="مطابق">✓</button>'+
+          '<button class="ops-n'+(it.status==='fail'?' on':'')+'" data-rdy="'+it.id+'" data-s="fail" aria-label="غير مطابق">✗</button>'+
+        '</div></div>';
+    });
+  }
+  return h+'</div>';
+}
+function loadOpsCard(){
+  var w=$('#opsWrap'); if(!w) return;
+  sAct('ops_now',{}).then(function(r){
+    if(!r || !r.ready){ w.innerHTML=''; return; }
+    var now=new Date(r.now).getTime(), endT=new Date(r.end).getTime();
+    var open=r.opening||[], close=r.closing||[], temps=r.temps||[], html='';
+    if(open.length) html+=opsChecklistHtml('جاهزية الافتتاح', IC.ready, open, false);
+    if(temps.length){
+      html+='<div class="card ops"><div class="ops-h">'+IC.temp+'<span>سلامة الغذاء — الحرارة</span></div>'+
+        '<div class="muted small" style="margin:2px 0 7px">سجّلي قراءة كل جهاز في وقتها. أي قراءة خارج النطاق تُرفع للإدارة وتعني فحص المواد فوراً.</div>';
+      temps.forEach(function(t){
+        var last=t.last, badge;
+        if(t.due) badge='<span class="chip orange">مطلوب الآن</span>';
+        else if(last && !last.in_range) badge='<span class="chip red">خارج النطاق ('+last.reading+'°)</span>';
+        else if(last) badge='<span class="chip green">'+last.reading+'° ✔</span>';
+        else badge='<span class="chip">—</span>';
+        html+='<div class="ops-item"><div class="ops-lbl">'+esc(t.name)+
+            '<div class="muted small">النطاق '+t.min+' إلى '+t.max+'°C'+(last?' · آخر قراءة '+fmtT(last.ts):'')+'</div></div>'+
+          '<div class="ops-tr">'+badge+'<button class="btn sm '+(t.due?'':'ghost')+'" data-temp="'+t.id+'" data-nm="'+esc(t.name)+'" data-min="'+t.min+'" data-max="'+t.max+'">سجّلي</button></div></div>';
+      });
+      html+='</div>';
+    }
+    if(close.length && now > endT - 90*60000) html+=opsChecklistHtml('توثيق الإغلاق', IC.lock, close, true);
+    w.innerHTML=html;
+    $$('[data-rdy]',w).forEach(function(b){ b.addEventListener('click', function(){
+      var id=+b.getAttribute('data-rdy'), s=b.getAttribute('data-s');
+      if(s==='fail'){
+        var note=prompt('صِفي المشكلة (تُرفع للإدارة كبلاغ عاجل):',''); if(note===null) return;
+        sAct('readiness_check',{item_id:id,status:'fail',note:note||''},true).then(function(){ toast('سُجّل ورُفع للإدارة'); loadOpsCard(); });
+      } else {
+        sAct('readiness_check',{item_id:id,status:'ok'},true).then(function(){ loadOpsCard(); });
+      }
+    }); });
+    $$('[data-temp]',w).forEach(function(b){ b.addEventListener('click', function(){
+      var id=+b.getAttribute('data-temp'), nm=b.getAttribute('data-nm'), mn=b.getAttribute('data-min'), mx=b.getAttribute('data-max');
+      sheet('قراءة حرارة: '+nm,
+        '<div class="muted small">النطاق المسموح: '+mn+' إلى '+mx+'°C</div>'+
+        '<label class="f">القراءة (°C)</label><input class="f" id="tcVal" type="number" step="0.1" inputmode="decimal" placeholder="مثال: 4">'+
+        '<div class="btnrow"><button class="btn block" id="tcGo">سجّلي القراءة</button></div>',
+        function(ov, close2){
+          $('#tcGo',ov).addEventListener('click', function(){
+            var val=$('#tcVal',ov).value; if(val===''){ toast('أدخلي القراءة',true); return; }
+            busyWrap(this, function(){ return sAct('temp_check',{asset_id:id, reading:val},true).then(function(r2){
+              close2();
+              if(r2.out_of_range) toast('القراءة خارج النطاق — رُفعت للإدارة، تحقّقي من سلامة المواد',true);
+              else toast('سُجّلت القراءة ✔');
+              loadOpsCard();
+            }); });
           });
         });
     }); });
@@ -1887,7 +1983,7 @@ var SECS=[
   ['dash','','اليوم'],['board','','لوحة العمليات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
   ['issues','','البلاغات'],['logbook','','سجل الشفت'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['templates','','قوالب المهام'],
-  ['tasks','','مهام اليوم'],['prep','','محطة التحضير'],['attendance','','الحضور'],['skills','','المهارات'],
+  ['tasks','','مهام اليوم'],['prep','','محطة التحضير'],['ops','','الجاهزية والسلامة'],['attendance','','الحضور'],['skills','','المهارات'],
   ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
   ['evals','','التقييم الشهري'],['awards','','التقدير'],['requests','','الطلبات'],
   ['handovers','','التسليمات'],['reports','','التقارير'],['devices','','الأجهزة'],['settings','','الإعدادات'],
@@ -1895,7 +1991,7 @@ var SECS=[
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
-  ['تشغيل اليوم','g1',['board','live','heat','shifts','tasks','prep','attendance','cover','absence','handovers','issues','logbook','ptt']],
+  ['تشغيل اليوم','g1',['board','live','heat','shifts','tasks','prep','ops','attendance','cover','absence','handovers','issues','logbook','ptt']],
   ['التواصل والتحليل','g2',['digest','broadcast','analytics','hours','requests','reports']],
   ['الفريق','g2',['employees','skills','training','coop','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
@@ -2824,6 +2920,140 @@ ADMIN.heat=function(v){
 };
 
 /* ---------- محطة التحضير (Mise en Place) ---------- */
+/* ---------- مشرف الشفت: الجاهزية والسلامة ---------- */
+function opsAreaOpts(sel){ return '<option value="">كل المناطق</option>'+(A.areas||[]).map(function(a){return '<option value="'+a.id+'"'+((sel!=null&&sel==a.id)?' selected':'')+'>'+esc(a.name)+'</option>';}).join(''); }
+function opsTypeOpts(sel){ return '<option value="">كل الأنواع</option>'+(A.types||[]).map(function(t){return '<option value="'+t.id+'"'+((sel!=null&&sel==t.id)?' selected':'')+'>'+esc(t.name)+'</option>';}).join(''); }
+ADMIN.ops=function(v){
+  v.innerHTML='<div class="btnrow" style="flex-wrap:wrap"><button class="btn sm ghost" data-oc="ready">بنود الجاهزية</button><button class="btn sm ghost" data-oc="temp">أجهزة التبريد</button><button class="btn sm ghost" data-oc="log">سجل الحرارة</button></div><div id="opB">'+skel(3)+'</div>';
+  function load(){
+    aAct('ops_overview',{day:today()}).then(function(r){
+      var out='', temps=r.temps||[];
+      out+='<h3>سلامة الغذاء — الحرارة</h3>';
+      if(!temps.length) out+='<div class="card muted small">لا أجهزة تبريد مُعرّفة بعد — أضيفيها من «أجهزة التبريد».</div>';
+      temps.forEach(function(t){
+        var last=t.last, cls=(t.today_out>0)?'red':(t.overdue?'orange':'green');
+        out+='<div class="card" style="padding:11px 13px"><div class="row" style="justify-content:space-between"><b>'+esc(t.name)+'</b>'+
+          '<span class="chip '+cls+'">'+(t.today_out>0?t.today_out+' خارج النطاق':(t.overdue?'فحص متأخّر':'منضبطة'))+'</span></div>'+
+          '<div class="muted small">'+esc(t.area||'—')+' · النطاق '+t.min+' إلى '+t.max+'°C · كل '+t.interval+' د · '+t.today_readings+' قراءة اليوم</div>'+
+          (last?'<div class="small" style="margin-top:3px">آخر قراءة: <b style="color:'+(last.in_range?'var(--green)':'var(--red)')+'">'+last.reading+'°</b> — '+esc(last.who||'')+' '+fmtT(last.ts)+'</div>':'<div class="small muted" style="margin-top:3px">لا قراءات اليوم</div>')+'</div>';
+      });
+      var shifts=r.shifts||[];
+      out+='<h3 style="margin-top:12px">جاهزية الشفتات اليوم</h3>';
+      if(!shifts.length) out+='<div class="card muted small">لا شفتات نشطة اليوم.</div>';
+      shifts.forEach(function(s){
+        out+='<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between"><b>'+esc(s.employee)+'</b><span class="muted small">'+esc(s.area||'')+'</span></div>'+
+          '<div class="row" style="gap:6px;margin-top:5px"><span class="chip '+(s.opening_fail>0?'red':(s.opening_ok>0?'green':''))+'">افتتاح: '+s.opening_ok+' مطابق'+(s.opening_fail>0?' · '+s.opening_fail+' مشكلة':'')+'</span>'+
+          '<span class="chip '+(s.closing_ok>0?'green':'')+'">إغلاق: '+s.closing_ok+'</span></div></div>';
+      });
+      var fails=r.fails||[];
+      if(fails.length){
+        out+='<h3 style="margin-top:12px">بنود غير مطابقة اليوم</h3>';
+        fails.forEach(function(f){
+          out+='<div class="card beige" style="padding:9px 12px"><b>'+esc(f.label)+'</b> <span class="chip">'+(f.phase==='opening'?'افتتاح':'إغلاق')+'</span><div class="small muted">'+esc(f.who||'')+' · '+fmtT(f.ts)+(f.note?' — '+esc(f.note):'')+'</div></div>';
+        });
+      }
+      $('#opB').innerHTML=out;
+    });
+  }
+  $$('[data-oc]',v).forEach(function(b){ b.addEventListener('click', function(){
+    var k=b.getAttribute('data-oc');
+    if(k==='ready') opsReadyConfig(load); else if(k==='temp') opsTempConfig(load); else opsTempLog();
+  }); });
+  load();
+};
+function opsReadyConfig(after){
+  aAct('readiness_items',{}).then(function(r){
+    var rows=r.rows||[];
+    function list(ph){ return rows.filter(function(x){return x.phase===ph;}).map(function(it){
+      return '<div class="card" style="padding:9px 12px"><div class="row" style="justify-content:space-between"><b>'+esc(it.label)+'</b><span>'+(it.critical?'<span class="chip red">حرج</span>':'')+(it.active?'':' <span class="chip">معطّل</span>')+'</span></div>'+
+        '<div class="muted small">'+esc(it.area||'كل المناطق')+' · '+esc(it.type||'كل الأنواع')+'</div>'+
+        '<div class="btnrow"><button class="btn sm ghost" data-redit="'+it.id+'">تعديل</button><button class="btn sm ghost red" data-rdel="'+it.id+'">حذف</button></div></div>';
+    }).join('')||'<div class="muted small">لا بنود</div>'; }
+    sheet('بنود الجاهزية',
+      '<div class="muted small" style="margin-bottom:6px">قوائم يؤكّدها الفريق قبل الافتتاح وعند الإغلاق. البند «الحرج» يمنع اعتماد الجاهزية إن لم يُطابَق.</div>'+
+      '<div class="btnrow"><button class="btn sm" id="rAdd">+ بند جديد</button></div>'+
+      '<h3>الافتتاح</h3>'+list('opening')+'<h3 style="margin-top:10px">الإغلاق</h3>'+list('closing'),
+      function(ov, close){
+        function editor(it){
+          it=it||{};
+          sheet(it.id?'تعديل بند':'بند جديد',
+            '<label class="f">المرحلة</label><select class="f" id="riPhase"><option value="opening"'+(it.phase==='closing'?'':' selected')+'>الافتتاح</option><option value="closing"'+(it.phase==='closing'?' selected':'')+'>الإغلاق</option></select>'+
+            '<label class="f">البند</label><input class="f" id="riLabel" value="'+esc(it.label||'')+'">'+
+            '<label class="f">المنطقة</label><select class="f" id="riArea">'+opsAreaOpts(it.area_id)+'</select>'+
+            '<label class="f">نوع الشفت</label><select class="f" id="riType">'+opsTypeOpts(it.shift_type_id)+'</select>'+
+            '<label class="row" style="gap:8px;margin-top:8px"><input type="checkbox" id="riCrit"'+(it.critical!==false?' checked':'')+'> حرج (يمنع الجاهزية إن لم يُطابَق)</label>'+
+            '<label class="row" style="gap:8px"><input type="checkbox" id="riAct"'+(it.active!==false?' checked':'')+'> مفعّل</label>'+
+            '<label class="f">الترتيب</label><input class="f" id="riSort" type="number" value="'+(it.sort||0)+'">'+
+            '<div class="btnrow"><button class="btn block" id="riGo">حفظ</button></div>',
+            function(ov2, close2){
+              $('#riGo',ov2).addEventListener('click', function(){
+                var lbl=$('#riLabel',ov2).value.trim(); if(!lbl){toast('اكتبي البند',true);return;}
+                busyWrap(this, function(){ return aAct('readiness_item_save',{id:it.id||'', phase:$('#riPhase',ov2).value, label:lbl,
+                  area_id:$('#riArea',ov2).value, shift_type_id:$('#riType',ov2).value,
+                  critical:$('#riCrit',ov2).checked, active:$('#riAct',ov2).checked, sort:+$('#riSort',ov2).value||0}).then(function(res){
+                  if(res.ok){ close2(); close(); opsReadyConfig(after); } else toast(res.error||'خطأ',true);
+                }); });
+              });
+            });
+        }
+        $('#rAdd',ov).addEventListener('click', function(){ editor(null); });
+        $$('[data-redit]',ov).forEach(function(b){ b.addEventListener('click', function(){ var it=null; rows.forEach(function(x){if(x.id==+b.getAttribute('data-redit'))it=x;}); editor(it); }); });
+        $$('[data-rdel]',ov).forEach(function(b){ b.addEventListener('click', function(){ if(!confirm('حذف البند؟'))return; aAct('readiness_item_delete',{id:+b.getAttribute('data-rdel')}).then(function(){ close(); opsReadyConfig(after); }); }); });
+      });
+  });
+}
+function opsTempConfig(after){
+  aAct('temp_assets',{}).then(function(r){
+    var rows=r.rows||[];
+    sheet('أجهزة التبريد',
+      '<div class="muted small" style="margin-bottom:6px">لكل جهاز نطاق حرارة مسموح وفترة فحص. القراءة خارج النطاق تُنشئ بلاغاً عاجلاً تلقائياً.</div>'+
+      '<div class="btnrow"><button class="btn sm" id="tAdd">+ جهاز جديد</button></div>'+
+      (rows.map(function(it){
+        return '<div class="card" style="padding:9px 12px"><div class="row" style="justify-content:space-between"><b>'+esc(it.name)+'</b>'+(it.active?'':'<span class="chip">معطّل</span>')+'</div>'+
+          '<div class="muted small">'+esc(it.area||'—')+' · '+it.min+' إلى '+it.max+'°C · كل '+it.interval+' د</div>'+
+          '<div class="btnrow"><button class="btn sm ghost" data-tedit="'+it.id+'">تعديل</button><button class="btn sm ghost red" data-tdel="'+it.id+'">حذف</button></div></div>';
+      }).join('')||'<div class="muted small">لا أجهزة</div>'),
+      function(ov, close){
+        function editor(it){
+          it=it||{};
+          sheet(it.id?'تعديل جهاز':'جهاز جديد',
+            '<label class="f">الاسم</label><input class="f" id="taName" value="'+esc(it.name||'')+'" placeholder="مثال: ثلاجة المطبخ">'+
+            '<label class="f">المنطقة</label><select class="f" id="taArea">'+opsAreaOpts(it.area_id)+'</select>'+
+            '<div class="row"><div class="grow"><label class="f">أدنى °C</label><input class="f" id="taMin" type="number" step="0.1" value="'+(it.min!=null?it.min:1)+'"></div><div class="grow"><label class="f">أعلى °C</label><input class="f" id="taMax" type="number" step="0.1" value="'+(it.max!=null?it.max:5)+'"></div></div>'+
+            '<label class="f">الفترة بين الفحوصات (دقائق)</label><input class="f" id="taInt" type="number" value="'+(it.interval||240)+'">'+
+            '<label class="row" style="gap:8px;margin-top:8px"><input type="checkbox" id="taAct"'+(it.active!==false?' checked':'')+'> مفعّل</label>'+
+            '<div class="btnrow"><button class="btn block" id="taGo">حفظ</button></div>',
+            function(ov2, close2){
+              $('#taGo',ov2).addEventListener('click', function(){
+                var nm=$('#taName',ov2).value.trim(); if(!nm){toast('اكتبي الاسم',true);return;}
+                busyWrap(this, function(){ return aAct('temp_asset_save',{id:it.id||'', name:nm, area_id:$('#taArea',ov2).value,
+                  min:$('#taMin',ov2).value, max:$('#taMax',ov2).value, interval:+$('#taInt',ov2).value||240, active:$('#taAct',ov2).checked}).then(function(res){
+                  if(res.ok){ close2(); close(); opsTempConfig(after); } else toast(res.error||'خطأ',true);
+                }); });
+              });
+            });
+        }
+        $('#tAdd',ov).addEventListener('click', function(){ editor(null); });
+        $$('[data-tedit]',ov).forEach(function(b){ b.addEventListener('click', function(){ var it=null; rows.forEach(function(x){if(x.id==+b.getAttribute('data-tedit'))it=x;}); editor(it); }); });
+        $$('[data-tdel]',ov).forEach(function(b){ b.addEventListener('click', function(){ if(!confirm('حذف الجهاز؟'))return; aAct('temp_asset_delete',{id:+b.getAttribute('data-tdel')}).then(function(){ close(); opsTempConfig(after); }); }); });
+      });
+  });
+}
+function opsTempLog(){
+  var d7=addDays(today(),-7);
+  sheet('سجل الحرارة (سلامة الغذاء)',
+    '<div class="row"><input class="f grow" id="tlFrom" type="date" value="'+d7+'"><input class="f grow" id="tlTo" type="date" value="'+today()+'"><button class="btn sm" id="tlGo">عرض</button></div><div id="tlB" style="margin-top:10px">'+skel(2)+'</div>',
+    function(ov){
+      function load(){
+        aAct('temp_log_range',{from:$('#tlFrom',ov).value, to:$('#tlTo',ov).value}).then(function(r){
+          $('#tlB',ov).innerHTML=(r.rows||[]).map(function(l){
+            return '<div class="card" style="padding:8px 11px"><div class="row" style="justify-content:space-between"><b>'+esc(l.asset)+'</b><span class="chip '+(l.in_range?'green':'red')+'">'+l.reading+'°'+(l.in_range?'':' خارج النطاق')+'</span></div><div class="muted small">'+esc(l.who||'')+' · '+fmtD(l.ts)+' '+fmtT(l.ts)+' · النطاق '+l.min+'–'+l.max+'°'+(l.note?' — '+esc(l.note):'')+'</div></div>';
+          }).join('')||'<div class="empty">لا قراءات بهذا النطاق</div>';
+        });
+      }
+      $('#tlGo',ov).addEventListener('click', load); load();
+    });
+}
 ADMIN.prep=function(v){
   lookups(function(){
     Promise.all([aAct('prep_overview',{}), aAct('prep_items',{})]).then(function(rs){
