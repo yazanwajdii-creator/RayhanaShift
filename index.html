@@ -524,7 +524,7 @@ details.qa .qa-body{padding:0 16px 14px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-22.5";
+var BUILD = "2026-07-22.6";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -2325,7 +2325,7 @@ function startAdmin(){
 }
 var SECS=[
   ['dash','','اليوم'],['board','','لوحة العمليات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
-  ['issues','','البلاغات'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
+  ['issues','','البلاغات'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['templates','','قوالب المهام'],
   ['tasks','','مهام اليوم'],['prep','','محطة التحضير'],['ops','','الجاهزية والسلامة'],['attendance','','الحضور'],['skills','','المهارات'],
   ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
@@ -2336,7 +2336,7 @@ var SECS=[
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
   ['تشغيل اليوم','g1',['board','live','heat','shifts','tasks','prep','ops','attendance','cover','absence','handovers','issues','logbook','timeline','ptt']],
-  ['التواصل والتحليل','g2',['digest','broadcast','analytics','hours','requests','reports']],
+  ['التواصل والتحليل','g2',['ocanalytics','digest','broadcast','analytics','hours','requests','reports']],
   ['الفريق','g2',['employees','skills','training','coop','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
   ['النظام','g4',['devices','settings','audit']]
@@ -2533,6 +2533,50 @@ function loadDash(v){
 function mapAction(a){ return {absence:'absence',pressure:'reports',skills:'skills',breaks:'attendance',tasks:'tasks',handovers:'handovers',requests:'requests',attendance:'attendance',training:'training',flags:'flags',coverage:'absence'}[a]||'dash'; }
 
 var ADMIN={};
+
+/* ---------- مركز التحليلات (المجلد الرابع) ---------- */
+ADMIN.ocanalytics=function(v){
+  var preset=7;
+  function bar(label,val){ var col = val>=80?'':(val>=50?'var(--amber)':'var(--red)');
+    return '<div style="margin:0 0 8px"><div class="row" style="justify-content:space-between;font-size:13px"><span>'+esc(label)+'</span><span class="num" style="font-weight:800">'+val+'</span></div>'+
+      '<div class="pbar"><i style="width:'+Math.max(0,Math.min(100,val))+'%'+(col?';background:'+col:'')+'"></i></div></div>'; }
+  function tile(label,val,sub,ins){ return '<div class="card" style="padding:10px 12px"><div class="muted small">'+esc(label)+'</div>'+
+    '<div class="num" style="font-size:20px;font-weight:800">'+(ins?'—':esc(val))+'</div><div class="muted small">'+(ins?'بيانات غير كافية':esc(sub||''))+'</div></div>'; }
+  function render(r){
+    var h=r.health, c=h.components, out=[];
+    var hc = h.score>=80?'green':h.score>=60?'':'orange', hl=h.score>=80?'جيد':h.score>=60?'مقبول':'يحتاج مراجعة';
+    out.push('<div class="card" style="padding:14px"><div class="row" style="justify-content:space-between;align-items:flex-end">'+
+      '<div><div class="muted small">مؤشر الصحة التشغيلية</div><div class="num" style="font-size:38px;font-weight:900;line-height:1">'+h.score+'<span style="font-size:15px;color:var(--muted)"> / 100</span></div></div>'+
+      '<span class="chip '+hc+'">'+hl+'</span></div><div style="margin-top:12px">'+
+      bar('كفاية الطاقم',c.staffing)+bar('إتمام المهام الحرجة',c.critical)+bar('زمن رفع الموانع',c.blocker)+bar('الحمل المتأخر',c.overdue)+bar('استقرار المراحل',c.phase)+
+      '</div><div class="muted small" style="margin-top:6px">الفترة '+esc(r.period.from)+' → '+esc(r.period.to)+' · '+r.period.tasks+' مهمة (الملغاة مستثناة)</div></div>');
+    if((r.findings||[]).length){ out.push('<h3 style="margin:14px 2px 8px">أهم الملاحظات</h3>'+r.findings.map(function(f){
+      return '<div class="card decision" style="padding:10px 12px'+(f.severity==='warning'?';border-inline-start-color:var(--amber)':'')+'"><b>'+esc(f.text)+'</b>'+
+        '<div class="muted small" style="margin-top:2px">'+esc(f.recommend)+' · عيّنة '+f.sample+'</div></div>';
+    }).join('')); }
+    out.push('<h3 style="margin:14px 2px 8px">مقاييس تشغيلية</h3><div class="statrow three">'+
+      tile('المهام الحرجة',(r.critical.pct==null?'—':r.critical.pct+'%'),r.critical.done+'/'+r.critical.total+' · فات '+r.critical.missed,r.critical.insufficient)+
+      tile('وسيط رفع المانع',r.blocker.median_min+' د','أعلى 90%: '+r.blocker.p90_min+' د · '+r.blocker.count+' مانع',r.blocker.insufficient)+
+      tile('نسبة الترحيل',r.carryover.pct+'%',r.carryover.total+' مهمة',false)+'</div>');
+    var fr=r.fairness;
+    if((fr.rows||[]).length){ var mx=1; fr.rows.forEach(function(x){ if(x.total_weighted>mx) mx=x.total_weighted; });
+      out.push('<h3 style="margin:14px 2px 8px">توزيع العدالة — حِمل موزون + عمل خفي</h3><div class="card" style="padding:12px">'+fr.rows.map(function(x){
+        var pw=Math.round(100*x.total_weighted/mx);
+        return '<div style="margin:0 0 8px"><div class="row" style="justify-content:space-between;font-size:13px"><span>'+esc(x.name)+(x.insufficient?' <span class="chip">عيّنة قليلة</span>':'')+'</span>'+
+          '<span class="num">'+x.total_weighted+' د'+(x.hidden_min?' · خفي '+x.hidden_min:'')+'</span></div><div class="pbar"><i style="width:'+pw+'%"></i></div></div>';
+      }).join('')+'<div class="muted small" style="margin-top:6px">أقل عيّنة معتمدة '+fr.min_sample+' شفت · التباين '+fr.variance+' · لا تصنيف علني بين الموظفات</div></div>');
+    }
+    out.push('<div class="muted small" style="margin:12px 2px;padding:10px;border:1px dashed var(--line);border-radius:10px">'+esc(r.rules.note)+'</div>');
+    return out.join('');
+  }
+  function fetch2(){ var body=$('#ocBody'); if(!body) return; body.innerHTML=skel(3);
+    var to=today(), from=addDays(to,-(preset-1));
+    aAct('oc_analytics',{from:from,to:to}).then(function(r){ if(!r||!r.ok){ body.innerHTML='<div class="empty">تعذّر جلب التحليلات</div>'; return; } body.innerHTML=render(r); })
+      .catch(function(){ body.innerHTML='<div class="empty">تعذّر جلب التحليلات</div>'; }); }
+  v.innerHTML='<div class="row" style="gap:8px;margin-bottom:10px">'+[7,30,90].map(function(p){ return '<button class="btn sm'+(p===preset?'':' ghost')+'" data-p="'+p+'">'+(p===7?'٧ أيام':p===30?'٣٠ يوم':'٩٠ يوم')+'</button>'; }).join('')+'</div><div id="ocBody">'+skel(3)+'</div>';
+  $$('[data-p]',v).forEach(function(b){ b.addEventListener('click',function(){ preset=+b.getAttribute('data-p'); $$('[data-p]',v).forEach(function(x){ x.classList.toggle('ghost', x!==b); }); fetch2(); }); });
+  fetch2();
+};
 
 /* ---------- الموظفات ---------- */
 ADMIN.employees=function(v){
