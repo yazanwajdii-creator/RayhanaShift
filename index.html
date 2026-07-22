@@ -489,6 +489,15 @@ details.qa .qa-body{padding:0 16px 14px}
 .acc .acc-body button{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 4px;font-family:inherit;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:64px}
 .acc .acc-body button .ic{color:var(--brand);display:flex} .acc .acc-body button .ic svg{width:20px;height:20px}
 .decision{border-inline-start:3px solid var(--amber);}
+.wkstrip{display:flex;gap:5px;overflow-x:auto;padding:2px 0;-webkit-overflow-scrolling:touch}
+.wkd{flex:1;min-width:42px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:7px 2px;text-align:center;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:1px;align-items:center;color:var(--ink)}
+.wkd .dw{font-size:10px;color:var(--muted);font-weight:700}
+.wkd .dn{font-size:16px;font-weight:800;line-height:1.2}
+.wkd .dc{font-size:9.5px;color:var(--brand);font-weight:700;white-space:nowrap}
+.wkd.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.wkd.on .dw,.wkd.on .dc{color:rgba(255,255,255,.85)}
+.wkd.today{border-color:var(--amber);border-width:1.5px}
+.statrow.three{grid-template-columns:repeat(3,1fr)}
 .cdlg-txt{font-size:16px;line-height:1.7;padding:4px 0 14px}
 /* مشرف الشفت الرقمي */
 .card.ops{background:var(--surface);border-color:var(--line)}
@@ -515,7 +524,7 @@ details.qa .qa-body{padding:0 16px 14px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-22.2";
+var BUILD = "2026-07-22.3";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -2294,7 +2303,7 @@ function startAdmin(){
 }
 var SECS=[
   ['dash','','اليوم'],['board','','لوحة العمليات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
-  ['issues','','البلاغات'],['logbook','','سجل الشفت'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
+  ['issues','','البلاغات'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['templates','','قوالب المهام'],
   ['tasks','','مهام اليوم'],['prep','','محطة التحضير'],['ops','','الجاهزية والسلامة'],['attendance','','الحضور'],['skills','','المهارات'],
   ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
@@ -2304,7 +2313,7 @@ var SECS=[
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
-  ['تشغيل اليوم','g1',['board','live','heat','shifts','tasks','prep','ops','attendance','cover','absence','handovers','issues','logbook','ptt']],
+  ['تشغيل اليوم','g1',['board','live','heat','shifts','tasks','prep','ops','attendance','cover','absence','handovers','issues','logbook','timeline','ptt']],
   ['التواصل والتحليل','g2',['digest','broadcast','analytics','hours','requests','reports']],
   ['الفريق','g2',['employees','skills','training','coop','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
@@ -2323,8 +2332,46 @@ function drawAdmin(){
           return '<button data-sec="'+s[0]+'"><span class="ic">'+(MI[s[0]]||MI._def)+'</span>'+s[2]+'</button>';
         }).join('')+'</div></details>';
     }).join('');
-    v.innerHTML='<div id="dashTop">'+skel(2)+'</div>'+menuHtml;
+    v.innerHTML='<div class="row" style="margin-bottom:10px"><input class="f grow" id="admQ" placeholder="بحث سريع: موظفة، شفت، طلب، بلاغ، مهمة، قسم..." autocomplete="off"></div><div id="admQR"></div>'+
+      '<div id="dashTop">'+skel(2)+'</div>'+menuHtml;
     $$('.acc-body button',v).forEach(function(b){ b.addEventListener('click', function(){ S.adminSec=b.getAttribute('data-sec'); drawAdmin(); }); });
+    // البحث الشامل — نتائج مجمّعة، النقر يفتح القسم المناسب
+    (function(){
+      var qEl=$('#admQ'), qr=$('#admQR'), qt=null;
+      function go(sec){ S.adminSec=(sec&&ADMIN[sec])?sec:null; drawAdmin(); }
+      qEl.addEventListener('input', function(){
+        clearTimeout(qt); var q=qEl.value.trim();
+        if(q.length<2){ qr.innerHTML=''; return; }
+        qt=setTimeout(function(){
+          // أقسام مطابقة (محلي) + نتائج الخادم
+          var secHits=SECS.filter(function(s){ return s[2].indexOf(q)>-1; }).slice(0,4);
+          aAct('admin_search',{q:q}).then(function(r){
+            if(!r.ok || qEl.value.trim()!==q) return;
+            var out=[];
+            function grp(title, rows, fmt, sec){
+              if(!rows||!rows.length) return;
+              out.push('<div class="card" style="padding:9px 12px;margin-bottom:8px"><div class="muted small" style="font-weight:700;margin-bottom:4px">'+title+'</div>'+
+                rows.map(function(x){ return '<button class="btn sm ghost block" data-qgo="'+sec+'" style="justify-content:flex-start;text-align:right;margin:2px 0">'+fmt(x)+'</button>'; }).join('')+'</div>');
+            }
+            if(secHits.length) grp('الأقسام', secHits, function(s){return esc(s[2]);}, '');
+            secHits.forEach(function(){});
+            grp('الموظفات', r.employees, function(x){return esc(x.name)+(x.active?'':' <span class="chip red">موقوفة</span>');}, 'employees');
+            grp('شفتات هذا الأسبوع', r.shifts, function(x){return esc(x.employee)+' · '+fmtD(x.day)+(x.area?' · '+esc(x.area):'');}, 'shifts');
+            grp('الطلبات', r.requests, function(x){return esc(x.employee)+' — '+esc(x.type)+' <span class="chip '+(x.status==='pending'?'orange':'')+'">'+(REQSTAT[x.status]||x.status)+'</span>';}, 'requests');
+            grp('البلاغات', r.issues, function(x){return esc(x.title)+(x.reporter?' <span class="muted small">'+esc(x.reporter)+'</span>':'');}, 'issues');
+            grp('مهام اليوم', r.tasks, function(x){return esc(x.name)+' — '+esc(x.employee);}, 'tasks');
+            qr.innerHTML = out.length ? out.join('') : '<div class="card center muted small">لا نتائج لـ«'+esc(q)+'»</div>';
+            // أزرار الأقسام المطابقة تفتح قسمها مباشرة
+            var si=0;
+            $$('[data-qgo]',qr).forEach(function(b){
+              var sec=b.getAttribute('data-qgo');
+              if(sec==='') { var s=secHits[si++]; b.addEventListener('click', function(){ go(s?s[0]:null); }); }
+              else b.addEventListener('click', function(){ go(sec); });
+            });
+          }).catch(function(){});
+        }, 300);
+      });
+    })();
     animIn(v);
     loadDash($('#dashTop'));
     // تحديث تلقائي للوحة اليوم كل دقيقة
@@ -2389,7 +2436,30 @@ function loadDash(v){
         (a.impact?'<div class="muted small" style="margin-top:2px">الأثر: '+esc(a.impact)+'</div>':'')+
         (a.action?'<div class="btnrow"><button class="btn sm" data-go="'+esc(mapAction(a.action))+'">فتح واتخاذ قرار</button></div>':'')+'</div>');
     });
+    /* ضغط المناطق — من آخر تحديث لكل منطقة اليوم */
+    var prs=res.pressure||[];
+    if(prs.length){
+      out.push('<h3 style="margin:12px 2px 8px">ضغط المناطق</h3><div class="list">'+prs.map(function(p){
+        var lvl = p.support ? '<span class="badge badge--danger">تحتاج دعماً</span>'
+                : p.waiting==='high' ? '<span class="badge badge--warn">انتظار مرتفع</span>'
+                : (p.occupied>=p.tables*0.8) ? '<span class="badge badge--warn">شبه ممتلئة</span>'
+                : '<span class="badge badge--success">طبيعي</span>';
+        return '<div class="row"><div class="row__body"><div class="row__title">'+esc(p.area)+'</div>'+
+          '<div class="row__sub num">'+(p.occupied||0)+'/'+(p.tables||0)+' طاولة · آخر تحديث '+fmtT(p.ts)+'</div></div>'+lvl+'</div>';
+      }).join('')+'</div>');
+    }
+    out.push('<h3 style="margin:12px 2px 8px">آخر الأحداث <button class="btn sm ghost" data-go="timeline" style="float:left">عرض الكل</button></h3><div id="dashEv" class="list"><div class="row"><div class="row__body muted small">جارٍ التحميل…</div></div></div>');
     v.innerHTML=out.join('');
+    /* آخر ٨ أحداث مهمة من قصة اليوم */
+    aAct('timeline',{day:today()}).then(function(tl){
+      var evEl=$('#dashEv'); if(!evEl||!tl.ok) return;
+      var KIND2={in:'حضور',out:'انصراف',task:'مهمة',recurring:'دوّارة',help:'مساعدة',issue:'بلاغ',miss:'فحص فائت'};
+      var ev=(tl.events||[]).slice().sort(function(a,b){return new Date(b.ts)-new Date(a.ts);}).slice(0,8);
+      evEl.innerHTML = ev.length ? ev.map(function(e){
+        return '<div class="row"><div class="row__body"><div class="row__title" style="font-size:14px">'+(e.who?'<b>'+esc(e.who)+'</b> — ':'')+esc(e.text)+'</div>'+
+          '<div class="row__sub num">'+fmtT(e.ts)+(KIND2[e.kind]?' · '+KIND2[e.kind]:'')+'</div></div></div>';
+      }).join('') : '<div class="row"><div class="row__body muted small">لا أحداث بعد اليوم</div></div>';
+    }).catch(function(){});
     aAct('briefing',{}).then(function(bf){ var w=$('#briefWrap'); if(!w||!bf.ok) return;
       w.innerHTML='<div class="card" style="background:var(--hero);color:#F4EFE4;border:none"><h3 style="color:#F4EFE4;display:flex;gap:8px;align-items:center">'+brandMark(26)+' موجز اليوم</h3>'+
         (bf.lines||[]).map(function(l){ return '<div style="padding:3px 0;font-size:14px;opacity:.95">• '+esc(l)+'</div>'; }).join('')+'</div>';
@@ -2545,29 +2615,54 @@ ADMIN.areas=function(v){
 /* ---------- الشفتات ---------- */
 ADMIN.shifts=function(v){
   lookups(function(){
-    var day=today();
-    v.innerHTML='<div class="row"><input class="f grow" id="shDay" type="date" value="'+day+'"><button class="btn sm" id="shNew">+ شفت</button><button class="btn sm ghost" id="shCopy">نسخ يوم</button></div><div id="shList" style="margin-top:10px"></div>';
+    var sel=today();
+    // بداية الأسبوع: السبت
+    function wk0(d){ var x=new Date(d+'T12:00:00'); return addDays(d, -((x.getDay()+1)%7)); }
+    var wkStart=wk0(sel), week=[];
+    var DW=['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];
+    v.innerHTML='<input type="hidden" id="shDay" value="'+sel+'">'+
+      '<div class="row" style="gap:6px;align-items:stretch"><button class="btn sm ghost" id="wkPrev" aria-label="الأسبوع السابق">›</button>'+
+      '<div class="wkstrip grow" id="wkStrip"></div>'+
+      '<button class="btn sm ghost" id="wkNext" aria-label="الأسبوع التالي">‹</button></div>'+
+      '<div class="btnrow" style="margin:10px 0 0"><button class="btn sm" id="shNew">+ شفت</button><button class="btn sm ghost" id="shCopy">نسخ يوم</button></div>'+
+      '<div id="shList" style="margin-top:10px"></div>';
     var cur=[];
-    function load(){
-      var d=$('#shDay').value;
-      aAct('shifts_range',{from:d,to:d}).then(function(res){
-        cur=res.shifts||[];
-        $('#shList').innerHTML = cur.length ? cur.map(function(s){
-          return '<div class="card" style="padding:10px 12px'+(s.status==='absent'?';opacity:.55':'')+'"><div class="row" style="justify-content:space-between">'+
-            '<div><b>'+esc(s.employee)+'</b> — '+esc(s.type||'مخصص')+' · '+esc(s.area||'بلا منطقة')+((s.extra_area_names&&s.extra_area_names.length)?' <span class="chip green">+ '+s.extra_area_names.map(esc).join(' + ')+'</span>':'')+(s.status==='absent'?' <span class="chip red">غياب</span>':'')+
-            '<div class="muted small">'+fmtHM(s.start)+' → '+fmtHM(s.end)+(s.daily_role?' · '+esc(s.daily_role):'')+'</div></div>'+
-            '<div class="btnrow" style="margin:0"><button class="btn sm ghost" data-edit="'+s.id+'">تعديل</button><button class="btn sm ghost red" data-del="'+s.id+'">حذف</button></div></div></div>';
-        }).join('') : '<div class="empty">لا شفتات بهذا اليوم</div>';
-        $$('[data-del]',v).forEach(function(b){ b.addEventListener('click', function(){
-          if(!confirm('حذف هذا الشفت؟')) return;
+    function paintStrip(){
+      var tdy=today();
+      $('#wkStrip').innerHTML=DW.map(function(nm,i){
+        var d=addDays(wkStart,i), n=week.filter(function(s){return s.day===d && s.status!=='absent';}).length;
+        return '<button class="wkd'+(d===sel?' on':'')+(d===tdy?' today':'')+'" data-wd="'+d+'"><span class="dw">'+nm+'</span><span class="dn num">'+(+d.slice(8))+'</span><span class="dc">'+(n? n+' شفت':'—')+'</span></button>';
+      }).join('');
+      $$('[data-wd]',v).forEach(function(b){ b.addEventListener('click', function(){ sel=b.getAttribute('data-wd'); $('#shDay').value=sel; paintStrip(); paintDay(); }); });
+    }
+    function paintDay(){
+      cur=week.filter(function(s){ return s.day===sel; });
+      $('#shList').innerHTML = cur.length ? cur.map(function(s){
+        return '<div class="card" style="padding:10px 12px'+(s.status==='absent'?';opacity:.55':'')+'"><div class="row" style="justify-content:space-between">'+
+          '<div><b>'+esc(s.employee)+'</b> — '+esc(s.type||'مخصص')+' · '+esc(s.area||'بلا منطقة')+((s.extra_area_names&&s.extra_area_names.length)?' <span class="chip green">+ '+s.extra_area_names.map(esc).join(' + ')+'</span>':'')+(s.status==='absent'?' <span class="chip red">غياب</span>':'')+
+          '<div class="muted small">'+fmtHM(s.start)+' → '+fmtHM(s.end)+(s.daily_role?' · '+esc(s.daily_role):'')+'</div></div>'+
+          '<div class="btnrow" style="margin:0"><button class="btn sm ghost" data-edit="'+s.id+'">تعديل</button><button class="btn sm ghost red" data-del="'+s.id+'">حذف</button></div></div></div>';
+      }).join('') : '<div class="empty">لا شفتات — '+DW[(new Date(sel+'T12:00:00').getDay()+1)%7]+' '+fmtD(sel)+'</div>';
+      $$('[data-del]',v).forEach(function(b){ b.addEventListener('click', function(){
+        confirmSheet('حذف الشفت','سيُحذف هذا الشفت مع حضوره ومهامه المرتبطة به لهذا اليوم.','حذف',function(){
           aAct('shift_delete',{id:+b.getAttribute('data-del')}).then(load);
-        });});
-        $$('[data-edit]',v).forEach(function(b){ b.addEventListener('click', function(){
-          var s=null; cur.forEach(function(x){ if(x.id===+b.getAttribute('data-edit')) s=x; });
-          if(s) form(s);
-        });});
+        }, true);
+      });});
+      $$('[data-edit]',v).forEach(function(b){ b.addEventListener('click', function(){
+        var s=null; cur.forEach(function(x){ if(x.id===+b.getAttribute('data-edit')) s=x; });
+        if(s) form(s);
+      });});
+    }
+    function load(){
+      aAct('shifts_range',{from:wkStart,to:addDays(wkStart,6)}).then(function(res){
+        week=res.shifts||[];
+        // day قد يصل بتنسيقات مختلفة — طبّعيه إلى YYYY-MM-DD
+        week.forEach(function(s){ if(s.day && s.day.length>10) s.day=s.day.slice(0,10); });
+        paintStrip(); paintDay();
       });
     }
+    $('#wkPrev').addEventListener('click', function(){ wkStart=addDays(wkStart,-7); sel=wkStart; $('#shDay').value=sel; load(); });
+    $('#wkNext').addEventListener('click', function(){ wkStart=addDays(wkStart,7); sel=wkStart; $('#shDay').value=sel; load(); });
     function form(s){
       sheet(s ? 'تعديل شفت — '+s.employee : 'شفت جديد — '+$('#shDay').value,
         '<label class="f">الموظفة</label><select class="f" id="sE" '+(s?'disabled':'')+'>'+staffOpts(s?s.employee_id:null)+'</select>'+
@@ -3176,14 +3271,29 @@ ADMIN.reports=function(v){
     support_calls:'نداءات الدعم', count:'العدد', kinds:'الأنواع'};
   function cellVal(x){ if(x===null||x===undefined) return '—'; if(typeof x==='object') return Array.isArray(x)?x.join('، '):JSON.stringify(x); return String(x); }
   $('#rpGo').addEventListener('click', function(){
+    $('#rpB').innerHTML=skel(3);
     aAct('report',{type:$('#rpT').value, from:$('#rpF').value, to:$('#rpTo').value}).then(function(res){
       if(!res.ok){ $('#rpB').innerHTML='<div class="empty">'+esc(res.error||'خطأ')+'</div>'; return; }
       var rows=res.rows||[];
       if(!rows.length){ $('#rpB').innerHTML='<div class="empty">لا بيانات بهذا النطاق</div>'; return; }
       var keys=Object.keys(rows[0]);
-      $('#rpB').innerHTML='<div class="btnrow" style="margin-bottom:8px"><button class="btn sm ghost" id="rpCsv">تصدير CSV</button></div>'+
-        '<div class="scrollx"><table class="tbl"><tr>'+keys.map(function(k){return '<th>'+esc(COLS[k]||k)+'</th>';}).join('')+'</tr>'+
-        rows.map(function(r){ return '<tr>'+keys.map(function(k){ return '<td>'+esc(cellVal(r[k]))+'</td>'; }).join('')+'</tr>'; }).join('')+'</table></div>';
+      /* مؤشرات مختصرة أعلى التقرير */
+      var SUMK=['days','late_min','ot_min','done','total','returned','count','support_calls','late_times'];
+      var sums={}; keys.forEach(function(k){ if(SUMK.indexOf(k)>-1){ var s=0,num=true; rows.forEach(function(r){ var x=+r[k]; if(isNaN(x)) num=false; else s+=x; }); if(num) sums[k]=s; } });
+      var kpiKeys=Object.keys(sums).slice(0,3);
+      var kpi = kpiKeys.length ? '<div class="statrow three">'+kpiKeys.map(function(k){return '<div class="stat"><b class="num">'+sums[k]+'</b><span>'+esc(COLS[k]||k)+' (إجمالي)</span></div>';}).join('')+'</div>' : '';
+      /* بطاقات قابلة للتوسعة بدل جدول كثيف */
+      var TITLE_KEYS=['employee','area','day'];
+      var tk=null; TITLE_KEYS.forEach(function(k){ if(!tk && keys.indexOf(k)>-1) tk=k; }); tk=tk||keys[0];
+      var rest=keys.filter(function(k){return k!==tk;});
+      $('#rpB').innerHTML=kpi+
+        '<div class="btnrow" style="margin-bottom:8px"><span class="chip">'+rows.length+' سجل</span><button class="btn sm ghost" id="rpCsv">تصدير CSV</button></div>'+
+        rows.map(function(r){
+          var top=rest.slice(0,2).map(function(k){return esc(COLS[k]||k)+': <b class="num">'+esc(cellVal(r[k]))+'</b>';}).join(' · ');
+          return '<details class="qa"><summary><span>'+esc(cellVal(r[tk]))+'<span class="nl-sub" style="display:block;font-size:12px;font-weight:400;color:var(--muted)">'+top+'</span></span></summary><div class="qa-body">'+
+            rest.map(function(k){ return '<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:5px 0"><span class="muted small">'+esc(COLS[k]||k)+'</span><b class="num">'+esc(cellVal(r[k]))+'</b></div>'; }).join('')+
+          '</div></details>';
+        }).join('');
       $('#rpCsv').addEventListener('click', function(){
         var lines=[keys.map(function(k){return '"'+(COLS[k]||k).replace(/"/g,'""')+'"';}).join(',')];
         rows.forEach(function(r){ lines.push(keys.map(function(k){ return '"'+cellVal(r[k]).replace(/"/g,'""')+'"'; }).join(',')); });
