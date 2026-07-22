@@ -524,7 +524,7 @@ details.qa .qa-body{padding:0 16px 14px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-22.4";
+var BUILD = "2026-07-22.5";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1533,9 +1533,11 @@ function dashOps(mode){
 function heroTaskCard(t){
   var stTxt={open:'لم تبدأ',running:'قيد التنفيذ الآن',paused:'متوقفة مؤقتاً',returned:'مُعادة من الإدارة'}[t.status]||TSTAT[t.status]||'';
   var stCls={open:'',running:'green',paused:'orange',returned:'red'}[t.status]||'';
+  if(t.status==='paused'&&t.blocked){ stTxt='متوقفة — يوجد مانع'; stCls='red'; }
   var range='~'+t.expected+'–'+Math.round(t.expected*1.5)+' د';
   var prim, sec='';
   if(t.status==='running'){ prim='<button class="btn green block" data-a="tDone" data-id="'+t.id+'">إنهاء المهمة ✔</button>'; sec='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت</button>'; }
+  else if(t.status==='paused'&&t.blocked){ prim='<button class="btn block" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>'; }
   else if(t.status==='paused'){ prim='<button class="btn block" data-a="tResume" data-id="'+t.id+'">استئناف</button>'; }
   else { prim='<button class="btn block" data-a="tStart" data-id="'+t.id+'">ابدئي الآن</button>'; }
   var needs=[]; if(t.needs_photo||t.method==='photo') needs.push('تحتاج صورة'); if(t.needs_two||t.method==='two_person') needs.push('موظفتان'); if(t.method==='checklist') needs.push('قائمة تحقق'); if(t.needs_review||t.method==='review') needs.push('مراجعة إدارة');
@@ -1546,7 +1548,7 @@ function heroTaskCard(t){
     (t.status==='returned'&&t.admin_note?'<div class="small" style="color:var(--red);margin-top:6px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>':'')+
     '<div class="row" style="justify-content:space-between;margin-top:10px"><span class="chip '+stCls+'">'+stTxt+'</span>'+
     '<span class="btnrow" style="margin:0"><button class="btn sm ghost" data-a="tWhy" data-id="'+t.id+'">لماذا أنا؟</button><button class="btn sm ghost" data-a="goTasks">كل المهام</button></span></div>'+
-    '<div class="btnrow" style="margin-top:10px">'+prim+sec+'<button class="btn sm ghost red" data-a="tBlock" data-id="'+t.id+'">يوجد مانع</button></div></div>';
+    '<div class="btnrow" style="margin-top:10px">'+prim+sec+(t.blocked?'':'<button class="btn sm ghost red" data-a="tBlock" data-id="'+t.id+'">يوجد مانع</button>')+'</div></div>';
 }
 function viewNow(){
   /* شاشة «الآن» — سياقية: قبل الحضور / أثناء الشفت / قرب الإغلاق / بعد الانصراف */
@@ -1809,18 +1811,21 @@ function viewTasks(){
 }
 function taskCard(t){
   var stChip = {open:'',running:'green',paused:'orange',done:'green',approved:'green',returned:'red'}[t.status]||'';
+  var stLbl = TSTAT[t.status];
+  if(t.status==='paused'&&t.blocked){ stChip='red'; stLbl='مانع — موقوفة'; }
   var running = t.status==='running';
   var html='<div class="task'+(t.is_core?' core':'')+(t.status==='done'||t.status==='approved'?' done':'')+'" data-task="'+t.id+'">'+
     '<div class="t-h"><div><span class="name">'+esc(t.name)+'</span>'+(t.is_core?' <span class="chip orange">أساسية</span>':'')+(t.phase==='adhoc'?' <span class="chip ink">من الإدارة</span>':'')+
     (t.needs_photo?'':'')+(t.needs_two?'':'')+
     '<div class="muted small">متوقعة '+mins(t.expected)+' · صافي <span class="timer" data-net="'+(t.net||0)+'" data-run="'+(running?1:0)+'" data-since="'+Date.now()+'">'+secFmt(t.net)+'</span></div></div>'+
-    '<span class="chip '+stChip+'">'+TSTAT[t.status]+'</span></div>';
+    '<span class="chip '+stChip+'">'+stLbl+'</span></div>';
   if(t.status==='returned' && t.admin_note) html+='<div class="small" style="color:var(--red);margin-top:4px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>';
   html+='<div class="btnrow">';
   if(t.status==='open'||t.status==='returned') html+='<button class="btn sm" data-a="tStart" data-id="'+t.id+'">ابدئي</button>';
   if(running) html+='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت (خدمة ضيف)</button>'+
                     '<button class="btn sm" data-a="tDone" data-id="'+t.id+'">إنهاء ✔</button>';
-  if(t.status==='paused') html+='<button class="btn sm" data-a="tResume" data-id="'+t.id+'">استئناف</button>'+
+  if(t.status==='paused'&&t.blocked) html+='<button class="btn sm" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>';
+  else if(t.status==='paused') html+='<button class="btn sm" data-a="tResume" data-id="'+t.id+'">استئناف</button>'+
                     '<button class="btn sm ghost" data-a="tDone" data-id="'+t.id+'">إنهاء ✔</button>';
   html+='</div></div>';
   return html;
@@ -2188,6 +2193,11 @@ function wireTab(v){
       else if(a==='tBlock'){
         inputSheet('يوجد مانع','صِفي المانع (أداة معطلة، نقص مواد، منطقة مشغولة...)','مثال: ماكينة الجلي معطلة','تسجيل المانع',function(note){
           sAct('blocker_report',{task_id:id, note:note},true).then(function(r){ if(r.ok){ toast(r.msg||'سُجّل'); refresh(); } else toast(r.error||'خطأ',true); });
+        });
+      }
+      else if(a==='tUnblock'){
+        confirmSheet('إزالة المانع','هل زال المانع وتريدين استئناف المهمة؟','نعم، أُزيل واستأنف',function(){
+          sAct('blocker_resolve',{task_id:id},true).then(function(r){ if(r.ok){ toast(r.msg||'استؤنفت'); refresh(); } else toast(r.error||'خطأ',true); });
         });
       }
       else if(a==='mood'){ sAct('pulse_send',{mood:+b.getAttribute('data-m')},true).then(function(res){ toast(res.msg||'شكراً'); $$('.moodb').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }); }
