@@ -568,7 +568,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-23.1";
+var BUILD = "2026-07-23.2";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -629,6 +629,9 @@ function qSync(){
 window.addEventListener('online', function(){ updateDot(); qSync(); });
 window.addEventListener('offline', updateDot);
 function updateDot(){ var d=$('#syncdot'); if(!d) return; var pending=qGet().length; d.className = (navigator.onLine&&!pending) ? 'dot' : 'dot off'; d.title = pending? pending+' عملية بانتظار المزامنة' : (navigator.onLine?'متصل':'دون اتصال'); }
+/* CRB #1: إلغاء عمليات مهام معلّقة (بعد الانصراف) + قفل التنفيذ خارج الشفت */
+function qClear(pred){ var a=qGet(); a = pred ? a.filter(function(x){ return !pred(x); }) : []; qSet(a); }
+function workLocked(){ var a=S.state&&S.state.attendance; return !!(a&&a.out); }
 
 /* ---------- الاتصال بالخادم ---------- */
 function getKey(){ try{ var k=localStorage.getItem('rko_key'); if(k) return k; }catch(e){} return CONFIG.SUPABASE_ANON_KEY; }
@@ -851,7 +854,7 @@ function doAttendance(kind, pin, selfie){
         if(navigator.vibrate) navigator.vibrate(35);
         if(res.dup) toast('مسجّل مسبقاً');
         else if(res.unscheduled) toast('سُجّل حضورك (غير مجدول) — سيظهر للإدارة');
-        else if(isOut){ toast('سُجّل انصرافك — يعطيك العافية'); shiftEndCelebrate(); }
+        else if(isOut){ qClear(function(x){ return /^(task_|blocker_|recur)/.test(x.action||''); }); toast('سُجّل انصرافك — يعطيك العافية'); shiftEndCelebrate(); }
         else toast('صباح النشاط سُجّل حضورك');
         refresh();
       } else if(res.blockers){
@@ -1579,6 +1582,13 @@ function heroTaskCard(t){
   var stCls={open:'',running:'green',paused:'orange',returned:'red'}[t.status]||'';
   if(t.status==='paused'&&t.blocked){ stTxt='متوقفة — يوجد مانع'; stCls='red'; }
   var range='~'+t.expected+'–'+Math.round(t.expected*1.5)+' د';
+  if(workLocked()){
+    return '<div class="hero-task">'+
+      '<div class="ht-k">مهمتك · '+esc(PHASE[t.phase]||'')+(t.is_core?' · أساسية':'')+'</div>'+
+      '<div class="ht-name">'+esc(t.name)+'</div>'+
+      '<div class="row" style="justify-content:space-between;margin-top:10px"><span class="chip '+stCls+'">'+stTxt+'</span></div>'+
+      '<div class="card soft" style="margin:12px 0 0;padding:12px 14px;background:var(--surface-2);border:1px dashed var(--line)"><b>انتهى شفتك</b><div class="muted small" style="margin-top:2px">لا يمكن تنفيذ أو تعديل المهام خارج الشفت.</div></div></div>';
+  }
   var prim, sec='';
   if(t.status==='running'){ prim='<button class="btn green block" data-a="tDone" data-id="'+t.id+'">إنهاء المهمة ✔</button>'; sec='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت</button>'; }
   else if(t.status==='paused'&&t.blocked){ prim='<button class="btn block" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>'; }
@@ -1864,6 +1874,7 @@ function taskCard(t){
     '<div class="muted small">متوقعة '+mins(t.expected)+' · صافي <span class="timer" data-net="'+(t.net||0)+'" data-run="'+(running?1:0)+'" data-since="'+Date.now()+'">'+secFmt(t.net)+'</span></div></div>'+
     '<span class="chip '+stChip+'">'+stLbl+'</span></div>';
   if(t.status==='returned' && t.admin_note) html+='<div class="small" style="color:var(--red);margin-top:4px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>';
+  if(workLocked()){ html+='<div class="muted small" style="margin-top:8px">انتهى شفتك — العرض فقط</div></div>'; return html; }
   html+='<div class="btnrow">';
   if(t.status==='open'||t.status==='returned') html+='<button class="btn sm" data-a="tStart" data-id="'+t.id+'">ابدئي</button>';
   if(running) html+='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت (خدمة ضيف)</button>'+
