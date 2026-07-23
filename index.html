@@ -587,6 +587,14 @@ details.qa,.acc{border-radius:18px}
 .tseg{display:flex;gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:4px;margin:0 0 4px}
 .tseg button{flex:1;border:none;background:none;font-family:inherit;font-weight:700;font-size:13px;color:var(--muted);padding:8px 4px;border-radius:10px;cursor:pointer;transition:.15s var(--ease)}
 .tseg button.on{background:var(--surface);color:var(--brand);box-shadow:var(--sh-1)}
+/* شريط الشفت — حلقة تقدّم احترافية */
+.shift{background:var(--hero);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--e-brand,0 12px 30px rgba(27,62,48,.28))}
+.shift-ring-row{display:flex;align-items:center;gap:15px}
+.shift-ring{flex:none;filter:drop-shadow(0 3px 8px rgba(0,0,0,.2))}
+.shift-info{flex:1;min-width:0}
+.shift-info .sh-left{font-size:19px;font-weight:800;color:#fff;line-height:1.15;letter-spacing:-.01em}
+.shift-info .sh-sub{font-size:12px;color:rgba(255,255,255,.72);margin-top:3px;font-variant-numeric:tabular-nums}
+.shift .sh-now{font-size:22px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;align-self:flex-start}
 /* لمسة ضغط دقيقة على البطاقات القابلة للنقر */
 .list .row:active,.navlist button:active,.wkd:active{transform:scale(.985)}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}#ptr{display:none}}
@@ -600,7 +608,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-23.4";
+var BUILD = "2026-07-23.5";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1685,10 +1693,14 @@ function viewNow(){
   if(now<s0) left='يبدأ '+fmtT(sh.start);
   else if(now>=e0) left='انتهى الشفت';
   else { var lm=Math.round((e0-now)/60000); left='باقٍ '+(lm>=60?Math.floor(lm/60)+' س '+(lm%60)+' د':lm+' د'); }
-  var shiftBar='<div class="shift">'+
-    '<div class="shift__top"><div class="shift__now num">'+fmtT(Date.now())+'</div><div class="shift__left">'+esc(left)+'</div></div>'+
-    '<div class="rail" style="--pct:'+pct.toFixed(3)+'"><div class="rail__fill" style="transform:scaleX(var(--pct))"></div><div class="rail__marker" style="right:calc(var(--pct)*100%)"></div></div>'+
-    '<div class="rail__ends"><span class="num">'+fmtT(sh.start)+'</span><span class="num">'+fmtT(sh.end)+'</span></div></div>';
+  var pctN=Math.round(pct*100), dashA=(97.4*pct).toFixed(1);
+  var shiftBar='<div class="shift"><div class="shift-ring-row">'+
+    '<svg class="shift-ring" width="66" height="66" viewBox="0 0 36 36">'+
+      '<circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,.20)" stroke-width="3.4"/>'+
+      '<circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--amber)" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="'+dashA+' 200" transform="rotate(-90 18 18)"/>'+
+      '<text x="18" y="21" text-anchor="middle" fill="#fff" font-size="9.5" font-weight="800">'+pctN+'٪</text></svg>'+
+    '<div class="shift-info"><div class="sh-left">'+esc(left)+'</div><div class="sh-sub">'+fmtT(sh.start)+' → '+fmtT(sh.end)+' · استراحة '+mins(sh.break_minutes)+'</div></div>'+
+    '<div class="sh-now">'+fmtT(Date.now())+'</div></div></div>';
 
   /* ===== المرحلة 1: قبل تسجيل الحضور ===== */
   if(!inT){
@@ -2143,11 +2155,18 @@ function loadGrow(v){
     }
     if(mm.ok){
       var at=mm.attendance||{}, tk=mm.tasks||{};
-      out.push('<h3 style="margin:2px 2px 8px">شهري بلمحة</h3><div class="statgrid">'+
-        '<div class="stat"><div class="v">'+(at.days||0)+'</div><div class="l">يوم حضور</div></div>'+
-        '<div class="stat'+((at.late_times||0)>2?' warn':'')+'"><div class="v">'+(at.late_min||0)+'</div><div class="l">دقائق تأخير</div></div>'+
-        '<div class="stat"><div class="v">'+(tk.done||0)+'/'+(tk.total||0)+'</div><div class="l">مهام منجزة</div></div>'+
-      '</div>'+((mm.coverage||0)>0?'<div class="card soft" style="padding:10px 12px">غطّيتِ زميلاتك <b>'+mm.coverage+'</b> مرة هذا الشهر — الإدارة تراه وتقدّره</div>':''));
+      var tpct=(tk.total||0)>0?Math.round(100*(tk.done||0)/tk.total):0, tdash=(97.4*tpct/100).toFixed(1);
+      out.push('<h3 style="margin:8px 2px 8px">شهري بلمحة</h3>'+
+        '<div class="card"><div class="tdone-hero">'+
+          '<svg class="ring" width="62" height="62" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--surface-2)" stroke-width="4"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--brand)" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+tdash+' 200" transform="rotate(-90 18 18)"/></svg>'+
+          '<div style="flex:1;min-width:0"><div class="muted small">إنجاز المهام هذا الشهر</div><div class="v">'+(tk.done||0)+'<span style="font-size:15px;color:var(--muted);font-weight:700">/'+(tk.total||0)+'</span></div>'+
+            '<div class="muted small" style="margin-top:2px">'+tpct+'٪ من مهامك مُنجزة</div></div>'+
+          '<span class="chip '+(tpct>=80?'green':tpct>=50?'':'orange')+'" style="align-self:flex-start;font-weight:800">'+tpct+'٪</span></div></div>'+
+        '<div class="statrow three" style="margin-top:10px">'+
+          '<div class="stat good"><b>'+(at.days||0)+'</b><span>يوم حضور</span></div>'+
+          '<div class="stat'+((at.late_times||0)>2?' warn2':'')+'"><b>'+(at.late_min||0)+'</b><span>دقيقة تأخير</span></div>'+
+          '<div class="stat"><b>'+((eg.month||{}).ontime_days||at.ontime_days||0)+'</b><span>يوم التزام</span></div>'+
+        '</div>'+((mm.coverage||0)>0?'<div class="card soft" style="padding:10px 12px;margin-top:10px">غطّيتِ زميلاتك <b>'+mm.coverage+'</b> مرة هذا الشهر — الإدارة تراه وتقدّره</div>':''));
     }
     // المهارات لا تُعرض للموظفات إطلاقاً — إدارتها ومستوياتها لدى الإدارة فقط
     if((res.learning||[]).length){
