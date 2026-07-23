@@ -569,6 +569,24 @@ details.qa,.acc{border-radius:18px}
 .empty::before{content:"";width:54px;height:54px;border-radius:18px;background:radial-gradient(circle at 50% 40%,var(--green-soft),transparent 72%),var(--surface-2);
   box-shadow:inset 0 0 0 1px var(--line);flex:none;margin-bottom:2px}
 .card.center.muted{color:var(--muted)}
+/* تصنيف المهمة التشغيلي */
+.tclass{font-size:10.5px;font-weight:800;padding:2px 9px;border-radius:999px;vertical-align:middle;letter-spacing:-.01em}
+.tclass.amber{background:var(--amber-soft);color:var(--amber)}
+.tclass.brand{background:var(--green-soft);color:var(--brand)}
+.tclass.muted{background:var(--surface-2);color:var(--muted)}
+/* بطاقة المهمة — عمق أنعم */
+.task{border-radius:16px;box-shadow:var(--sh-1);transition:transform .16s var(--ease),box-shadow .2s}
+.task:active{transform:scale(.99)}
+.task .name{font-size:15.5px;letter-spacing:-.01em}
+.task .pbar{height:6px}
+.task .pbar i{background:linear-gradient(90deg,var(--green-2),var(--brand))}
+/* بطاقة إنجاز اليوم — أبرز */
+.tdone-hero{display:flex;align-items:center;gap:14px}
+.tdone-hero .ring{flex:none}
+.tdone-hero .v{font-size:26px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.tseg{display:flex;gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:4px;margin:0 0 4px}
+.tseg button{flex:1;border:none;background:none;font-family:inherit;font-weight:700;font-size:13px;color:var(--muted);padding:8px 4px;border-radius:10px;cursor:pointer;transition:.15s var(--ease)}
+.tseg button.on{background:var(--surface);color:var(--brand);box-shadow:var(--sh-1)}
 /* لمسة ضغط دقيقة على البطاقات القابلة للنقر */
 .list .row:active,.navlist button:active,.wkd:active{transform:scale(.985)}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}#ptr{display:none}}
@@ -582,7 +600,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-23.3";
+var BUILD = "2026-07-23.4";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1887,7 +1905,13 @@ function viewTasks(){
   if(!tasks.length && !hasChores) return '<div class="empty">لا مهام لليوم — تُولَّد تلقائياً عند وجود شفت ومنطقة</div>';
   var doneL=tasks.filter(function(t){return t.status==='done'||t.status==='approved';});
   var pct=tasks.length?Math.round(100*doneL.length/tasks.length):0;
-  if(tasks.length) out.push('<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between"><b>إنجاز اليوم</b><span class="chip '+(pct===100?'green':pct>=50?'':'orange')+'">'+doneL.length+'/'+tasks.length+'</span></div><div class="pbar"><i style="width:'+pct+'%"></i></div></div>');
+  if(tasks.length){ var dash=(97.4*pct/100).toFixed(1);
+    out.push('<div class="card"><div class="tdone-hero">'+
+      '<svg class="ring" width="62" height="62" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--surface-2)" stroke-width="4"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--brand)" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+dash+' 200" transform="rotate(-90 18 18)"/></svg>'+
+      '<div style="flex:1;min-width:0"><div class="muted small">إنجاز اليوم</div><div class="v">'+doneL.length+'<span style="font-size:15px;color:var(--muted);font-weight:700">/'+tasks.length+'</span></div>'+
+      '<div class="muted small" style="margin-top:2px">'+(pct===100?'اكتمل اليوم — أحسنتِ ✔':((tasks.length-doneL.length)+' مهمة متبقية'))+'</div></div>'+
+      '<span class="chip '+(pct===100?'green':pct>=50?'':'orange')+'" style="align-self:flex-start;font-weight:800">'+pct+'٪</span></div></div>');
+  }
   // قسمة سياقية: الإغلاق «قادم» حتى آخر 75 دقيقة من الشفت
   var sh=st.shift, nearEnd = sh ? (Date.now() >= new Date(sh.end).getTime() - 75*60000) : true;
   var pend=tasks.filter(function(t){return ['done','approved','carried','cancelled'].indexOf(t.status)<0;});
@@ -1914,11 +1938,13 @@ function taskCard(t){
   var stLbl = TSTAT[t.status];
   if(t.status==='paused'&&t.blocked){ stChip='red'; stLbl='مانع — موقوفة'; }
   var running = t.status==='running';
+  var CLS={live:{t:'خدمة',c:'amber'},support:{t:'دعم',c:'brand'},maintenance:{t:'صيانة',c:'muted'}};
+  var cl=CLS[t.op_class]||CLS.support;
+  var prog=(running && t.expected)?'<div class="pbar" style="margin-top:9px"><i style="width:'+Math.min(100,Math.round(((t.net||0)/60)/t.expected*100))+'%"></i></div>':'';
   var html='<div class="task'+(t.is_core?' core':'')+(t.status==='done'||t.status==='approved'?' done':'')+'" data-task="'+t.id+'">'+
-    '<div class="t-h"><div><span class="name">'+esc(t.name)+'</span>'+(t.is_core?' <span class="chip orange">أساسية</span>':'')+(t.phase==='adhoc'?' <span class="chip ink">من الإدارة</span>':'')+
-    (t.needs_photo?'':'')+(t.needs_two?'':'')+
-    '<div class="muted small">متوقعة '+mins(t.expected)+' · صافي <span class="timer" data-net="'+(t.net||0)+'" data-run="'+(running?1:0)+'" data-since="'+Date.now()+'">'+secFmt(t.net)+'</span></div></div>'+
-    '<span class="chip '+stChip+'">'+stLbl+'</span></div>';
+    '<div class="t-h"><div style="min-width:0"><span class="name">'+esc(t.name)+'</span> <span class="tclass '+cl.c+'">'+cl.t+'</span>'+(t.is_core?' <span class="chip orange">أساسية</span>':'')+(t.phase==='adhoc'?' <span class="chip ink">من الإدارة</span>':'')+
+    '<div class="muted small" style="margin-top:3px">متوقعة '+mins(t.expected)+' · صافي <span class="timer" data-net="'+(t.net||0)+'" data-run="'+(running?1:0)+'" data-since="'+Date.now()+'">'+secFmt(t.net)+'</span></div></div>'+
+    '<span class="chip '+stChip+'">'+stLbl+'</span></div>'+prog;
   if(t.status==='returned' && t.admin_note) html+='<div class="small" style="color:var(--red);margin-top:4px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>';
   if(workLocked()){ html+='<div class="muted small" style="margin-top:8px">انتهى شفتك — العرض فقط</div></div>'; return html; }
   html+='<div class="btnrow">';
