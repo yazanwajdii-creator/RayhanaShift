@@ -557,7 +557,21 @@ details.qa,.acc{border-radius:18px}
 .skel{border-radius:16px}
 .pbar{border-radius:999px;height:8px}
 .pbar i{background:linear-gradient(90deg,var(--brand),var(--green-2))}
-@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}}
+/* السحب للتحديث */
+#ptr{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;pointer-events:none;z-index:60;transform:translateY(-56px);opacity:0;transition:transform .18s var(--ease),opacity .18s}
+#ptr .ptr-c{margin-top:calc(8px + env(safe-area-inset-top));width:40px;height:40px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-lg);display:grid;place-items:center;color:var(--brand)}
+#ptr .ptr-c svg{width:20px;height:20px;transition:transform .1s linear}
+#ptr.on{opacity:1}
+#ptr.spin .ptr-c svg{animation:ptrspin .8s linear infinite}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
+/* حالات فارغة احترافية */
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:32px 18px;color:var(--muted)}
+.empty::before{content:"";width:54px;height:54px;border-radius:18px;background:radial-gradient(circle at 50% 40%,var(--green-soft),transparent 72%),var(--surface-2);
+  box-shadow:inset 0 0 0 1px var(--line);flex:none;margin-bottom:2px}
+.card.center.muted{color:var(--muted)}
+/* لمسة ضغط دقيقة على البطاقات القابلة للنقر */
+.list .row:active,.navlist button:active,.wkd:active{transform:scale(.985)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}#ptr{display:none}}
 </style>
 </head>
 <body class="no-nav">
@@ -568,7 +582,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-23.2";
+var BUILD = "2026-07-23.3";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1056,6 +1070,38 @@ function adminLoginSheet(){
 
 /* ============================ واجهة الموظفة ============================ */
 var tickT=null;
+function initPullRefresh(){
+  if(initPullRefresh._done) return; initPullRefresh._done=true;
+  var ptr=document.createElement('div'); ptr.id='ptr';
+  ptr.innerHTML='<div class="ptr-c">'+IC.refresh+'</div>';
+  document.body.appendChild(ptr);
+  var startY=0, pulling=false, dy=0, TH=72;
+  function sc(){ return document.scrollingElement||document.documentElement; }
+  function reset(){ ptr.className=''; ptr.style.transform='translateY(-56px)'; }
+  document.addEventListener('touchstart', function(e){
+    if(S.role!=='staff' || sc().scrollTop>4 || e.touches.length!==1){ pulling=false; return; }
+    startY=e.touches[0].clientY; pulling=true; dy=0;
+  }, {passive:true});
+  document.addEventListener('touchmove', function(e){
+    if(!pulling) return;
+    dy=e.touches[0].clientY-startY;
+    if(dy<=0 || sc().scrollTop>4){ reset(); if(sc().scrollTop>4) pulling=false; return; }
+    var pull=Math.min(dy*0.5, 80);
+    ptr.classList.add('on'); ptr.classList.toggle('ready', dy>TH);
+    ptr.style.transform='translateY('+(pull-56)+'px)';
+    var ic=ptr.querySelector('svg'); if(ic) ic.style.transform='rotate('+Math.min(dy*2,540)+'deg)';
+  }, {passive:true});
+  document.addEventListener('touchend', function(){
+    if(!pulling) return; pulling=false;
+    if(dy>TH){
+      ptr.classList.add('spin','on'); ptr.style.transform='translateY(8px)';
+      if(navigator.vibrate) navigator.vibrate(14);
+      refresh(); qSync(); loadNotifs();
+      setTimeout(reset, 850);
+    } else reset();
+    dy=0;
+  }, {passive:true});
+}
 function startStaff(){
   document.body.className='';
   S.tab='now';
@@ -1087,7 +1133,7 @@ function startStaff(){
   $$('nav.bottom button').forEach(function(b){
     b.addEventListener('click', function(){ S.tab=b.getAttribute('data-t'); paintTabs(); drawTab(); });
   });
-  updateDot(); idleReset(); paintTabs();
+  updateDot(); idleReset(); paintTabs(); initPullRefresh();
   // كاش آخر حالة لعرض فوري
   try{ var c=JSON.parse(localStorage.getItem('rko_state')||'null'); if(c){ S.state=c; drawTab(); } }catch(e){}
   // أثناء أول تحميل بلا كاش: هيكل تحميل (.sk) بدل شاشة فاضية
