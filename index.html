@@ -587,6 +587,22 @@ details.qa,.acc{border-radius:18px}
 .tseg{display:flex;gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:4px;margin:0 0 4px}
 .tseg button{flex:1;border:none;background:none;font-family:inherit;font-weight:700;font-size:13px;color:var(--muted);padding:8px 4px;border-radius:10px;cursor:pointer;transition:.15s var(--ease)}
 .tseg button.on{background:var(--surface);color:var(--brand);box-shadow:var(--sh-1)}
+/* مركز القيادة — شريط حالة الفرع + بطاقات KPI */
+.branchbar{display:flex;align-items:center;gap:11px;background:var(--hero);color:#fff;border-radius:18px;padding:14px 16px;box-shadow:var(--e-brand,0 12px 30px rgba(27,62,48,.28));margin-bottom:14px}
+.branchbar .bpulse{width:9px;height:9px;border-radius:50%;background:#8FEBB2;flex:none;box-shadow:0 0 0 0 rgba(143,235,178,.6);animation:bpulse 2.4s infinite}
+@keyframes bpulse{0%{box-shadow:0 0 0 0 rgba(143,235,178,.5)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.branchbar .binfo{flex:1;min-width:0}
+.branchbar .binfo b{font-size:15px;font-weight:800;display:block}
+.branchbar .binfo .bmeta{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:2px;font-variant-numeric:tabular-nums}
+.branchbar .bchip{background:rgba(255,255,255,.16);border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:800;white-space:nowrap;backdrop-filter:blur(4px)}
+.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:14px}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:15px 15px 14px;box-shadow:var(--sh-1);text-align:right;cursor:pointer;position:relative;overflow:hidden;font-family:inherit;color:inherit;transition:transform .16s var(--ease),box-shadow .2s}
+.kcard:active{transform:scale(.98)}
+.kcard .kl{font-size:12px;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:6px}
+.kcard .kl svg{width:15px;height:15px;opacity:.8}
+.kcard .kv{font-size:27px;font-weight:900;letter-spacing:-.02em;line-height:1;margin-top:8px}
+.kcard .ks{font-size:11px;color:var(--muted);margin-top:5px;font-weight:600}
+.kcard.ok .kv{color:var(--green)} .kcard.warn .kv{color:var(--amber)} .kcard.bad .kv{color:var(--red)}
 /* شريط الشفت — حلقة تقدّم احترافية */
 .shift{background:var(--hero);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--e-brand,0 12px 30px rgba(27,62,48,.28))}
 .shift-ring-row{display:flex;align-items:center;gap:15px}
@@ -608,7 +624,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-23.5";
+var BUILD = "2026-07-23.6";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -2578,12 +2594,18 @@ function loadDash(v){
     var notIn=onshift.filter(function(o){return !o['in'];}).length;
     var doneN=tks.filter(function(t){return t.status==='done'||t.status==='approved';}).length;
     var highN=(res.alerts||[]).filter(function(a){return a.sev==='high';}).length;
-    /* ملخص اليوم — أربع بطاقات أرقام */
-    out.push('<div class="statrow">'+
-      '<button class="stat good" data-go="attendance" style="cursor:pointer"><b>'+inN+'</b><span>حاضرات الآن</span></button>'+
-      '<button class="stat'+(notIn?' warn2':'')+'" data-go="attendance" style="cursor:pointer"><b>'+notIn+'</b><span>لم تحضر بعد</span></button>'+
-      '<button class="stat'+(tks.length&&doneN<tks.length?' warn2':' good')+'" data-go="tasks" style="cursor:pointer"><b>'+doneN+'/'+tks.length+'</b><span>مهام اليوم</span></button>'+
-      '<button class="stat'+(highN?' bad':'')+'" data-go="#alerts" style="cursor:pointer"><b>'+(res.alerts||[]).length+'</b><span>يحتاج قراراً</span></button>'+
+    var alN=(res.alerts||[]).length;
+    var SVG_PPL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c1-3.2 3.4-4.6 6-4.6s5 1.4 6 4.6" stroke-linecap="round"/></svg>';
+    var SVG_CLK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>';
+    var SVG_CHK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 12l2 2 4-4M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var SVG_ALERT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 8v5M12 16h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    /* شريط حالة الفرع الحيّ (يُملأ من wf_status) + بطاقات KPI */
+    out.push('<div id="branchBar" class="branchbar"><span class="bpulse"></span><div class="binfo"><b>مركز القيادة</b><div class="bmeta">جارٍ تحميل حالة الفرع…</div></div></div>');
+    out.push('<div class="kgrid">'+
+      '<button class="kcard good" data-go="attendance"><div class="kl">'+SVG_PPL+'حاضرات الآن</div><div class="kv">'+inN+'</div><div class="ks">على الشفت الآن</div></button>'+
+      '<button class="kcard'+(notIn?' warn':'')+'" data-go="attendance"><div class="kl">'+SVG_CLK+'لم تحضر بعد</div><div class="kv">'+notIn+'</div><div class="ks">من المجدولات</div></button>'+
+      '<button class="kcard'+(tks.length&&doneN<tks.length?' warn':' ok')+'" data-go="tasks"><div class="kl">'+SVG_CHK+'مهام اليوم</div><div class="kv">'+doneN+'<span style="font-size:16px;color:var(--muted);font-weight:700">/'+tks.length+'</span></div><div class="ks">'+(tks.length?Math.round(100*doneN/tks.length)+'٪ إنجاز':'لا مهام')+'</div></button>'+
+      '<button class="kcard'+(highN?' bad':(alN?' warn':''))+'" data-go="#alerts"><div class="kl">'+SVG_ALERT+'يحتاج قراراً</div><div class="kv">'+alN+'</div><div class="ks">'+(highN?highN+' حرجة':'لا حرجة')+'</div></button>'+
     '</div>');
     /* الفريق الآن — بطاقات حالة مختصرة */
     out.push('<h3 style="margin:4px 2px 8px">الفريق الآن</h3>');
@@ -2626,12 +2648,17 @@ function loadDash(v){
       var wst=rs[0]||{}, dec=(rs[1]&&rs[1].rows)||[];
       var phTxt=WFPH[wst.phase]||wst.phase||'';
       var prLvl=+wst.pressure||0;
-      var prChip = prLvl>=2 ? '<span class="chip red">ضغط مرتفع</span>' : prLvl===1 ? '<span class="chip orange">ضغط خفيف</span>' : '<span class="chip green">هادئ</span>';
-      var h='<div class="card" style="padding:10px 14px"><div class="row" style="justify-content:space-between"><b>مرحلة التشغيل الآن</b>'+
-        '<span class="btnrow" style="margin:0"><span class="chip '+(wst.phase==='peak'?'red':wst.phase==='closing'?'orange':'green')+'">'+esc(phTxt)+'</span>'+prChip+'</span></div>'+
-        (wst.since?'<div class="muted small">منذ '+fmtT(wst.since)+' — المحرك ينقل المراحل تلقائياً حسب الحضور والضغط والوقت</div>':'')+'</div>';
+      var prTxt = prLvl>=2 ? 'ضغط مرتفع' : prLvl===1 ? 'ضغط خفيف' : 'هادئ';
+      /* شريط حالة الفرع الحيّ — المرحلة + الضغط + منذ متى */
+      var bb=$('#branchBar');
+      if(bb){
+        bb.innerHTML='<span class="bpulse"></span><div class="binfo"><b>'+(phTxt?esc(phTxt):'الفرع يعمل')+'</b>'+
+          '<div class="bmeta">'+(wst.since?'منذ '+fmtT(wst.since)+' · ':'')+'يُدار آليًا حسب الحضور والضغط والوقت</div></div>'+
+          '<span class="bchip">'+esc(prTxt)+'</span>';
+      }
+      var h='';
       if(dec.length){
-        h+='<h3 style="margin:10px 2px 8px">قرارات المحرك اليوم ('+dec.length+')</h3>'+dec.slice(0,5).map(function(x){
+        h+='<h3 style="margin:12px 2px 8px">قرارات المحرك اليوم ('+dec.length+')</h3>'+dec.slice(0,5).map(function(x){
           return '<div class="card" style="padding:10px 12px"><div class="small"><b>'+esc(x.task||x.kind)+'</b>'+(x.employee?' — '+esc(x.employee):'')+'</div>'+
             '<div class="muted small" style="margin-top:2px">'+esc(x.explanation)+'</div>'+
             '<div class="row" style="justify-content:space-between;margin-top:5px"><span class="muted small num">'+fmtT(x.ts)+'</span>'+
