@@ -632,7 +632,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-24.9";
+var BUILD = "2026-07-25.1";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -2546,7 +2546,7 @@ function startAdmin(){
 }
 var SECS=[
   ['dash','','اليوم'],['board','','لوحة العمليات'],['ocdecisions','','مركز القرارات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
-  ['issues','','البلاغات'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],
+  ['issues','','البلاغات'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],['roster','','جدولة تلقائية'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['templates','','قوالب المهام'],
   ['tasks','','مهام اليوم'],['prep','','محطة التحضير'],['ops','','الجاهزية والسلامة'],['attendance','','الحضور'],['skills','','المهارات'],
   ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
@@ -2556,7 +2556,7 @@ var SECS=[
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
-  ['تشغيل اليوم','g1',['board','ocdecisions','live','heat','shifts','tasks','prep','ops','attendance','cover','absence','handovers','issues','logbook','timeline','ptt']],
+  ['تشغيل اليوم','g1',['board','ocdecisions','live','heat','roster','shifts','tasks','prep','ops','attendance','cover','absence','handovers','issues','logbook','timeline','ptt']],
   ['التواصل والتحليل','g2',['ocanalytics','digest','broadcast','analytics','hours','requests','reports']],
   ['الفريق','g2',['employees','skills','training','coop','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
@@ -3250,6 +3250,139 @@ ADMIN.shifts=function(v){
 };
 
 /* ---------- قوالب المهام ---------- */
+/* ---------- الجدولة التلقائية: المحرك يبني الأسبوع، والمالك يراجع الاستثناء ---------- */
+var DOWAR=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+ADMIN.roster=function(v){
+  v.innerHTML='<div id="rsBody"><div class="skel" style="height:120px"></div></div>';
+  function load(){
+    aAct('roster_get',{}).then(function(res){
+      var out=[], run=res.run, slots=res.slots||[];
+      out.push('<div class="card" style="padding:13px 15px">'+
+        '<div class="row" style="justify-content:space-between;align-items:flex-start">'+
+          '<div><b>جدولة الأسبوع تلقائياً</b><div class="muted small" style="margin-top:2px">'+
+          'يبني المحرك الجدول من التغطية والإجازات والتوافر والمهارات والإنصاف — وتراجعين الاستثناء فقط.</div></div></div>'+
+        '<div class="row" style="gap:8px;margin-top:10px">'+
+          '<input class="f" id="rsFrom" type="date" value="'+addDays(today(),1)+'" style="margin:0">'+
+          '<select class="f" id="rsDays" style="margin:0"><option value="7">٧ أيام</option><option value="14">١٤ يوماً</option></select>'+
+          '<button class="btn sm" id="rsGen" style="white-space:nowrap">توليد</button></div>'+
+        '<div class="btnrow" style="margin-top:8px"><button class="btn sm ghost block" id="rsRules">قواعد التغطية والتوافر</button></div>'+
+        '</div>');
+
+      if(!run){
+        out.push('<div class="empty">لا مسودّة حالياً — اضغطي «توليد» ليبني المحرك جدول الأسبوع.</div>');
+      } else {
+        var st=run.stats||{}, cov=st.coverage!=null?Math.round(st.coverage*100):0;
+        var unf=slots.filter(function(s){return !s.employee_id;});
+        out.push('<div class="card" style="padding:12px 14px;border-inline-start:3px solid var('+(unf.length?'--amber':'--green')+')">'+
+          '<div class="row" style="flex-wrap:wrap;gap:6px">'+
+            '<span class="chip'+(cov===100?' green':' orange')+'">التغطية '+cov+'٪</span>'+
+            '<span class="chip">مملوءة: '+(st.filled||0)+'</span>'+
+            (unf.length?'<span class="chip red">ناقصة: '+unf.length+'</span>':'')+
+            '<span class="chip">'+fmtD(run.from)+' → '+fmtD(run.to)+'</span></div>'+
+          '<div class="btnrow" style="margin-top:10px">'+
+            '<button class="btn sm" id="rsPub">نشر الجدول</button>'+
+            '<button class="btn sm ghost" id="rsDisc">إلغاء المسودّة</button></div></div>');
+
+        if(unf.length){
+          out.push('<h3 style="margin:14px 2px 8px">خانات لم يستطع المحرك ملأها ('+unf.length+')</h3>'+
+            unf.map(function(s){
+              var ex=(s.excluded||[]).slice(0,4).map(function(x){return esc(x.name)+': '+esc(x.why);}).join(' · ');
+              return '<div class="card" style="padding:11px 13px;border-inline-start:3px solid var(--red)">'+
+                '<div><b>'+esc(s.shift||'')+'</b> · '+fmtD(s.day)+' ('+DOWAR[new Date(s.day+'T00:00').getDay()]+')'+
+                (s.area?' · '+esc(s.area):'')+'</div>'+
+                (ex?'<div class="muted small" style="margin-top:4px">المستبعدات: '+ex+'</div>':'')+
+                '<div class="small" style="margin-top:5px"><b>الموصى به:</b> '+esc(s.recommended||'')+'</div>'+
+                '<div class="btnrow" style="margin-top:7px"><button class="btn sm" data-rsslot="'+s.id+'">تعيين يدوي</button></div></div>';
+            }).join(''));
+        }
+
+        // الجدول مجمَّعاً بالأيام
+        var byDay={};
+        slots.forEach(function(s){ (byDay[s.day]=byDay[s.day]||[]).push(s); });
+        out.push('<h3 style="margin:14px 2px 8px">المسودّة</h3>');
+        Object.keys(byDay).sort().forEach(function(dk){
+          out.push('<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between">'+
+            '<b>'+DOWAR[new Date(dk+'T00:00').getDay()]+'</b><span class="muted small">'+fmtD(dk)+'</span></div>'+
+            '<div class="list" style="margin-top:6px">'+byDay[dk].map(function(s){
+              return '<div class="row"><button class="row__body" data-rsslot="'+s.id+'" style="text-align:right;background:none;border:none;padding:0;font:inherit;color:inherit;cursor:pointer">'+
+                '<div class="row__title">'+(s.employee?esc(s.employee):'<span style="color:var(--red)">— شاغرة —</span>')+
+                (s.manual?' <span class="chip orange">يدوي</span>':'')+'</div>'+
+                '<div class="row__sub">'+esc(s.shift||'')+(s.area?' · '+esc(s.area):'')+
+                (s.why&&s.why.length?' · '+esc(s.why[0]):'')+'</div></button></div>';
+            }).join('')+'</div></div>');
+        });
+      }
+      $('#rsBody').innerHTML=out.join('');
+
+      $('#rsGen').addEventListener('click',function(){
+        busyWrap(this,function(){
+          return aAct('roster_generate',{from:$('#rsFrom').value, days:+$('#rsDays').value})
+            .then(function(r){ if(r.ok){ toast('وُلِّدت المسودّة ✔'); load(); } else toast(r.error||'خطأ',true); });
+        });
+      });
+      $('#rsRules').addEventListener('click', rosterRules);
+      var pb=$('#rsPub'); if(pb) pb.addEventListener('click',function(){
+        confirmSheet('نشر الجدول','سيُنشر الجدول وتصل الموظفات إشعاراً بشفتاتهن.','نشر',function(){
+          busyWrap(pb,function(){ return aAct('roster_publish',{run_id:run.id}).then(function(r){
+            if(r.ok){ toast('نُشر '+r.published+' شفت ✔'); load(); } else toast(r.error||'خطأ',true); }); });
+        });
+      });
+      var db=$('#rsDisc'); if(db) db.addEventListener('click',function(){
+        confirmSheet('إلغاء المسودّة','ستُحذف هذه المسودّة ولن تُنشر.','إلغاء المسودّة',function(){
+          aAct('roster_discard',{run_id:run.id}).then(function(){ toast('أُلغيت'); load(); }); }, true);
+      });
+      $$('[data-rsslot]').forEach(function(b){ b.addEventListener('click',function(){
+        var sid=+b.getAttribute('data-rsslot');
+        lookups(function(){
+          sheet('تعديل خانة الجدول',
+            '<label class="f">الموظفة</label><select class="f" id="rsE"><option value="">— اتركيها شاغرة —</option>'+staffOpts()+'</select>'+
+            '<label class="f">سبب التعديل (إلزامي)</label><input class="f" id="rsR" placeholder="مثال: طلبت التبديل معها">'+
+            '<div class="muted small">يُحفظ سببكِ بجانب اختيار المحرك ولا يُلغيه.</div>'+
+            '<div class="btnrow"><button class="btn block" id="rsSave">حفظ</button></div>',
+            function(ov,close){
+              $('#rsSave',ov).addEventListener('click',function(){
+                var rr=$('#rsR',ov).value.trim();
+                if(rr.length<3){ toast('اكتبي سبب التعديل',true); return; }
+                busyWrap(this,function(){
+                  return aAct('roster_slot_set',{slot_id:sid, employee_id:$('#rsE',ov).value, reason:rr})
+                    .then(function(r){ if(r.ok){ close(); toast('حُفظ ✔'); load(); } else toast(r.error||'خطأ',true); });
+                });
+              });
+            });
+        });
+      }); });
+    });
+  }
+  function rosterRules(){
+    aAct('roster_rules',{}).then(function(r){
+      var dem=r.demand||[], skills=r.skills||[];
+      var html='<div class="muted small" style="margin-bottom:8px">كم موظفة تحتاجين لكل نوع شفت في كل يوم؟ المحرك يبني الجدول على هذا.</div>'+
+        '<label class="f">نوع الشفت</label><select class="f" id="rdT">'+typeOpts()+'</select>'+
+        '<label class="f">اليوم</label><select class="f" id="rdD">'+DOWAR.map(function(n,i){return '<option value="'+i+'">'+n+'</option>';}).join('')+'</select>'+
+        '<label class="f">المنطقة</label><select class="f" id="rdA">'+areaOpts()+'</select>'+
+        '<label class="f">العدد المطلوب</label><input class="f" id="rdN" type="number" min="0" value="1">'+
+        '<label class="f">مهارة مطلوبة (اختياري)</label><select class="f" id="rdS"><option value="">— بلا —</option>'+
+          skills.map(function(s){return '<option value="'+esc(s.code)+'">'+esc(s.name)+'</option>';}).join('')+'</select>'+
+        '<div class="btnrow"><button class="btn block" id="rdSave">حفظ القاعدة</button></div>'+
+        '<hr class="sep"><div class="small"><b>القواعد الحالية</b></div><div class="list" style="margin-top:6px">'+
+        (dem.length?dem.map(function(d){
+          return '<div class="row"><div class="row__body"><div class="row__title">'+esc(d.shift||'')+' · '+DOWAR[d.dow]+'</div>'+
+            '<div class="row__sub">'+(d.area?esc(d.area)+' · ':'')+'العدد: '+d.needed+(d.required_skill?' · مهارة: '+esc(d.required_skill):'')+'</div></div></div>';
+        }).join(''):'<div class="empty">لا قواعد بعد</div>')+'</div>';
+      sheet('قواعد التغطية', html, function(ov,close){
+        $('#rdSave',ov).addEventListener('click',function(){
+          busyWrap(this,function(){
+            return aAct('roster_demand_set',{shift_type_id:+$('#rdT',ov).value, dow:+$('#rdD',ov).value,
+              area_id:$('#rdA',ov).value, needed:+$('#rdN',ov).value, required_skill:$('#rdS',ov).value})
+              .then(function(r){ if(r.ok){ close(); toast('حُفظت القاعدة ✔'); } else toast(r.error||'خطأ',true); });
+          });
+        });
+      });
+    });
+  }
+  lookups(load);
+};
+
 ADMIN.templates=function(v){
   lookups(function(){
     aAct('templates_list',{}).then(function(res){
