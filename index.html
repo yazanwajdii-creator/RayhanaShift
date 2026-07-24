@@ -205,6 +205,13 @@ a{color:var(--green)}
 .card.soft{background:var(--green-soft);border-color:transparent}
 .card.beige{background:var(--beige);border-color:var(--line)}
 .card.dim{opacity:.72}
+/* بوابة الإشعارات الإجبارية */
+.pushgate{position:fixed;inset:0;z-index:99999;background:rgba(16,29,23,.94);display:flex;align-items:center;justify-content:center;padding:22px}
+.pushgate-card{background:var(--surface);color:var(--ink);border-radius:20px;padding:26px 22px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+.pushgate-card .pg-ic{font-size:44px;line-height:1;margin-bottom:10px}
+.pushgate-card h2{font-size:19px;margin:0 0 8px}
+.pushgate-card p{color:var(--muted);font-size:13.5px;line-height:1.7;margin:0 0 16px}
+.pushgate-card .pg-warn{background:rgba(200,130,30,.12);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:12.5px;line-height:1.6;margin:0 0 14px}
 .card h3{font-size:15.5px;display:flex;align-items:center;gap:8px}
 .muted{color:var(--muted);font-size:13px}
 .small{font-size:12.5px}
@@ -625,7 +632,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-24.7";
+var BUILD = "2026-07-24.8";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -833,6 +840,35 @@ function enablePush(vapid, cb){
       });
     });
   }).catch(function(){ if(cb)cb(false); });
+}
+/* بوابة إجبارية: لا يُسمح للموظفة بالعمل دون تفعيل إشعارات الجهاز */
+function pushGate(){
+  if(S.role!=='staff') return;                              // للموظفات فقط
+  if(!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) return; // متصفح لا يدعم — لا نحبسها
+  if(Notification.permission==='granted') { var g0=$('#pushGate'); if(g0) g0.remove(); return; } // مفعّلة — أزل البوابة إن وُجدت
+  if($('#pushGate')) return;                                // معروضة أصلاً
+  var vapid=(S.state&&S.state.push&&S.state.push.vapid_public)||PUSHKEY;
+  var denied=(Notification.permission==='denied');
+  var el=document.createElement('div');
+  el.className='pushgate'; el.id='pushGate';
+  el.innerHTML='<div class="pushgate-card">'+
+    '<div class="pg-ic">🔔</div>'+
+    '<h2>فعّلي إشعارات هاتفكِ</h2>'+
+    '<p>لن تتمكني من متابعة العمل قبل تفعيل الإشعارات، لتصلكِ تنبيهات المهام وقرارات طلباتكِ على هاتفكِ حتى والتطبيق مغلق.</p>'+
+    (denied
+      ? '<div class="pg-warn">الإشعارات محظورة من إعدادات المتصفح. افتحي إعدادات الموقع (🔒 بجانب العنوان) ← الإشعارات ← «السماح»، ثم أعيدي التحميل.</div>'+
+        '<button class="btn block" id="pgReload">أعيدي التحميل بعد السماح</button>'
+      : '<button class="btn block" id="pgGo">تفعيل الإشعارات ✔</button>');
+  el.innerHTML+='</div>';
+  document.body.appendChild(el);
+  var go=$('#pgGo',el); if(go) go.addEventListener('click', function(){
+    go.disabled=true; go.textContent='جارٍ التفعيل…';
+    enablePush(vapid, function(ok){
+      if(ok){ el.remove(); }
+      else { go.disabled=false; go.textContent='تفعيل الإشعارات ✔'; pushGate(); } // أُعيد الرسم (قد تكون رُفضت)
+    });
+  });
+  var rl=$('#pgReload',el); if(rl) rl.addEventListener('click', function(){ location.reload(); });
 }
 function devLabel(){ try{ return localStorage.getItem('rko_devlabel')||''; }catch(e){ return ''; } }
 
@@ -1442,6 +1478,7 @@ function toggleTheme(){ var nx = effDark() ? 'light' : 'dark'; applyTheme(nx); t
 function THI(){ return effDark()?IC.sun:IC.moon; }
 function loadNotifs(){
   if(S.role!=='staff') return;
+  pushGate();                                               // بوابة إجبارية: تفعيل الإشعارات قبل العمل
   sAct('notif_list',{}).then(function(res){
     if(!res.ok) return;
     notifCache=res.rows||[];
