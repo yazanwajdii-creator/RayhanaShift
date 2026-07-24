@@ -625,7 +625,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-24.3";
+var BUILD = "2026-07-24.4";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1653,7 +1653,7 @@ function dashOps(mode){
         '<button class="btn sm ghost" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'">تم مباشرة ✔</button></div>';
     var steer='';
     if(directed && !full && !claimedByOther){
-      steer='<div class="chip orange" style="display:block;text-align:center;padding:8px;margin-top:8px">أنجزي أولاً: «'+esc(directed.name)+'» — مهمة أهمّ مسندة إليكِ</div>';
+      steer='<div class="chip orange" style="display:block;text-align:center;padding:8px;margin-top:8px">الأهم الآن: '+esc(directed.name)+'</div>';
       btns=btns.replace('btn sm block','btn sm block ghost');
     }
     out.push('<div class="card'+((mineTurn&&!claim)||overdue?' beige':'')+(directed&&!full?' dim':'')+'">'+head+turnLine+counters+recent+steer+btns+'</div>');
@@ -2664,7 +2664,7 @@ function loadDash(v){
         zhtml='<h3 style="margin:14px 2px 8px">حالة المناطق <span class="muted small" style="font-weight:400">نتيجة تشغيل لا عدد مهام</span></h3><div class="list">'+
           zones.map(function(z){var s=ZST[z.state]||{t:z.state,c:''};
             return '<div class="row"><div class="row__body"><div class="row__title">'+esc(z.area)+'</div>'+
-              '<div class="row__sub num">ثقة '+(z.confidence!=null?Math.round(z.confidence*100):0)+'٪'+(z.valid_until?' · جاهزية حتى '+fmtT(z.valid_until):'')+'</div></div>'+
+              '<div class="row__sub num">ثقة '+(z.confidence!=null?Math.round(z.confidence*100):0)+'٪'+(z.owner?' · مسؤولة: '+esc(z.owner):'')+(z.owner_until?' حتى '+fmtT(z.owner_until):(z.valid_until?' · جاهزية حتى '+fmtT(z.valid_until):''))+'</div></div>'+
               '<span class="chip '+s.c+'">'+s.t+'</span></div>';
           }).join('')+'</div>';
       }
@@ -2687,6 +2687,13 @@ function loadDash(v){
           var t=x.risk==='single_point'?'نقطة تعطّل وحيدة':'تركّز عالٍ';
           return '<div class="card" style="padding:10px 12px;border-inline-start:3px solid var('+(x.risk==='single_point'?'--red':'--amber')+')"><div class="small"><b>'+esc(ROLEAR[x.role]||x.role)+'</b> — '+t+'</div>'+
             '<div class="muted small" style="margin-top:2px">يؤدّيه غالبًا شخص واحد ('+Math.round((x.top_share||0)*100)+'٪ من التنفيذ) — يُنصح بتدريب زميلة لتوزيع الاعتماد.</div></div>';
+        }).join('');
+      }
+      var self=(eng.selfeval||[]);
+      if(self.length){
+        html+='<h3 style="margin:14px 2px 8px">تقييم النظام لنفسه <span class="muted small" style="font-weight:400">خلل نظاميّ لا فردي</span></h3>'+self.map(function(f){
+          return '<div class="card" style="padding:10px 12px;border-inline-start:3px solid var('+(f.severity==='warn'?'--amber':'--brand')+')"><div class="small"><b>'+esc(f.title)+'</b>'+(f.affected?' <span class="muted">('+f.affected+' موظفات)</span>':'')+'</div>'+
+            '<div class="muted small" style="margin-top:2px">'+esc(f.detail||'')+'</div></div>';
         }).join('');
       }
       el.innerHTML=html;
