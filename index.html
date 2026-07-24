@@ -238,6 +238,24 @@ a{color:var(--green)}
 .cc-tl-track i.pend{background:var(--muted);opacity:.4}
 .cc-tl-now{position:absolute;top:0;bottom:0;width:2px;background:var(--red);z-index:2}
 .cc-tl-axis{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-inline-start:70px}
+/* ===== السحب للتأكيد: يستحيل تفعيله بلمسة عابرة ===== */
+.swipe{position:relative;height:56px;border-radius:16px;background:var(--green-soft);
+  border:1.5px solid var(--green-2);overflow:hidden;touch-action:pan-y;user-select:none;margin:2px 0}
+.swipe.off{background:var(--line);border-color:var(--line);opacity:.75}
+.swipe-fill{position:absolute;inset-block:0;inset-inline-start:0;width:0;background:linear-gradient(90deg,var(--green-2),var(--green));opacity:.28}
+.swipe-lbl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:15px;color:var(--green-2);pointer-events:none;padding:0 60px;text-align:center}
+.swipe.off .swipe-lbl{color:var(--muted)}
+.swipe-knob{position:absolute;top:5px;inset-inline-start:5px;width:46px;height:46px;border-radius:13px;
+  background:var(--surface);box-shadow:0 3px 10px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;
+  font-size:19px;color:var(--green-2);will-change:transform}
+.swipe.off .swipe-knob{color:var(--muted)}
+/* شريط التراجع */
+.undobar{position:fixed;inset-inline:14px;bottom:78px;z-index:9000;background:var(--ink);color:#fff;
+  border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.undobar .ub-txt{flex:1;font-size:13.5px}
+.undobar .ub-btn{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:10px;padding:7px 13px;font:inherit;font-weight:700;cursor:pointer}
+.undobar .ub-ring{font-size:12px;opacity:.8;font-variant-numeric:tabular-nums}
 /* بوابة الإشعارات الإجبارية */
 .pushgate{position:fixed;inset:0;z-index:99999;background:rgba(16,29,23,.94);display:flex;align-items:center;justify-content:center;padding:22px}
 .pushgate-card{background:var(--surface);color:var(--ink);border-radius:20px;padding:26px 22px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45)}
@@ -665,7 +683,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-25.2";
+var BUILD = "2026-07-25.3";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1759,14 +1777,17 @@ function heroTaskCard(t){
       '<div class="card soft" style="margin:12px 0 0;padding:12px 14px;background:var(--surface-2);border:1px dashed var(--line)"><b>انتهى شفتك</b><div class="muted small" style="margin-top:2px">لا يمكن تنفيذ أو تعديل المهام خارج الشفت.</div></div></div>';
   }
   var prim, sec='';
-  if(t.status==='running'){ prim='<button class="btn green block" data-a="tDone" data-id="'+t.id+'">إنهاء المهمة ✔</button>'; sec='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت</button>'; }
+  if(t.status==='running'){ prim='<button class="btn green block" data-a="tDone" data-id="'+t.id+'">أنجزت المهمة وأؤكد النتيجة</button>'; sec='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت</button>'; }
   else if(t.status==='paused'&&t.blocked){ prim='<button class="btn block" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>'; }
   else if(t.status==='paused'){ prim='<button class="btn block" data-a="tResume" data-id="'+t.id+'">استئناف</button>'; }
-  else { prim='<button class="btn block" data-a="tStart" data-id="'+t.id+'">ابدئي الآن</button>'; }
+  else { prim='<button class="btn block" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>'; }
   var needs=[]; if(t.needs_photo||t.method==='photo') needs.push('تحتاج صورة'); if(t.needs_two||t.method==='two_person') needs.push('موظفتان'); if(t.method==='checklist') needs.push('قائمة تحقق'); if(t.needs_review||t.method==='review') needs.push('مراجعة إدارة');
   return '<div class="hero-task">'+
     '<div class="ht-k">مهمتك الآن · '+esc(PHASE[t.phase]||'')+(t.is_core?' · أساسية':'')+'</div>'+
     '<div class="ht-name">'+esc(t.name)+'</div>'+
+    (t.description?'<div class="ht-meta" style="color:var(--ink)">'+esc(t.description)+'</div>':'')+
+    (t.reason?'<div class="card soft" style="margin:9px 0 0;padding:9px 11px"><div class="small"><b>لماذا هذه المهمة:</b> '+esc(t.reason)+'</div>'+
+      (t.impact?'<div class="muted small" style="margin-top:2px">إن لم تُنفَّذ: '+esc(t.impact)+'</div>':'')+'</div>':'')+
     '<div class="ht-meta">الوقت التقريبي '+range+(needs.length?' · '+needs.join(' · '):'')+'</div>'+
     (t.status==='returned'&&t.admin_note?'<div class="small" style="color:var(--red);margin-top:6px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>':'')+
     '<div class="row" style="justify-content:space-between;margin-top:10px"><span class="chip '+stCls+'">'+stTxt+'</span>'+
@@ -2067,7 +2088,7 @@ function taskCard(t){
   if(t.status==='returned' && t.admin_note) html+='<div class="small" style="color:var(--red);margin-top:4px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>';
   if(workLocked()){ html+='<div class="muted small" style="margin-top:8px">انتهى شفتك — العرض فقط</div></div>'; return html; }
   html+='<div class="btnrow">';
-  if(t.status==='open'||t.status==='returned') html+='<button class="btn sm" data-a="tStart" data-id="'+t.id+'">ابدئي</button>';
+  if(t.status==='open'||t.status==='returned') html+='<button class="btn sm" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>';
   if(running) html+='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت (خدمة ضيف)</button>'+
                     '<button class="btn sm" data-a="tDone" data-id="'+t.id+'">إنهاء ✔</button>';
   if(t.status==='paused'&&t.blocked) html+='<button class="btn sm" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>';
@@ -2089,6 +2110,87 @@ function updateTimers(){
   });
 }
 function findTask(id){ var f=null; (S.state.tasks||[]).forEach(function(t){ if(t.id===id) f=t; }); return f; }
+
+/* ---------- السحب للتأكيد ---------- */
+function swipeHtml(id, label){
+  return '<div class="swipe" id="'+id+'"><div class="swipe-fill"></div>'+
+    '<div class="swipe-lbl">'+esc(label)+'</div>'+
+    '<div class="swipe-knob">›</div></div>';
+}
+/* يفعّل السحب. onDone تُستدعى عند اكتمال السحب فقط. reason!=null ⇒ معطّل مع سبب */
+function swipeBind(el, onDone, reason){
+  if(!el) return;
+  var knob=el.querySelector('.swipe-knob'), fill=el.querySelector('.swipe-fill'), lbl=el.querySelector('.swipe-lbl');
+  if(reason){ el.classList.add('off'); lbl.textContent=reason; knob.textContent='✕'; return; }
+  var dragging=false, startX=0, dx=0, max=0, rtl=(getComputedStyle(el).direction==='rtl');
+  function maxTravel(){ return el.clientWidth - knob.offsetWidth - 10; }
+  function setPos(v){
+    dx=Math.max(0, Math.min(maxTravel(), v));
+    knob.style.transform='translateX('+(rtl?-dx:dx)+'px)';
+    fill.style.width=(dx+knob.offsetWidth)+'px';
+  }
+  function reset(){ knob.style.transition='transform .18s'; fill.style.transition='width .18s';
+    setPos(0); setTimeout(function(){ knob.style.transition=''; fill.style.transition=''; },200); }
+  function down(x){ dragging=true; max=maxTravel(); startX=x; }
+  function move(x){ if(!dragging) return; setPos(rtl?(startX-x):(x-startX)); }
+  function up(){
+    if(!dragging) return; dragging=false;
+    if(dx >= maxTravel()*0.85){
+      el.classList.add('done'); lbl.textContent='تم ✔'; knob.textContent='✔';
+      onDone();
+    } else reset();
+  }
+  el.addEventListener('touchstart',function(e){ down(e.touches[0].clientX); },{passive:true});
+  el.addEventListener('touchmove', function(e){ move(e.touches[0].clientX); },{passive:true});
+  el.addEventListener('touchend',  up);
+  el.addEventListener('mousedown', function(e){ down(e.clientX); e.preventDefault(); });
+  window.addEventListener('mousemove', function(e){ move(e.clientX); });
+  window.addEventListener('mouseup', up);
+}
+/* ---------- نافذة تراجع: الفعل الخاطئ لا يكلّف شيئاً ---------- */
+var _undoT=null;
+function undoWindow(msg, secs, onCommit, onUndo){
+  if(_undoT){ clearInterval(_undoT.iv); if(_undoT.el) _undoT.el.remove(); _undoT.commit(); }
+  var left=secs||10;
+  var bar=document.createElement('div'); bar.className='undobar';
+  bar.innerHTML='<div class="ub-txt">'+esc(msg)+'</div><span class="ub-ring">'+left+'</span>'+
+                '<button class="ub-btn">تراجع</button>';
+  document.body.appendChild(bar);
+  var done=false;
+  function finish(commit){
+    if(done) return; done=true;
+    clearInterval(iv); bar.remove(); _undoT=null;
+    if(commit) onCommit(); else if(onUndo) onUndo();
+  }
+  var iv=setInterval(function(){
+    left--; var r=bar.querySelector('.ub-ring'); if(r) r.textContent=left;
+    if(left<=0) finish(true);
+  },1000);
+  bar.querySelector('.ub-btn').addEventListener('click', function(){ finish(false); });
+  _undoT={iv:iv, el:bar, commit:function(){ finish(true); }};
+}
+/* ---------- «لم أستطع» — بنفس سهولة «تم» ---------- */
+var CANTR=[['busy','كنت مشغولة بخدمة ضيفة'],['blocker','يوجد مانع (عطل/نقص)'],['tools','ينقصني أدوات'],
+           ['help','أحتاج مساعدة'],['time','لم يكفِ الوقت'],['other','سبب آخر']];
+function cannotFlow(t, after){
+  sheet('لم أستطع إكمال: '+t.name,
+    '<div class="muted small" style="margin-bottom:8px">لا مشكلة — الأهم أن نعرف الحقيقة. ستعود المهمة للتوزيع تلقائياً.</div>'+
+    CANTR.map(function(r){ return '<div class="check"><input type="radio" name="cantr" value="'+r[0]+'"'+(r[0]==='busy'?' checked':'')+'><span>'+r[1]+'</span></div>'; }).join('')+
+    '<label class="f">تفاصيل (اختياري)</label><input class="f" id="cantNote">'+
+    '<div class="btnrow"><button class="btn block" id="cantGo">إرسال</button></div>',
+    function(ov, close){
+      $('#cantGo',ov).addEventListener('click', function(){
+        var sel=ov.querySelector('input[name=cantr]:checked');
+        busyWrap(this, function(){
+          return sAct('task_cannot',{id:t.id, reason:sel?sel.value:'other', note:$('#cantNote',ov).value}, false)
+            .then(function(res){
+              if(!res.ok){ toast(res.error||'خطأ', true); return; }
+              close(); toast(res.msg||'أُعيدت للتوزيع'); if(after) after(); refresh();
+            });
+        });
+      });
+    });
+}
 function completeFlow(t){
   // طرق «صورة» و«موظفتان» تستلزم متطلباتها حتى لو نُسي تفعيل الخيار في القالب
   t=Object.assign({}, t, {
@@ -2113,8 +2215,10 @@ function completeFlow(t){
       '<label class="f">كلمة سرها</label><input class="f" id="tCoPw" type="password" autocomplete="off">';
   }
   body+='<label class="f">ملاحظة (اختياري)</label><input class="f" id="tNote">'+
-    '<div class="btnrow"><button class="btn block" id="tGo">تأكيد الإنجاز ✔</button></div>';
+    '<div class="btnrow"><button class="btn block" id="tGo">أنجزت وأؤكد النتيجة</button></div>'+
+    '<div class="btnrow"><button class="btn ghost block" id="tCant">لم أستطع إكمالها</button></div>';
   sheet('إنهاء: '+t.name, body, function(ov, close){
+    var cb=$('#tCant',ov); if(cb) cb.addEventListener('click', function(){ close(); cannotFlow(t); });
     var photo='';
     var pb=$('#tPhoto',ov);
     if(pb) pb.addEventListener('click', function(){
@@ -2136,7 +2240,7 @@ function completeFlow(t){
       busyWrap(this, function(){
         return sAct('task_complete', p, false).then(function(res){
           if(!res.ok){ toast(res.error||'خطأ', true); return; }
-          close(); toast(res.needs_review?'أُنجزت — بانتظار مراجعة الإدارة':'أُنجزت ✔'); refresh();
+          close(); toast(res.needs_review?'سُجّل إنجازك — بانتظار مراجعة الإدارة':'سُجّل إنجازك ✔'); refresh();
         });
       });
     });
