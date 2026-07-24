@@ -205,6 +205,39 @@ a{color:var(--green)}
 .card.soft{background:var(--green-soft);border-color:transparent}
 .card.beige{background:var(--beige);border-color:var(--line)}
 .card.dim{opacity:.72}
+/* ===== غرفة التحكّم (Command Center) ===== */
+.cc-hero{border-radius:18px;padding:16px 18px;margin:0 0 14px;color:#fff;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,var(--green-2),var(--green));box-shadow:0 8px 26px rgba(39,66,51,.28)}
+.cc-hero.warn{background:linear-gradient(135deg,var(--amber-2),var(--amber));box-shadow:0 8px 26px rgba(200,130,30,.3)}
+.cc-hero.bad{background:linear-gradient(135deg,#C26049,var(--red));box-shadow:0 8px 26px rgba(180,83,58,.32)}
+.cc-hero .cc-state{font-size:21px;font-weight:800;line-height:1.25;color:#fff}
+.cc-hero .cc-sub{color:rgba(255,255,255,.94);font-size:13px;margin-top:4px;line-height:1.6}
+.cc-hero .cc-facts{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.cc-hero .cc-fact{background:rgba(255,255,255,.22);color:#fff;border-radius:11px;padding:5px 10px;font-size:12.5px;font-weight:600}
+.cc-grid{display:grid;grid-template-columns:1fr;gap:0 16px;align-items:start}
+@media(min-width:820px){ .cc-grid{grid-template-columns:1fr 1fr} }
+@media(min-width:1240px){ .cc-grid{grid-template-columns:1fr 1fr 1fr} }
+.cc-sec{min-width:0}
+.cc-sec:empty{display:none}
+.cc-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:9px}
+.cc-tile{border:1px solid var(--line);border-radius:14px;padding:10px 11px;background:var(--surface);
+  text-align:right;font:inherit;color:inherit;cursor:pointer;position:relative;transition:transform .1s}
+.cc-tile:active{transform:scale(.98)}
+.cc-tile::before{content:'';position:absolute;inset-block:10px;inset-inline-start:0;width:3px;border-radius:3px;background:var(--muted)}
+.cc-tile.ok::before{background:var(--green)} .cc-tile.warn::before{background:var(--amber)} .cc-tile.bad::before{background:var(--red)}
+.cc-tile .cc-tname{font-weight:700;font-size:13.5px;margin-bottom:3px}
+.cc-tile .cc-tmeta{font-size:11.5px;color:var(--muted);line-height:1.5}
+.cc-bar{height:4px;border-radius:3px;background:var(--line);margin-top:7px;overflow:hidden}
+.cc-bar i{display:block;height:100%;border-radius:3px;background:var(--green)}
+.cc-bar.warn i{background:var(--amber)} .cc-bar.bad i{background:var(--red)}
+.cc-tl{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 12px 8px}
+.cc-tl-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.cc-tl-name{width:62px;flex:none;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-tl-track{position:relative;flex:1;height:15px;background:var(--line);border-radius:8px;overflow:hidden}
+.cc-tl-track i{position:absolute;inset-block:0;border-radius:8px;background:linear-gradient(90deg,var(--green-2),var(--green));opacity:.85}
+.cc-tl-track i.pend{background:var(--muted);opacity:.4}
+.cc-tl-now{position:absolute;top:0;bottom:0;width:2px;background:var(--red);z-index:2}
+.cc-tl-axis{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-inline-start:70px}
 /* بوابة الإشعارات الإجبارية */
 .pushgate{position:fixed;inset:0;z-index:99999;background:rgba(16,29,23,.94);display:flex;align-items:center;justify-content:center;padding:22px}
 .pushgate-card{background:var(--surface);color:var(--ink);border-radius:20px;padding:26px 22px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45)}
@@ -632,7 +665,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-25.1";
+var BUILD = "2026-07-25.2";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -2643,6 +2676,32 @@ function typeOpts(sel){ return (A.types||[]).map(function(t){return '<option val
 
 /* ---------- لوحة اليوم ---------- */
 var dashT=null;
+/* شريط اليوم: شكل اليوم كاملاً — من حاضرة ومتى، وأين نحن الآن */
+function drawDayTimeline(res){
+  var el=$('#dashTL'); if(!el) return;
+  var rows=(res.onshift||[]).slice(0,10);
+  if(!rows.length){ el.innerHTML=''; return; }
+  var H0=7, H1=24, span=(H1-H0)*60;                       // نافذة اليوم 7ص → 12م
+  function toMin(ts){ if(!ts) return null; var d=new Date(ts); return d.getHours()*60+d.getMinutes(); }
+  function pctOf(m){ return Math.max(0, Math.min(100, ((m-H0*60)/span)*100)); }
+  var now=new Date(), nowM=now.getHours()*60+now.getMinutes();
+  var html='<h3 style="margin:4px 2px 8px">شريط اليوم <span class="muted small" style="font-weight:400">الحضور مقابل المخطط</span></h3>'+
+    '<div class="cc-tl"><div class="cc-tl-now" style="inset-inline-start:calc(70px + (100% - 82px) * '+(pctOf(nowM)/100).toFixed(3)+')"></div>';
+  rows.forEach(function(o){
+    var s=toMin(o['in']), e=o.out?toMin(o.out):(o['in']?nowM:null);
+    var seg='';
+    if(s!=null && e!=null && e>s){
+      var a=pctOf(s), b=pctOf(e);
+      seg='<i style="inset-inline-start:'+a+'%;width:'+Math.max(2,(b-a))+'%"></i>';
+    } else {
+      seg='<i class="pend" style="inset-inline-start:0;width:100%"></i>';
+    }
+    html+='<div class="cc-tl-row"><div class="cc-tl-name">'+esc(o.name||'')+'</div>'+
+      '<div class="cc-tl-track">'+seg+'</div></div>';
+  });
+  html+='<div class="cc-tl-axis"><span>٧ص</span><span>١٢ظ</span><span>٥م</span><span>١٢م</span></div></div>';
+  el.innerHTML=html;
+}
 /* لوحة محرك الإسناد: ما قرره المحرك أولاً، وما يحتاج قرار المالك فقط */
 var FAILAR={not_present:'غير حاضرة',shift_ended:'انتهى شفتها',absent:'غائبة اليوم',
   has_other_active:'مشغولة بمهمة',active_non_interruptible:'مهمتها لا تُقاطع',
@@ -2653,6 +2712,8 @@ function loadAssignBoard(el){
   aAct('wf_exceptions',{}).then(function(b){
     if(!b || !b.ok) return;
     var k=b.kpi||{}, need=b.needs_owner||[], auto=b.auto_today||[], ovr=b.overrides_today||[];
+    var ae=$('#ccAuto'); if(ae) ae.textContent='الإسناد: '+auto.length+' تلقائي'+(need.length?' · '+need.length+' معلّق':'');
+    if(need.length){ var hero=$('#ccHero'); if(hero && !hero.classList.contains('bad')) hero.classList.add('warn'); }
     var pct=function(x){ return x==null?'—':Math.round(x*100)+'٪'; };
     var h='<h3 style="margin:2px 2px 8px">محرك الإسناد اليوم <span class="muted small" style="font-weight:400">يوزّع تلقائياً — تتدخّلين في الاستثناء فقط</span></h3>';
     h+='<div class="card" style="padding:12px 14px"><div class="row" style="flex-wrap:wrap;gap:6px">'+
@@ -2735,15 +2796,34 @@ function loadDash(v){
     var SVG_CHK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 12l2 2 4-4M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     var SVG_ALERT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 8v5M12 16h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     /* شريط حالة الفرع الحيّ (يُملأ من wf_status) + بطاقات KPI */
-    out.push('<div id="branchBar" class="branchbar"><span class="bpulse"></span><div class="binfo"><b>مركز القيادة</b><div class="bmeta">جارٍ تحميل حالة الفرع…</div></div></div>');
+    /* رأس الحالة: يجيب سؤالاً واحداً — هل الفرع بخير الآن؟ */
+    var ccCls = highN ? 'bad' : (alN||notIn) ? 'warn' : '';
+    var ccTxt = highN ? 'الفرع يحتاج تدخّلك الآن'
+              : (alN||notIn) ? 'الفرع يعمل — مع نقاط تحتاج انتباهك'
+              : 'الفرع بخير — لا شيء يحتاج قرارك';
+    var ccSub = highN ? (highN+' حالة حرجة بانتظار قرارك')
+              : alN ? (alN+' نقطة تحتاج مراجعة'+(notIn?' · '+notIn+' لم تحضر بعد':''))
+              : (notIn ? notIn+' لم تحضر بعد' : 'الحضور والمهام تسير كما هو مخطط');
+    out.push('<div class="cc-hero '+ccCls+'" id="ccHero">'+
+      '<div class="cc-state">'+ccTxt+'</div><div class="cc-sub">'+ccSub+'</div>'+
+      '<div class="cc-facts">'+
+        '<span class="cc-fact">حاضرات '+inN+'</span>'+
+        '<span class="cc-fact">مهام '+doneN+'/'+tks.length+'</span>'+
+        (alN?'<span class="cc-fact">قرارات '+alN+'</span>':'')+
+        '<span class="cc-fact" id="ccBand">الضغط —</span>'+
+        '<span class="cc-fact" id="ccAuto">الإسناد —</span>'+
+      '</div></div>');
     out.push('<div class="kgrid">'+
       '<button class="kcard good" data-go="attendance"><div class="kl">'+SVG_PPL+'حاضرات الآن</div><div class="kv">'+inN+'</div><div class="ks">على الشفت الآن</div></button>'+
       '<button class="kcard'+(notIn?' warn':'')+'" data-go="attendance"><div class="kl">'+SVG_CLK+'لم تحضر بعد</div><div class="kv">'+notIn+'</div><div class="ks">من المجدولات</div></button>'+
       '<button class="kcard'+(tks.length&&doneN<tks.length?' warn':' ok')+'" data-go="tasks"><div class="kl">'+SVG_CHK+'مهام اليوم</div><div class="kv">'+doneN+'<span style="font-size:16px;color:var(--muted);font-weight:700">/'+tks.length+'</span></div><div class="ks">'+(tks.length?Math.round(100*doneN/tks.length)+'٪ إنجاز':'لا مهام')+'</div></button>'+
       '<button class="kcard'+(highN?' bad':(alN?' warn':''))+'" data-go="#alerts"><div class="kl">'+SVG_ALERT+'يحتاج قراراً</div><div class="kv">'+alN+'</div><div class="ks">'+(highN?highN+' حرجة':'لا حرجة')+'</div></button>'+
     '</div>');
+    out.push('<div class="cc-grid">');
+    /* شريط اليوم الزمني — شكل اليوم لا لقطة منه */
+    out.push('<section class="cc-sec"><div id="dashTL"></div></section>');
     /* الفريق الآن — بطاقات حالة مختصرة */
-    out.push('<h3 style="margin:4px 2px 8px">الفريق الآن</h3>');
+    out.push('<section class="cc-sec"><h3 style="margin:4px 2px 8px">الفريق الآن</h3>');
     if(!(res.onshift||[]).length) out.push('<div class="card center muted small">لا شفتات اليوم</div>');
     else out.push('<div class="list">'+res.onshift.map(function(o){
       var stB = o.out ? '<span class="badge badge--muted">انصرفت</span>'
@@ -2753,45 +2833,54 @@ function loadDash(v){
         '<div class="row__body"><div class="row__title">'+esc(o.name)+'</div>'+
         '<div class="row__sub">'+esc(o.area||'بلا منطقة')+(o['in']?' · دخلت '+fmtT(o['in']):'')+'</div></div>'+stB+'</div>';
     }).join('')+'</div>');
+    out.push('</section>');
     var al=res.alerts||[];
-    out.push('<h3 id="alertsH" style="margin:12px 2px 8px">يحتاج قراراً ('+al.length+')</h3>');
+    out.push('<section class="cc-sec"><h3 id="alertsH" style="margin:12px 2px 8px">يحتاج قراراً ('+al.length+')</h3>');
     if(!al.length) out.push('<div class="card center muted">كل شيء تحت السيطرة ✔</div>');
     al.sort(function(a,b){return (a.sev==='high'?0:1)-(b.sev==='high'?0:1);}).forEach(function(a){
       out.push('<div class="card decision" style="padding:12px 14px'+(a.sev==='high'?';border-inline-start-color:var(--red)':'')+'"><b>'+esc(a.what)+'</b>'+
         (a.impact?'<div class="muted small" style="margin-top:2px">الأثر: '+esc(a.impact)+'</div>':'')+
         (a.action?'<div class="btnrow"><button class="btn sm" data-go="'+esc(mapAction(a.action))+'">فتح واتخاذ قرار</button></div>':'')+'</div>');
     });
+    out.push('</section>');
     /* مرحلة اليوم + قرارات المحرك (RCOS Workflow) */
-    out.push('<div id="dashWf"></div>');
+    out.push('<section class="cc-sec"><div id="dashWf"></div></section>');
     /* الحالة التشغيلية المستنتَجة + تركّز المهارات (محرك RCOS) */
-    out.push('<div id="dashEngine"></div>');
+    out.push('<section class="cc-sec"><div id="dashEngine"></div></section>');
     /* طابور مراجعة النزاهة — حالات مشبوهة فقط */
-    out.push('<div id="dashIntegrity"></div>');
+    out.push('<section class="cc-sec"><div id="dashIntegrity"></div></section>');
     /* ضغط المناطق — من آخر تحديث لكل منطقة اليوم */
     var prs=res.pressure||[];
     if(prs.length){
-      out.push('<h3 style="margin:12px 2px 8px">ضغط المناطق</h3><div class="list">'+prs.map(function(p){
+      out.push('<section class="cc-sec"><h3 style="margin:12px 2px 8px">ضغط المناطق</h3><div class="list">'+prs.map(function(p){
         var lvl = p.support ? '<span class="badge badge--danger">تحتاج دعماً</span>'
                 : p.waiting==='high' ? '<span class="badge badge--warn">انتظار مرتفع</span>'
                 : (p.occupied>=p.tables*0.8) ? '<span class="badge badge--warn">شبه ممتلئة</span>'
                 : '<span class="badge badge--success">طبيعي</span>';
         return '<div class="row"><div class="row__body"><div class="row__title">'+esc(p.area)+'</div>'+
           '<div class="row__sub num">'+(p.occupied||0)+'/'+(p.tables||0)+' طاولة · آخر تحديث '+fmtT(p.ts)+'</div></div>'+lvl+'</div>';
-      }).join('')+'</div>');
+      }).join('')+'</div></section>');
     }
-    out.push('<h3 style="margin:12px 2px 8px">آخر الأحداث <button class="btn sm ghost" data-go="timeline" style="float:left">عرض الكل</button></h3><div id="dashEv" class="list"><div class="row"><div class="row__body muted small">جارٍ التحميل…</div></div></div>');
+    out.push('<section class="cc-sec"><h3 style="margin:12px 2px 8px">آخر الأحداث <button class="btn sm ghost" data-go="timeline" style="float:left">عرض الكل</button></h3><div id="dashEv" class="list"><div class="row"><div class="row__body muted small">جارٍ التحميل…</div></div></div></section>');
+    out.push('</div>');
     v.innerHTML=out.join('');
+    drawDayTimeline(res);
     /* الحالة التشغيلية المستنتَجة + تركّز المهارات (محرك RCOS — بلا إدخال يدوي) */
     aAct('wf_engine',{}).then(function(eng){
       var el=$('#dashEngine'); if(!el||!eng.ok) return;
       var ZST={stable:{t:'مستقرة',c:'green'},under_observation:{t:'تحت الملاحظة',c:''},needs_attention:{t:'تحتاج انتباه',c:'orange'},unverified:{t:'غير مؤكَّدة',c:''},handover_pending:{t:'بانتظار تسليم',c:'orange'},critical:{t:'حرجة',c:'red'}};
       var zones=eng.zones||[], zhtml='';
       if(zones.length){
-        zhtml='<h3 style="margin:14px 2px 8px">حالة المناطق <span class="muted small" style="font-weight:400">نتيجة تشغيل لا عدد مهام</span></h3><div class="list">'+
-          zones.map(function(z){var s=ZST[z.state]||{t:z.state,c:''};
-            return '<div class="row"><button class="row__body" data-zmanage="'+z.area_id+'" data-zname="'+esc(z.area)+'" style="text-align:right;background:none;border:none;cursor:pointer;padding:0;font:inherit;color:inherit"><div class="row__title">'+esc(z.area)+'</div>'+
-              '<div class="row__sub num">ثقة '+(z.confidence!=null?Math.round(z.confidence*100):0)+'٪'+(z.owner?' · مسؤولة: '+esc(z.owner):'')+(z.owner_until?' حتى '+fmtT(z.owner_until):(z.valid_until?' · جاهزية حتى '+fmtT(z.valid_until):''))+'</div></button>'+
-              '<span class="chip '+s.c+'">'+s.t+'</span></div>';
+        zhtml='<h3 style="margin:14px 2px 8px">خريطة المناطق <span class="muted small" style="font-weight:400">نتيجة تشغيل لا عدد مهام</span></h3><div class="cc-tiles">'+
+          zones.map(function(z){
+            var s=ZST[z.state]||{t:z.state,c:''};
+            var cls = s.c==='red'?'bad' : s.c==='orange'?'warn' : s.c==='green'?'ok' : '';
+            var cf = z.confidence!=null?Math.round(z.confidence*100):0;
+            return '<button class="cc-tile '+cls+'" data-zmanage="'+z.area_id+'" data-zname="'+esc(z.area)+'">'+
+              '<div class="cc-tname">'+esc(z.area)+'</div>'+
+              '<div class="cc-tmeta">'+s.t+(z.owner?'<br>'+esc(z.owner):'')+'</div>'+
+              '<div class="cc-bar '+(cf<50?'bad':cf<80?'warn':'')+'"><i style="width:'+cf+'%"></i></div>'+
+              '<div class="cc-tmeta" style="margin-top:3px">ثقة '+cf+'٪</div></button>';
           }).join('')+'</div>';
       }
       var bc=(eng.snapshot&&eng.snapshot.business_context)||{}, comp=bc.components||{};
@@ -2828,6 +2917,7 @@ function loadDash(v){
         '<div class="row" style="gap:8px"><input class="f" id="mgInput" type="number" min="0" value="'+mg+'" style="margin:0"><button class="btn sm" id="mgSave" style="white-space:nowrap">حفظ</button></div>'+
         '<div class="muted small" style="margin-top:6px">تُطبَّق على المهام والدوّارات معًا.</div></div>';
       el.innerHTML=html;
+      var bandEl=$('#ccBand'); if(bandEl) bandEl.textContent='الضغط: '+bandTxt;
       loadAssignBoard(el);
       var mgs=$('#mgSave',el); if(mgs) mgs.addEventListener('click',function(){ var m=+$('#mgInput',el).value; if(!(m>=0))m=0; aAct('cfg_set',{key:'integrity.min_completion_gap_sec',value:m*60}).then(function(r){ toast(r.ok?'حُفظ ✔':(r.error||'خطأ'),!r.ok); }); });
       $$('[data-zmanage]',el).forEach(function(b){ b.addEventListener('click',function(){
