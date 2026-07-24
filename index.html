@@ -632,7 +632,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-24.8";
+var BUILD = "2026-07-24.9";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -2643,6 +2643,82 @@ function typeOpts(sel){ return (A.types||[]).map(function(t){return '<option val
 
 /* ---------- لوحة اليوم ---------- */
 var dashT=null;
+/* لوحة محرك الإسناد: ما قرره المحرك أولاً، وما يحتاج قرار المالك فقط */
+var FAILAR={not_present:'غير حاضرة',shift_ended:'انتهى شفتها',absent:'غائبة اليوم',
+  has_other_active:'مشغولة بمهمة',active_non_interruptible:'مهمتها لا تُقاطع',
+  not_in_zone:'خارج مناطقها',exclusive_conflict:'تعارض منطقة حصرية',
+  missing_skill:'ينقصها المهارة',task_blocked:'المهمة موقوفة بمانع',
+  task_not_open:'المهمة ليست مفتوحة',day_finalized:'اليوم مُقفل'};
+function loadAssignBoard(el){
+  aAct('wf_exceptions',{}).then(function(b){
+    if(!b || !b.ok) return;
+    var k=b.kpi||{}, need=b.needs_owner||[], auto=b.auto_today||[], ovr=b.overrides_today||[];
+    var pct=function(x){ return x==null?'—':Math.round(x*100)+'٪'; };
+    var h='<h3 style="margin:2px 2px 8px">محرك الإسناد اليوم <span class="muted small" style="font-weight:400">يوزّع تلقائياً — تتدخّلين في الاستثناء فقط</span></h3>';
+    h+='<div class="card" style="padding:12px 14px"><div class="row" style="flex-wrap:wrap;gap:6px">'+
+       '<span class="chip green">أسند تلقائياً: '+auto.length+'</span>'+
+       '<span class="chip'+(need.length?' orange':'')+'">ينتظر قرارك: '+need.length+'</span>'+
+       '<span class="chip'+(k.unassigned_critical_tasks?' red':'')+'">حرجة بلا مرشحة: '+(k.unassigned_critical_tasks||0)+'</span>'+
+       '<span class="chip'+(k.manual_rate_breached?' red':'')+'">إسناد يدوي: '+pct(k.manual_assignment_rate)+'</span>'+
+       '<span class="chip">نجاح المحرك: '+pct(k.auto_assignment_success_rate)+'</span>'+
+       (k.time_to_assignment_sec!=null?'<span class="chip">زمن الإسناد: '+Math.round(k.time_to_assignment_sec)+'ث</span>':'')+
+       '</div>'+
+       (k.manual_rate_breached?'<div class="muted small" style="margin-top:6px;color:var(--red)">نسبة الإسناد اليدوي تجاوزت الهدف ('+pct(k.manual_assignment_target)+') — المحرك لا يغطي التشغيل كما ينبغي.</div>':'')+
+       '</div>';
+    if(need.length){
+      h+='<h3 style="margin:14px 2px 8px">تحتاج قرارك ('+need.length+')</h3>'+need.map(function(u){
+        var ex=(u.excluded||[]).map(function(x){
+          var f=(x.fails||[]).map(function(c){return FAILAR[c]||c;})[0]||'—';
+          return esc(x.name)+': '+f; }).join(' · ');
+        var alt=u.best_alternative||{};
+        return '<div class="card" style="padding:11px 13px;border-inline-start:3px solid var('+(u.critical?'--red':'--amber')+')">'+
+          '<div class="row" style="justify-content:space-between"><b>'+esc(u.task||'مهمة')+'</b>'+
+            (u.critical?'<span class="chip red">حرجة</span>':'')+'</div>'+
+          '<div class="muted small" style="margin-top:3px">'+esc(u.area||'')+(u.waiting_min!=null?' · منتظرة '+u.waiting_min+'د':'')+'</div>'+
+          '<div class="small" style="margin-top:6px"><b>لماذا توقف المحرك:</b> لا مرشحة اجتازت الشروط</div>'+
+          (ex?'<div class="muted small" style="margin-top:2px">المستبعدات: '+ex+'</div>':'')+
+          (alt.name?'<div class="muted small" style="margin-top:2px">أقرب بديل: '+esc(alt.name)+' — '+esc(alt.blocker||'')+'</div>':'')+
+          '<div class="small" style="margin-top:6px"><b>الموصى به:</b> '+esc(u.recommended||'')+'</div>'+
+          '<div class="btnrow" style="margin-top:8px"><button class="btn sm" data-exass="'+u.task_id+'" data-exname="'+esc(u.task||'')+'">إسناد يدوي</button>'+
+          '<button class="btn sm ghost" data-exskip="'+u.id+'">تأجيل</button></div></div>';
+      }).join('');
+    } else {
+      h+='<div class="card" style="padding:11px 13px"><div class="small">لا شيء ينتظر قرارك — المحرك يغطي التشغيل ✔</div></div>';
+    }
+    if(ovr.length){
+      h+='<h3 style="margin:14px 2px 8px">تدخّلاتك اليوم ('+ovr.length+')</h3>'+ovr.map(function(o){
+        return '<div class="card" style="padding:10px 12px"><div class="small"><b>'+esc(o.task||'')+'</b> → '+esc(o.employee||'')+'</div>'+
+          '<div class="muted small">سببك: '+esc(o.reason||'')+(o.engine_choice?' · اختيار المحرك كان: '+esc(o.engine_choice):'')+'</div></div>';
+      }).join('');
+    }
+    el.insertAdjacentHTML('afterbegin', h);
+    $$('[data-exskip]',el).forEach(function(bt){ bt.addEventListener('click',function(){
+      aAct('wf_exception_resolve',{id:+bt.getAttribute('data-exskip'),resolution:'deferred_by_owner'})
+        .then(function(){ toast('أُجّلت'); var dt=$('#dashTop'); if(dt) loadDash(dt); }); }); });
+    $$('[data-exass]',el).forEach(function(bt){ bt.addEventListener('click',function(){
+      var tid=+bt.getAttribute('data-exass');
+      lookups(function(){
+        sheet('إسناد يدوي: '+bt.getAttribute('data-exname'),
+          '<label class="f">الموظفة</label><select class="f" id="exE">'+staffOpts()+'</select>'+
+          '<label class="f">سبب التدخل (إلزامي)</label><input class="f" id="exR" placeholder="مثال: لا بديل والمهمة لا تحتمل التأجيل">'+
+          '<div class="muted small">يُحفظ سببك بجانب قرار المحرك ولا يُلغيه.</div>'+
+          '<div class="btnrow"><button class="btn block" id="exGo">تأكيد</button></div>',
+          function(ov,close){
+            $('#exGo',ov).addEventListener('click',function(){
+              var r=$('#exR',ov).value.trim();
+              if(r.length<3){ toast('اكتبي سبب التدخل',true); return; }
+              busyWrap(this,function(){
+                return aAct('task_reassign',{id:tid,employee_id:+$('#exE',ov).value,reason:r}).then(function(res){
+                  if(!res.ok){ toast(res.error||'خطأ',true); return; }
+                  close(); toast('أُسندت ✔'); var dt=$('#dashTop'); if(dt) loadDash(dt);
+                });
+              });
+            });
+          });
+      });
+    }); });
+  }).catch(function(){});
+}
 function loadDash(v){
   Promise.all([aAct('dashboard',{}), aAct('tasks_day',{day:today()}).catch(function(){return {tasks:[]};})]).then(function(rs){
     var res=rs[0], tks=(rs[1]&&rs[1].tasks)||[];
@@ -2752,6 +2828,7 @@ function loadDash(v){
         '<div class="row" style="gap:8px"><input class="f" id="mgInput" type="number" min="0" value="'+mg+'" style="margin:0"><button class="btn sm" id="mgSave" style="white-space:nowrap">حفظ</button></div>'+
         '<div class="muted small" style="margin-top:6px">تُطبَّق على المهام والدوّارات معًا.</div></div>';
       el.innerHTML=html;
+      loadAssignBoard(el);
       var mgs=$('#mgSave',el); if(mgs) mgs.addEventListener('click',function(){ var m=+$('#mgInput',el).value; if(!(m>=0))m=0; aAct('cfg_set',{key:'integrity.min_completion_gap_sec',value:m*60}).then(function(r){ toast(r.ok?'حُفظ ✔':(r.error||'خطأ'),!r.ok); }); });
       $$('[data-zmanage]',el).forEach(function(b){ b.addEventListener('click',function(){
         var aid=+b.getAttribute('data-zmanage'), an=b.getAttribute('data-zname');
@@ -3331,20 +3408,36 @@ ADMIN.tasks=function(v){
       });
     });
     $('#tkAssign').addEventListener('click', function(){
-      sheet('إسناد مهمة إضافية',
+      sheet('مهمة جديدة',
         '<label class="f">المهمة</label><input class="f" id="qN">'+
-        '<label class="f">الموظفة</label><select class="f" id="qE">'+staffOpts()+'</select>'+
+        '<label class="f">من ينفّذها</label><select class="f" id="qE">'+
+          '<option value="">المحرك يختار الأنسب تلقائياً ★</option>'+staffOpts()+'</select>'+
+        '<div id="qRw" style="display:none">'+
+          '<label class="f">سبب الاختيار اليدوي (إلزامي)</label>'+
+          '<input class="f" id="qR" placeholder="مثال: طلب خاص من الزبونة">'+
+          '<div class="muted small">يُحفظ سببك بجانب قرار المحرك ولا يُلغيه.</div></div>'+
         '<label class="f">المنطقة</label><select class="f" id="qA">'+areaOpts()+'</select>'+
         '<label class="f">دقائق متوقعة</label><input class="f" id="qX" type="number" value="10">'+
         '<div class="check"><input type="checkbox" id="qC"><span>أساسية (تمنع الانصراف)</span></div>'+
-        '<div class="btnrow"><button class="btn block" id="qGo">إسناد</button></div>',
+        '<div class="btnrow"><button class="btn block" id="qGo">إضافة</button></div>',
         function(ov, close){
+          $('#qE',ov).addEventListener('change', function(){
+            $('#qRw',ov).style.display = this.value ? '' : 'none';
+          });
           $('#qGo',ov).addEventListener('click', function(){
             var nm=$('#qN',ov).value.trim();
             if(!nm){ toast('اكتبي اسم المهمة', true); return; }
+            var emp=$('#qE',ov).value, rsn=(($('#qR',ov)||{}).value||'').trim();
+            if(emp && rsn.length<3){ toast('اكتبي سبب الاختيار اليدوي', true); return; }
             busyWrap(this, function(){
-              return aAct('task_assign',{day:$('#tkDay').value, name:nm, employee_id:+$('#qE',ov).value, area_id:+$('#qA',ov).value, expected:+$('#qX',ov).value, is_core:$('#qC',ov).checked})
-                .then(function(r){ if(r.ok){close();load();toast('تم الإسناد ✔');} else toast(r.error||'خطأ',true); });
+              var pl={day:$('#tkDay').value, name:nm, area_id:+$('#qA',ov).value,
+                      expected:+$('#qX',ov).value, is_core:$('#qC',ov).checked};
+              if(emp){ pl.employee_id=+emp; pl.reason=rsn; }
+              return aAct('task_assign', pl).then(function(r){
+                if(!r.ok){ toast(r.error||'خطأ',true); return; }
+                close(); load();
+                toast(r.pending ? 'لا مرشحة الآن — في لوحة الاستثناءات' : (r.auto ? 'أسندها المحرك ✔' : 'تم الإسناد ✔'));
+              });
             });
           });
         });
