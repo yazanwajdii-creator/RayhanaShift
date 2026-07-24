@@ -625,7 +625,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-24.1";
+var BUILD = "2026-07-24.2";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -2637,6 +2637,10 @@ function loadDash(v){
     });
     /* مرحلة اليوم + قرارات المحرك (RCOS Workflow) */
     out.push('<div id="dashWf"></div>');
+    /* الحالة التشغيلية المستنتَجة + تركّز المهارات (محرك RCOS) */
+    out.push('<div id="dashEngine"></div>');
+    /* طابور مراجعة النزاهة — حالات مشبوهة فقط */
+    out.push('<div id="dashIntegrity"></div>');
     /* ضغط المناطق — من آخر تحديث لكل منطقة اليوم */
     var prs=res.pressure||[];
     if(prs.length){
@@ -2651,6 +2655,42 @@ function loadDash(v){
     }
     out.push('<h3 style="margin:12px 2px 8px">آخر الأحداث <button class="btn sm ghost" data-go="timeline" style="float:left">عرض الكل</button></h3><div id="dashEv" class="list"><div class="row"><div class="row__body muted small">جارٍ التحميل…</div></div></div>');
     v.innerHTML=out.join('');
+    /* الحالة التشغيلية المستنتَجة + تركّز المهارات (محرك RCOS — بلا إدخال يدوي) */
+    aAct('wf_engine',{}).then(function(eng){
+      var el=$('#dashEngine'); if(!el||!eng.ok) return;
+      var bc=(eng.snapshot&&eng.snapshot.business_context)||{}, comp=bc.components||{};
+      var ROLEAR={cashier:'الكاشير',barista:'الباريستا',floor_service:'خدمة الصالة',table_service:'تجهيز الطاولات',bussing:'ترتيب الطاولات',kitchen_support:'دعم المطبخ',hookah:'الأراجيل',cleaning:'التنظيف',opening:'الافتتاح',closing:'الإغلاق'};
+      var bandTxt={high:'ضغط مرتفع',medium:'ضغط متوسط',calm:'هادئ'}[bc.band]||'—';
+      var bandCls=bc.band==='high'?'red':bc.band==='medium'?'orange':'green';
+      var html='<h3 style="margin:14px 2px 8px">الحالة التشغيلية المستنتَجة <span class="muted small" style="font-weight:400">بلا إدخال يدوي</span></h3>'+
+        '<div class="card" style="padding:12px 14px"><div class="row" style="justify-content:space-between"><b>مؤشّر الضغط: '+(bc.score!=null?bc.score:'—')+' / 100</b><span class="chip '+bandCls+'">'+bandTxt+'</span></div>'+
+        '<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px">'+
+          (comp.live_backlog?'<span class="chip">Live متراكمة: '+comp.live_backlog.raw+'</span>':'')+
+          (comp.service_backlog?'<span class="chip">خدمة متراكمة: '+comp.service_backlog.raw+'</span>':'')+
+          (comp.help?'<span class="chip">مساعدة: '+comp.help.open+'</span>':'')+
+          (comp.velocity?'<span class="chip">أُنجز/15د: '+comp.velocity.done_15m+'</span>':'')+
+          (comp.staffing?'<span class="chip">حاضرات: '+comp.staffing.present+' · متاحات: '+comp.staffing.available+'</span>':'')+
+        '</div><div class="muted small" style="margin-top:6px">درجة الثقة: '+(bc.confidence!=null?bc.confidence:'—')+' · مستنتَجة من إيقاع العمل والحضور</div></div>';
+      var conc=(eng.concentration||[]).filter(function(x){return x.risk&&x.risk!=='ok';});
+      if(conc.length){
+        html+='<h3 style="margin:14px 2px 8px">تركّز المهارات <span class="muted small" style="font-weight:400">(bus-factor)</span></h3>'+conc.map(function(x){
+          var t=x.risk==='single_point'?'نقطة تعطّل وحيدة':'تركّز عالٍ';
+          return '<div class="card" style="padding:10px 12px;border-inline-start:3px solid var('+(x.risk==='single_point'?'--red':'--amber')+')"><div class="small"><b>'+esc(ROLEAR[x.role]||x.role)+'</b> — '+t+'</div>'+
+            '<div class="muted small" style="margin-top:2px">يؤدّيه غالبًا شخص واحد ('+Math.round((x.top_share||0)*100)+'٪ من التنفيذ) — يُنصح بتدريب زميلة لتوزيع الاعتماد.</div></div>';
+        }).join('');
+      }
+      el.innerHTML=html;
+    }).catch(function(){});
+    /* طابور مراجعة النزاهة — يظهر فقط عند وجود حالات مشبوهة */
+    aAct('wf_integrity',{}).then(function(iq){
+      var el=$('#dashIntegrity'); if(!el||!iq.ok) return;
+      var rows=iq.rows||[]; if(!rows.length){ el.innerHTML=''; return; }
+      el.innerHTML='<h3 style="margin:14px 2px 8px">مراجعة النزاهة <span class="chip orange">'+rows.length+'</span> <span class="muted small" style="font-weight:400">وقائع للمراجعة لا أحكام</span></h3>'+
+        rows.slice(0,8).map(function(r){
+          return '<div class="card" style="padding:10px 12px;border-inline-start:3px solid var(--amber)"><div class="row" style="justify-content:space-between"><div class="small"><b>'+esc(r.employee||'؟')+'</b> — '+esc(r.task||'دوّارة')+'</div><span class="muted small num">'+fmtT(r.ts)+'</span></div>'+
+            '<div class="muted small" style="margin-top:2px">سُجِّل إنجاز بفارق قصير جدًا عن السابق — تحقّقي من التنفيذ الفعلي.</div></div>';
+        }).join('');
+    }).catch(function(){});
     /* مرحلة التشغيل + قرارات المحرك مع إمكانية التجاوز الموثق */
     Promise.all([aAct('wf_status',{}), aAct('wf_decisions',{})]).then(function(rs){
       var wfEl=$('#dashWf'); if(!wfEl) return;
