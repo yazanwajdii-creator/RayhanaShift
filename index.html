@@ -625,7 +625,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-24.4";
+var BUILD = "2026-07-24.5";
 var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1706,6 +1706,10 @@ function viewNow(){
   var st=S.state, sh=st.shift, att=st.attendance, out=[];
   var inT = att && att['in'], outT = att && att.out;
   out.push(dashAlerts());
+  if(st.my_zone){ var mz=st.my_zone, wk=mz.works||[];
+    out.push('<div class="card" style="background:var(--hero);color:#F4EFE4;border:none;padding:12px 14px"><b>منطقتكِ: '+esc(mz.area)+'</b>'+(mz.until?' <span class="small" style="color:rgba(255,255,255,.78)">حتى '+fmtT(mz.until)+'</span>':'')+
+      (wk.length?'<div class="small" style="margin-top:4px;opacity:.95">'+wk.map(esc).join(' · ')+'</div>':'')+'</div>');
+  }
   if(!sh){
     out.push('<div class="card soft arch center" style="padding:26px 14px"><h3 style="justify-content:center">لا يوجد شفت مجدول لكِ اليوم</h3>'+
       '<div class="muted">إن كنتِ في الكافيه فعلاً سجلي حضوراً غير مجدول — يُسجَّل وقتك الفعلي ويظهر للإدارة.</div>'+
@@ -2663,8 +2667,8 @@ function loadDash(v){
       if(zones.length){
         zhtml='<h3 style="margin:14px 2px 8px">حالة المناطق <span class="muted small" style="font-weight:400">نتيجة تشغيل لا عدد مهام</span></h3><div class="list">'+
           zones.map(function(z){var s=ZST[z.state]||{t:z.state,c:''};
-            return '<div class="row"><div class="row__body"><div class="row__title">'+esc(z.area)+'</div>'+
-              '<div class="row__sub num">ثقة '+(z.confidence!=null?Math.round(z.confidence*100):0)+'٪'+(z.owner?' · مسؤولة: '+esc(z.owner):'')+(z.owner_until?' حتى '+fmtT(z.owner_until):(z.valid_until?' · جاهزية حتى '+fmtT(z.valid_until):''))+'</div></div>'+
+            return '<div class="row"><button class="row__body" data-zmanage="'+z.area_id+'" data-zname="'+esc(z.area)+'" style="text-align:right;background:none;border:none;cursor:pointer;padding:0;font:inherit;color:inherit"><div class="row__title">'+esc(z.area)+'</div>'+
+              '<div class="row__sub num">ثقة '+(z.confidence!=null?Math.round(z.confidence*100):0)+'٪'+(z.owner?' · مسؤولة: '+esc(z.owner):'')+(z.owner_until?' حتى '+fmtT(z.owner_until):(z.valid_until?' · جاهزية حتى '+fmtT(z.valid_until):''))+'</div></button>'+
               '<span class="chip '+s.c+'">'+s.t+'</span></div>';
           }).join('')+'</div>';
       }
@@ -2697,6 +2701,24 @@ function loadDash(v){
         }).join('');
       }
       el.innerHTML=html;
+      $$('[data-zmanage]',el).forEach(function(b){ b.addEventListener('click',function(){
+        var aid=+b.getAttribute('data-zmanage'), an=b.getAttribute('data-zname');
+        var cur=(zones||[]).filter(function(z){return z.area_id===aid;})[0]||{};
+        lookups(function(){
+          sheet('إدارة منطقة: '+an,
+            '<label class="f">المسؤولة عن المنطقة</label><select class="f" id="zEmp">'+staffOpts()+'</select>'+
+            '<label class="f">المدّة (دقائق)</label><input class="f" id="zMin" type="number" value="'+(cur.owner_min||30)+'">'+
+            '<label class="f">أعمال المنطقة (سطر لكل عمل)</label><textarea class="f" id="zWorks" rows="4">'+esc((cur.works||[]).join('\n'))+'</textarea>'+
+            '<div class="btnrow"><button class="btn block" id="zSave">حفظ وإسناد</button></div>',
+            function(ov,close){
+              $('#zSave',ov).addEventListener('click',function(){
+                var emp=+$('#zEmp',ov).value, m=+$('#zMin',ov).value||30;
+                var works=$('#zWorks',ov).value.split('\n').map(function(x){return x.trim();}).filter(Boolean);
+                Promise.all([aAct('wf_zone_assign',{area_id:aid,employee_id:emp,minutes:m}),aAct('zone_works_set',{area_id:aid,works:works})]).then(function(){ toast('حُفظ ✔'); close(); var dt=$('#dashTop'); if(dt) loadDash(dt); });
+              });
+            });
+        });
+      }); });
     }).catch(function(){});
     /* طابور مراجعة النزاهة — يظهر فقط عند وجود حالات مشبوهة */
     aAct('wf_integrity',{}).then(function(iq){
@@ -4181,13 +4203,14 @@ ADMIN.broadcast=function(v){
       '<div id="bcEmpWrap" style="display:none"><label class="f">الموظفة</label><select class="f" id="bcEmp">'+staffOpts()+'</select></div>'+
       '<label class="f">العنوان</label><input class="f" id="bcTitle">'+
       '<label class="f">النص</label><textarea class="f" id="bcBody"></textarea>'+
+      '<label class="f">يختفي بعد</label><select class="f" id="bcDays"><option value="1">يوم (٢٤ ساعة)</option><option value="3">٣ أيام</option><option value="7">أسبوع</option></select>'+
       '<div class="btnrow"><button class="btn block" id="bcGo">إرسال</button>'+
       (('Notification' in window && Notification.permission!=='granted')?'<button class="btn ghost" id="bcPush">تفعيل إشعاراتي</button>':'')+'</div></div><div id="bcList"></div>';
     $('#bcScope').addEventListener('change', function(){ $('#bcEmpWrap').style.display=this.value==='employee'?'block':'none'; });
     var bp=$('#bcPush'); if(bp) bp.addEventListener('click', function(){ enablePush(PUSHKEY,function(){}); });
     $('#bcGo').addEventListener('click', function(){
       var t=$('#bcTitle').value.trim(); if(!t){ toast('اكتبي العنوان', true); return; }
-      var p={scope:$('#bcScope').value, title:t, body:$('#bcBody').value};
+      var p={scope:$('#bcScope').value, title:t, body:$('#bcBody').value, days:+$('#bcDays').value||1};
       if(p.scope==='employee') p.employee_id=+$('#bcEmp').value;
       busyWrap(this, function(){ return aAct('broadcast',p).then(function(r){ if(r.ok){toast(r.msg||'أُرسل');$('#bcTitle').value='';$('#bcBody').value='';loadBL();} else toast(r.error||'خطأ',true); }); });
     });
