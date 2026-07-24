@@ -625,8 +625,8 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-24.5";
-var PUSHKEY = "BKo6wrMvzUb1NQTPgFYHgg4bwAoaDkDKK5CJuTbRPQCXLG9sk3S1IzXjH1UfSYYZ5Ok4M-DSr-6L6r7hL0Lk4ao";
+var BUILD = "2026-07-24.6";
+var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4d3JlZWp2Y29rd2tiZ3dicmRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDczMTAsImV4cCI6MjA5MjE4MzMxMH0.dPlZm6RdE5Hvlxe_SBBPgP6CvR-i88uYjTi7L5sN_2Y"
@@ -821,7 +821,9 @@ function enablePush(vapid, cb){
     if(perm!=='granted'){ if(cb)cb(false); return; }
     navigator.serviceWorker.ready.then(function(reg){
       reg.pushManager.getSubscription().then(function(sub){
-        var p = sub ? Promise.resolve(sub) : reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64ToU8(vapid)});
+        // بعد تدوير مفتاح VAPID: ألغِ أي اشتراك قديم ثم اشترك بالمفتاح الحالي لضمان التطابق
+        var p = (sub ? sub.unsubscribe().catch(function(){return true;}) : Promise.resolve(true))
+          .then(function(){ return reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64ToU8(vapid)}); });
         p.then(function(s){
           var j=s.toJSON(), act=(S.role==='admin')?'push_admin_subscribe':'push_subscribe';
           var fn=(S.role==='admin')?aAct:sAct;
