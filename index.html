@@ -683,7 +683,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-25.5";
+var BUILD = "2026-07-25.6";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1043,7 +1043,32 @@ function doAttendance(kind, pin, selfie){
         else toast('صباح النشاط سُجّل حضورك');
         refresh();
       } else if(res.blockers){
-        sheet('لا يمكن الانصراف بعد','<ul style="padding-right:18px">'+res.blockers.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul><div class="muted small">أنهي هذه النقاط ثم أعيدي المحاولة.</div>');
+        sheet('لا يمكن الانصراف بعد','<ul style="padding-right:18px">'+res.blockers.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>'+
+          ((res.open_tasks&&res.open_tasks.length)?'<hr class="sep"><div class="small"><b>مهام لم تُغلق:</b></div><ul style="padding-right:18px" class="muted small">'+
+            res.open_tasks.map(function(x){return '<li>'+esc(x.name)+(x.is_core?' <span class="chip red">أساسية</span>':'')+'</li>';}).join('')+'</ul>':'')+
+          '<div class="muted small">أنهي هذه النقاط ثم أعيدي المحاولة.</div>');
+      } else if(res.confirm_open){
+        var lst=(res.open_tasks||[]).map(function(x){return '<li>'+esc(x.name)+'</li>';}).join('');
+        sheet('لديكِ مهام لم تُغلق',
+          '<div class="small">هذه المهام ما زالت مفتوحة:</div><ul style="padding-right:18px">'+lst+'</ul>'+
+          '<div class="muted small">إن انصرفتِ الآن ستعود هذه المهام للتوزيع تلقائياً على زميلاتك — ولن تُحسب تقصيراً عليكِ.</div>'+
+          '<div class="btnrow"><button class="btn block" id="coGo">انصراف وإعادتها للتوزيع</button></div>'+
+          '<div class="btnrow"><button class="btn ghost block" id="coBack">أعود لإنهائها</button></div>',
+          function(ov, close){
+            $('#coGo',ov).addEventListener('click', function(){
+              close();
+              getGeo(function(g2){
+                var p2={geo:g2, device_token:devTok(), device_id:devId(), ack_open:true};
+                if(pin) p2.pin=pin; if(selfie) p2.selfie=selfie;
+                sAct('check_out', p2, false).then(function(r2){
+                  if(r2.ok){ qClear(function(x){ return /^(task_|blocker_|recur)/.test(x.action||''); });
+                    toast('سُجّل انصرافك — أُعيدت المهام للتوزيع'); refresh(); }
+                  else toast(r2.error||'خطأ', true);
+                });
+              });
+            });
+            $('#coBack',ov).addEventListener('click', function(){ close(); });
+          });
       } else if(res.need_pin){
         pinSheet(kind, selfie);
       } else if((res.error||'').indexOf('صورة التحقق')>-1){
@@ -1935,6 +1960,10 @@ function viewNow(){
 
   /* ===== المرحلة 2: أثناء الشفت ===== */
   if(pendAll.length) out.push(heroTaskCard(pendAll[0]));
+  else if(sh && !sh.area_id)
+    out.push('<div class="card" style="padding:16px;border:1.5px solid var(--amber)"><b>شفتكِ بلا منطقة محدَّدة</b>'+
+      '<div class="muted small" style="margin-top:4px">لذلك لم تُسنَد لكِ مهام. أبلغي الإدارة لتحديد منطقتكِ، وستظهر مهامكِ فوراً.</div>'+
+      '<div class="btnrow" style="margin-top:9px"><button class="btn sm ghost block" data-a="helpNew">تنبيه الإدارة</button></div></div>');
   else out.push('<div class="card center soft" style="padding:16px"><b>لا مهام مطلوبة منك الآن</b><div class="muted small">أنجزتِ كل شيء — استعدي لأي نداء</div></div>');
   out.push(shiftBar);
   out.push(dashBreak());
@@ -2312,6 +2341,7 @@ function viewShift(){
     '<div>'+esc(sh.name)+' · '+esc(sh.area||'')+((sh.extra_areas&&sh.extra_areas.length)?' <span class="chip green">+ '+sh.extra_areas.map(esc).join(' + ')+'</span>':'')+'</div>'+
     '<div class="muted">'+fmtT(sh.start)+' → '+fmtT(sh.end)+'</div>'+
     (sh.daily_role?'<div style="margin-top:6px"><b>دورك اليوم:</b> '+esc(sh.daily_role)+'</div>':'')+'</div>');
+  out.push('<div id="upNext"></div>');
   // زميلات اليوم
   var cols=st.colleagues||[];
   out.push('<div class="card"><h3>زميلات اليوم</h3>'+(cols.length?cols.map(function(c){return '<span class="chip green" style="margin:2px">'+esc(c.name)+'</span>';}).join(' '):'<div class="muted small">وحدك اليوم</div>')+'</div>');
@@ -2482,6 +2512,29 @@ function openCover(){
     });
   });
 }
+function loadUpNext(){
+  sAct('my_upcoming',{}).then(function(r){
+    var el=$('#upNext'); if(!el || !r || !r.ok) return;
+    var td=today();
+    var next=(r.shifts||[]).filter(function(s){ return s.day > td; }).slice(0,3);
+    if(!next.length){ el.innerHTML=''; return; }
+    el.innerHTML='<h3 style="margin:14px 2px 8px">شفتاتي القادمة</h3>'+next.map(function(s){
+      var ex=(s.expected||[]), wk=(s.works||[]);
+      return '<div class="card" style="padding:12px 14px">'+
+        '<div class="row" style="justify-content:space-between"><b>'+fmtD(s.day)+'</b>'+
+          '<span class="muted small">'+esc(s.shift||'شفت')+'</span></div>'+
+        '<div class="muted small" style="margin-top:2px">'+
+          (s.no_area?'<span style="color:var(--amber)">بلا منطقة — راجعي الإدارة</span>':esc(s.area||''))+
+          (s.start?' · '+fmtHM(s.start)+'→'+fmtHM(s.end):'')+'</div>'+
+        (ex.length?'<div style="margin-top:8px"><div class="small"><b>المتوقّع ('+ex.length+')</b></div>'+
+          '<ul class="muted small" style="margin:4px 0 0;padding-inline-start:18px">'+
+          ex.slice(0,6).map(function(x){return '<li>'+esc(x.name)+(x.min?' · ~'+x.min+'د':'')+'</li>';}).join('')+
+          (ex.length>6?'<li>و'+(ex.length-6)+' غيرها…</li>':'')+'</ul></div>':'')+
+        (wk.length?'<div class="muted small" style="margin-top:6px">أعمال المنطقة: '+wk.slice(0,4).map(esc).join(' · ')+'</div>':'')+
+        '<div class="muted small" style="margin-top:6px">تُسنَد لكِ صباح الشفت بعد تسجيل الحضور.</div></div>';
+    }).join('');
+  }).catch(function(){});
+}
 function coverNew(){
   sAct('my_upcoming',{}).then(function(r){
     var sh=(r&&r.shifts)||[];
@@ -2591,6 +2644,8 @@ function moreIssueCard(){
 
 /* ---------- ربط أحداث تبويبات الموظفة ---------- */
 function wireTab(v){
+  /* شفتاتي القادمة + مهامها المتوقّعة (الفعلية تُولَّد صباح الشفت) */
+  if($('#upNext', v)) loadUpNext();
   /* السحب للتأكيد على بطاقة المهمة + البوابة تمنع مسبقاً بسبب معروض */
   $$('.swipe', v).forEach(function(el){
     var m=/^swDone(\d+)$/.exec(el.id||''); if(!m) return;
@@ -5150,8 +5205,16 @@ function checkUpdate(){
       _upBusy=false;
       if(j && j.build && j.build!==BUILD){
         try{ localStorage.removeItem('rko_state'); }catch(e){}
-        if('caches' in window){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); }); }
-        else location.reload();
+        // لا يكفي حذف الكاش: عامل الخدمة القديم يبقى مسيطراً ويعيد تقديم النسخة القديمة
+        var swDone = ('serviceWorker' in navigator)
+          ? navigator.serviceWorker.getRegistrations()
+              .then(function(rs){ return Promise.all(rs.map(function(r){ return r.update().catch(function(){}); })); })
+              .catch(function(){})
+          : Promise.resolve();
+        var cacheDone = ('caches' in window)
+          ? caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).catch(function(){})
+          : Promise.resolve();
+        Promise.all([swDone, cacheDone]).then(function(){ location.reload(true); });
       }
     }).catch(function(){ _upBusy=false; });
   }catch(e){ _upBusy=false; }
