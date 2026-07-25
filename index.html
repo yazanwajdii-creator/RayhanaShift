@@ -683,7 +683,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-25.4";
+var BUILD = "2026-07-25.5";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -886,18 +886,57 @@ function enablePush(vapid, cb){
           var j=s.toJSON(), act=(S.role==='admin')?'push_admin_subscribe':'push_subscribe';
           var fn=(S.role==='admin')?aAct:sAct;
           fn(act, {endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth, ua:navigator.userAgent}, false)
-            .then(function(){ toast('فُعّلت الإشعارات ✔'); if(cb)cb(true); });
+            .then(function(){ PUSH_OK=true; toast('فُعّلت الإشعارات ✔'); if(cb)cb(true); });
         }).catch(function(){ if(cb)cb(false); });
       });
     });
   }).catch(function(){ if(cb)cb(false); });
 }
+/* الاشتراك الفعلي هو المعيار — لا إذن المتصفح.
+   الإذن ممنوح لا يعني وجود اشتراك: بعد تدوير المفتاح أو مسح البيانات
+   يبقى الإذن granted بلا اشتراك، فلا يصل إشعار ولا تظهر أي بطاقة. */
+var PUSH_OK=null;                       // null=غير معروف, true/false=النتيجة
+function ensurePush(cb){
+  function done(v){ PUSH_OK=v; if(cb) cb(v); }
+  if(!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)){
+    done(true); return;                 // متصفح غير داعم — لا نحبس الموظفة
+  }
+  if(Notification.permission !== 'granted'){ done(false); return; }
+  navigator.serviceWorker.ready.then(function(reg){
+    reg.pushManager.getSubscription().then(function(sub){
+      if(sub){                          // موجود: أعِد تسجيله على الخادم (يشفي أي فقد)
+        pushSave(sub, function(){ done(true); });
+        return;
+      }
+      // الإذن ممنوح بلا اشتراك ⇒ اشترك بصمت بلا إزعاج الموظفة
+      var vapid=(S.state&&S.state.push&&S.state.push.vapid_public)||PUSHKEY;
+      reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64ToU8(vapid)})
+        .then(function(s){ pushSave(s, function(){ done(true); }); })
+        .catch(function(){ done(false); });
+    }).catch(function(){ done(false); });
+  }).catch(function(){ done(false); });
+}
+function pushSave(sub, cb){
+  var j=sub.toJSON();
+  if(!j || !j.keys || !j.keys.p256dh){ if(cb) cb(); return; }
+  var act=(S.role==='admin')?'push_admin_subscribe':'push_subscribe';
+  var fn=(S.role==='admin')?aAct:sAct;
+  fn(act, {endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth, ua:navigator.userAgent}, false)
+    .then(function(){ if(cb) cb(); }).catch(function(){ if(cb) cb(); });
+}
 /* بوابة إجبارية: لا يُسمح للموظفة بالعمل دون تفعيل إشعارات الجهاز */
 function pushGate(){
   if(S.role!=='staff') return;                              // للموظفات فقط
   if(!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) return; // متصفح لا يدعم — لا نحبسها
-  if(Notification.permission==='granted') { var g0=$('#pushGate'); if(g0) g0.remove(); return; } // مفعّلة — أزل البوابة إن وُجدت
-  if($('#pushGate')) return;                                // معروضة أصلاً
+  // المعيار هو وجود اشتراك فعلي لا الإذن وحده
+  ensurePush(function(ok){
+    var g0=$('#pushGate');
+    if(ok){ if(g0) g0.remove(); if(typeof drawTab==='function' && g0) drawTab(); return; }
+    if(g0) return;                                          // معروضة أصلاً
+    pushGateDraw();
+  });
+}
+function pushGateDraw(){
   var vapid=(S.state&&S.state.push&&S.state.push.vapid_public)||PUSHKEY;
   var denied=(Notification.permission==='denied');
   var el=document.createElement('div');
@@ -1777,7 +1816,7 @@ function heroTaskCard(t){
       '<div class="card soft" style="margin:12px 0 0;padding:12px 14px;background:var(--surface-2);border:1px dashed var(--line)"><b>انتهى شفتك</b><div class="muted small" style="margin-top:2px">لا يمكن تنفيذ أو تعديل المهام خارج الشفت.</div></div></div>';
   }
   var prim, sec='';
-  if(t.status==='running'){ prim='<button class="btn green block" data-a="tDone" data-id="'+t.id+'">أنجزت المهمة وأؤكد النتيجة</button>'; sec='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت</button>'; }
+  if(t.status==='running'){ prim=swipeHtml('swDone'+t.id,'اسحبي: أنجزت وأؤكد النتيجة'); sec='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت</button>'; }
   else if(t.status==='paused'&&t.blocked){ prim='<button class="btn block" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>'; }
   else if(t.status==='paused'){ prim='<button class="btn block" data-a="tResume" data-id="'+t.id+'">استئناف</button>'; }
   else { prim='<button class="btn block" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>'; }
@@ -1792,7 +1831,14 @@ function heroTaskCard(t){
     (t.status==='returned'&&t.admin_note?'<div class="small" style="color:var(--red);margin-top:6px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>':'')+
     '<div class="row" style="justify-content:space-between;margin-top:10px"><span class="chip '+stCls+'">'+stTxt+'</span>'+
     '<span class="btnrow" style="margin:0"><button class="btn sm ghost" data-a="tWhy" data-id="'+t.id+'">لماذا أنا؟</button><button class="btn sm ghost" data-a="goTasks">كل المهام</button></span></div>'+
-    '<div class="btnrow" style="margin-top:10px">'+prim+sec+(t.blocked?'':'<button class="btn sm ghost red" data-a="tBlock" data-id="'+t.id+'">يوجد مانع</button>')+'</div></div>';
+    (t.status==='running'
+      ? '<div style="margin-top:10px">'+prim+'</div>'+
+        '<div class="btnrow" style="margin-top:6px">'+sec+
+          '<button class="btn sm ghost" data-a="tCant" data-id="'+t.id+'">لم أستطع</button>'+
+          (t.blocked?'':'<button class="btn sm ghost red" data-a="tBlock" data-id="'+t.id+'">يوجد مانع</button>')+'</div>'
+      : '<div class="btnrow" style="margin-top:10px">'+prim+sec+
+          (t.blocked?'':'<button class="btn sm ghost red" data-a="tBlock" data-id="'+t.id+'">يوجد مانع</button>')+'</div>')+
+    '</div>';
 }
 function viewNow(){
   /* شاشة «الآن» — سياقية: قبل الحضور / أثناء الشفت / قرب الإغلاق / بعد الانصراف */
@@ -1810,7 +1856,7 @@ function viewNow(){
       '</div>'+
       '<div class="muted small" style="margin-top:6px">اختياري — يمكنكِ تجاهله <button class="btn sm ghost" data-obs="skip" style="padding:2px 8px;min-height:0">إخفاء</button></div></div>');
   }
-  if('Notification' in window && Notification.permission!=='granted'){
+  if(PUSH_OK===false){
     out.push('<div class="card" style="border:1.5px solid var(--amber);text-align:center;padding:16px 14px">'+
       '<h3 style="justify-content:center;margin:0 0 4px">فعّلي إشعارات هاتفكِ</h3>'+
       '<div class="muted small" style="margin-bottom:10px">ليصلكِ تنبيه المهام وقرارات طلباتكِ على هاتفكِ حتى والتطبيق مغلق.</div>'+
@@ -2545,6 +2591,21 @@ function moreIssueCard(){
 
 /* ---------- ربط أحداث تبويبات الموظفة ---------- */
 function wireTab(v){
+  /* السحب للتأكيد على بطاقة المهمة + البوابة تمنع مسبقاً بسبب معروض */
+  $$('.swipe', v).forEach(function(el){
+    var m=/^swDone(\d+)$/.exec(el.id||''); if(!m) return;
+    var tid=+m[1], g=(S.state&&S.state.gates)||{}, why=null;
+    if(g.next_complete_at && new Date(g.next_complete_at) > new Date()){
+      var mins=Math.max(1,Math.ceil((new Date(g.next_complete_at)-new Date())/60000));
+      why='بقيت '+mins+' د قبل التسجيل التالي';
+    }
+    var t0=findTask(tid);
+    if(!why && g.priority_block && t0 && g.priority_block.name!==t0.name
+       && (g.priority_block.tier||9) < (t0.tier||9)){
+      why='أنجزي «'+g.priority_block.name+'» أولاً — الأهم';
+    }
+    swipeBind(el, function(){ var t=findTask(tid); if(t) completeFlow(t); }, why);
+  });
   /* السؤال التشغيلي العابر */
   $$('[data-obs]', v).forEach(function(b){
     b.addEventListener('click', function(){
@@ -2567,6 +2628,7 @@ function wireTab(v){
       else if(a==='moreBack'){ S.moreSec=null; drawTab(); }
       else if(a==='themeToggle'){ toggleTheme(); }
       else if(a==='enablePush'){ enablePush((S.state&&S.state.push&&S.state.push.vapid_public)||PUSHKEY, function(ok){ if(ok) drawTab(); }); }
+      else if(a==='tCant'){ var tc=findTask(id); if(tc) cannotFlow(tc); }
       else if(a==='tWhy'){ sAct('task_why',{task_id:id}).then(function(r){ sheet('لماذا هذه المهمة لكِ؟','<div class="cdlg-txt">'+esc(r.why||'')+'</div>'); }); }
       else if(a==='tBlock'){
         inputSheet('يوجد مانع','صِفي المانع (أداة معطلة، نقص مواد، منطقة مشغولة...)','مثال: ماكينة الجلي معطلة','تسجيل المانع',function(note){
