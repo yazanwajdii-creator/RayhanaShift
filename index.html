@@ -683,7 +683,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-25.7";
+var BUILD = "2026-07-25.8";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1161,7 +1161,8 @@ function skel(n){ var s=''; for(var i=0;i<(n||3);i++) s+='<div class="skel"></di
 
 /* ---------- ترجمة مصطلحات ---------- */
 var PHASE={opening:'الافتتاح', during:'أثناء الدوام', closing:'الإغلاق', adhoc:'مهمة إضافية'};
-var TSTAT={open:'لم تبدأ', running:'قيد التنفيذ', paused:'موقوفة مؤقتاً', done:'منجزة', approved:'معتمدة', returned:'مُعادة للتنفيذ', carried:'رُحّلت للغد', cancelled:'أُلغيت'};
+var TSTAT={open:'لم تبدأ', running:'قيد التنفيذ', paused:'موقوفة مؤقتاً', done:'منجزة', approved:'معتمدة', returned:'مُعادة للتنفيذ', carried:'رُحّلت للغد', cancelled:'أُلغيت',
+  claimed_done:'قيد القبول التلقائي', accepted:'مقبولة', verified:'مُتحقَّق منها', review_required:'تحتاج مراجعة', reopened:'أُعيد فتحها', blocked:'موقوفة بمانع'};
 var WFPH={pre_shift:'قبل الافتتاح', opening:'الافتتاح', normal:'تشغيل طبيعي', peak:'ذروة', recovery:'تعافٍ', closing:'إغلاق', finalized:'أُقفل اليوم'};
 var WAIT={none:'لا انتظار', low:'انتظار خفيف', high:'انتظار مرتفع'};
 var REQSTAT={pending:'قيد المراجعة', approved:'مقبول', rejected:'مرفوض'};
@@ -2160,7 +2161,8 @@ function viewTasks(){
   return out.join('');
 }
 function taskCard(t){
-  var stChip = {open:'',running:'green',paused:'orange',done:'green',approved:'green',returned:'red'}[t.status]||'';
+  var stChip = {open:'',running:'green',paused:'orange',done:'green',approved:'green',returned:'red',
+    claimed_done:'',accepted:'green',verified:'green',review_required:'orange',reopened:'red',blocked:'red'}[t.status]||'';
   var stLbl = TSTAT[t.status];
   if(t.status==='paused'&&t.blocked){ stChip='red'; stLbl='مانع — موقوفة'; }
   var running = t.status==='running';
@@ -2326,7 +2328,11 @@ function completeFlow(t){
       busyWrap(this, function(){
         return sAct('task_complete', p, false).then(function(res){
           if(!res.ok){ toast(res.error||'خطأ', true); return; }
-          close(); toast(res.needs_review?'سُجّل إنجازك — بانتظار مراجعة الإدارة':'سُجّل إنجازك ✔'); refresh();
+          close();
+          toast(res.needs_review ? 'سُجّل إنجازك — بانتظار مراجعة الإدارة'
+              : res.claimed ? ('سُجّل إنجازك، والنتيجة قيد القبول التلقائي خلال '+(res.accept_min||20)+' د')
+              : 'سُجّل إنجازك ✔');
+          refresh();
         });
       });
     });
@@ -3594,6 +3600,28 @@ ADMIN.shifts=function(v){
 };
 
 /* ---------- قوالب المهام ---------- */
+/* مخاطر تغطية المهارات — يمنع اشتراط مهارة لا يتقنها أحد */
+function loadSkillRisk(){
+  aAct('skills_risk',{}).then(function(r){
+    var el=$('#skRisk'); if(!el || !r || !r.ok) return;
+    var m=r.risk||{}, sk=(m.skills||[]);
+    var bad=sk.filter(function(s){ return s.risk!=='ok'; });
+    var RISKAR={none:'لا أحد مؤهَّل',single_point:'شخص واحد فقط',thin:'تغطية ضعيفة'};
+    if(!bad.length){ el.innerHTML='<div class="card soft" style="padding:11px 13px"><b>تغطية المهارات سليمة</b>'+
+      '<div class="muted small">كل مهارة يتقنها '+(m.min_qualified||2)+' فأكثر.</div></div>'; return; }
+    el.innerHTML='<h3 style="margin:4px 2px 8px">مخاطر تغطية المهارات ('+bad.length+')</h3>'+
+      '<div class="muted small" style="margin:0 2px 8px">لا يمكن اشتراط مهارة على مهمة قبل تأهيل '+(m.min_qualified||2)+' على الأقل — وإلا صارت المهمة بلا مرشحة.</div>'+
+      bad.map(function(s){
+        var c = s.risk==='none' ? '--red' : s.risk==='single_point' ? '--amber' : '--muted';
+        return '<div class="card" style="padding:10px 12px;border-inline-start:3px solid var('+c+')">'+
+          '<div class="row" style="justify-content:space-between"><b>'+esc(s.name)+'</b>'+
+            (s.critical?'<span class="chip red">حرجة</span>':'')+'</div>'+
+          '<div class="muted small" style="margin-top:2px">'+(RISKAR[s.risk]||s.risk)+
+            ((s.people&&s.people.length)?' · '+s.people.map(function(p){return esc(p.name);}).join('، '):'')+
+            (s.used_by_templates?' · مشترطة في '+s.used_by_templates+' قالب':'')+'</div></div>';
+      }).join('');
+  }).catch(function(){});
+}
 /* ---------- الجدولة التلقائية: المحرك يبني الأسبوع، والمالك يراجع الاستثناء ---------- */
 var DOWAR=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 ADMIN.roster=function(v){
@@ -4026,6 +4054,8 @@ ADMIN.skills=function(v){
   aAct('skills_matrix',{}).then(function(res){
     if(!res.ok){ v.innerHTML='<div class="empty">'+esc(res.error||'خطأ')+'</div>'; return; }
     var out=[];
+    out.push('<div id="skRisk"></div>');
+    setTimeout(loadSkillRisk, 0);
     out.push('<div class="card beige"><h3>تغطية المهارات الحرجة</h3>'+
       (res.coverage||[]).map(function(c){
         var h=c.holders||[];
