@@ -683,7 +683,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-25.8";
+var BUILD = "2026-07-25.9";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -902,6 +902,10 @@ function ensurePush(cb){
     done(true); return;                 // متصفح غير داعم — لا نحبس الموظفة
   }
   if(Notification.permission !== 'granted'){ done(false); return; }
+  // حارس: لا تنتظر إلى الأبد إن تعذّر تسجيل عامل الخدمة
+  var settled=false; var _done=done;
+  done=function(v){ if(settled) return; settled=true; _done(v); };
+  setTimeout(function(){ done(false); }, 8000);
   navigator.serviceWorker.ready.then(function(reg){
     reg.pushManager.getSubscription().then(function(sub){
       if(sub){                          // موجود: أعِد تسجيله على الخادم (يشفي أي فقد)
@@ -5307,12 +5311,18 @@ function boot2(){
   else if(S.token && S.role==='admin') startAdmin();
   else renderLogin();
 }
-// عامل الخدمة: يخزن الهيكل للعمل دون اتصال ويتيح التثبيت على الشاشة الرئيسية
-// إزالة أي عامل خدمة قديم عالق + تنظيف الكاش لضمان فتح الموقع دائماً بأحدث نسخة
+/* عامل الخدمة: شرط لا غنى عنه لإشعارات الدفع.
+   الكود السابق كان يُلغي تسجيله في كل فتحة ولا يسجّله أبداً، فاستحال وصول أي إشعار:
+   بلا عامل نشط لا يكتمل navigator.serviceWorker.ready فيتوقف الاشتراك بصمت.
+   حماية النسخة القديمة تتم عبر فحص version.json + reg.update() لا بإلغاء التسجيل. */
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(function(rs){ rs.forEach(function(r){ r.unregister(); }); }).catch(function(){});
+  navigator.serviceWorker.register('sw.js').then(function(reg){
+    try{ reg.update(); }catch(e){}
+    navigator.serviceWorker.ready.then(function(){
+      try{ if(S && S.token) ensurePush(function(){}); }catch(e){}
+    });
+  }).catch(function(){});
 }
-if('caches' in window){ caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k); }); }).catch(function(){}); }
 boot();
 })();
 </script>
