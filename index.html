@@ -683,7 +683,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-25.6";
+var BUILD = "2026-07-25.7";
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -3661,7 +3661,19 @@ ADMIN.roster=function(v){
       $('#rsGen').addEventListener('click',function(){
         busyWrap(this,function(){
           return aAct('roster_generate',{from:$('#rsFrom').value, days:+$('#rsDays').value})
-            .then(function(r){ if(r.ok){ toast('وُلِّدت المسودّة ✔'); load(); } else toast(r.error||'خطأ',true); });
+            .then(function(r){
+              if(!r.ok){ toast(r.error||'خطأ',true); return; }
+              var md=r.days_without_rules||[];
+              if(md.length){
+                sheet('أيام بلا قواعد تغطية',
+                  '<div class="small">لم يولّد المحرك شفتات لهذه الأيام لأنها بلا قواعد:</div>'+
+                  '<div style="margin:8px 0"><b>'+md.map(function(i){return DOWAR[i];}).join('، ')+'</b></div>'+
+                  '<div class="muted small">افتحي «قواعد التغطية» ثم «انسخي لكل الأيام» لتعميم قواعد يوم على الأسبوع.</div>'+
+                  '<div class="btnrow"><button class="btn block" id="mdGo">فتح قواعد التغطية</button></div>',
+                  function(ov,close){ $('#mdGo',ov).addEventListener('click',function(){ close(); rosterRules(); }); });
+              } else toast('وُلِّدت المسودّة ✔');
+              load();
+            });
         });
       });
       $('#rsRules').addEventListener('click', rosterRules);
@@ -3700,6 +3712,9 @@ ADMIN.roster=function(v){
   function rosterRules(){
     aAct('roster_rules',{}).then(function(r){
       var dem=r.demand||[], skills=r.skills||[];
+      var covered=[], missing=[];
+      dem.forEach(function(d){ if(d.needed>0 && covered.indexOf(d.dow)<0) covered.push(d.dow); });
+      for(var _i=0;_i<7;_i++) if(covered.indexOf(_i)<0) missing.push(_i);
       var html='<div class="muted small" style="margin-bottom:8px">كم موظفة تحتاجين لكل نوع شفت في كل يوم؟ المحرك يبني الجدول على هذا.</div>'+
         '<label class="f">نوع الشفت</label><select class="f" id="rdT">'+typeOpts()+'</select>'+
         '<label class="f">اليوم</label><select class="f" id="rdD">'+DOWAR.map(function(n,i){return '<option value="'+i+'">'+n+'</option>';}).join('')+'</select>'+
@@ -3708,12 +3723,25 @@ ADMIN.roster=function(v){
         '<label class="f">مهارة مطلوبة (اختياري)</label><select class="f" id="rdS"><option value="">— بلا —</option>'+
           skills.map(function(s){return '<option value="'+esc(s.code)+'">'+esc(s.name)+'</option>';}).join('')+'</select>'+
         '<div class="btnrow"><button class="btn block" id="rdSave">حفظ القاعدة</button></div>'+
+        '<hr class="sep"><div class="small"><b>تعميم على الأسبوع</b></div>'+
+        '<div class="muted small">المحرك لا يولّد شفتات ليوم بلا قواعد. إن كانت التغطية متشابهة، انسخي قواعد يوم إلى بقية الأيام بضغطة.</div>'+
+        '<div class="row" style="gap:8px;margin-top:6px"><select class="f" id="rdFrom" style="margin:0">'+
+          DOWAR.map(function(n,i){return '<option value="'+i+'"'+(covered.indexOf(i)>-1?'':' disabled')+'>'+n+(covered.indexOf(i)>-1?'':' (بلا قواعد)')+'</option>';}).join('')+'</select>'+
+          '<button class="btn sm" id="rdCopy" style="white-space:nowrap">انسخي لكل الأيام</button></div>'+
+        (missing.length?'<div class="muted small" style="margin-top:6px;color:var(--amber)">أيام بلا قواعد: '+missing.map(function(i){return DOWAR[i];}).join('، ')+'</div>':'')+
         '<hr class="sep"><div class="small"><b>القواعد الحالية</b></div><div class="list" style="margin-top:6px">'+
         (dem.length?dem.map(function(d){
           return '<div class="row"><div class="row__body"><div class="row__title">'+esc(d.shift||'')+' · '+DOWAR[d.dow]+'</div>'+
             '<div class="row__sub">'+(d.area?esc(d.area)+' · ':'')+'العدد: '+d.needed+(d.required_skill?' · مهارة: '+esc(d.required_skill):'')+'</div></div></div>';
         }).join(''):'<div class="empty">لا قواعد بعد</div>')+'</div>';
       sheet('قواعد التغطية', html, function(ov,close){
+        $('#rdCopy',ov).addEventListener('click',function(){
+          var fd=+$('#rdFrom',ov).value;
+          busyWrap(this,function(){
+            return aAct('roster_demand_copy',{from_dow:fd})
+              .then(function(r){ if(r.ok){ close(); toast('عُمِّمت قواعد '+DOWAR[fd]+' على الأسبوع ✔'); } else toast(r.error||'خطأ',true); });
+          });
+        });
         $('#rdSave',ov).addEventListener('click',function(){
           busyWrap(this,function(){
             return aAct('roster_demand_set',{shift_type_id:+$('#rdT',ov).value, dow:+$('#rdD',ov).value,
