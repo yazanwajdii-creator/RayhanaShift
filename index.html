@@ -256,120 +256,226 @@ a{color:var(--green)}
 .undobar .ub-txt{flex:1;font-size:13.5px}
 .undobar .ub-btn{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:10px;padding:7px 13px;font:inherit;font-weight:700;cursor:pointer}
 .undobar .ub-ring{font-size:12px;opacity:.8;font-variant-numeric:tabular-nums}
-/* ===== خريطة الطاولات التشغيلية =====
-   الطاولة تُرسم كقطعة أثاث لها مقاعد، لا كمربع على ورق مربعات. */
-.tm-wrap{margin-top:6px}
-.tm-hd{margin-bottom:10px}
-.tm-hd h4{margin:0;font-size:16.5px;letter-spacing:-.2px}
-.tm-hd .tm-sub{font-size:11.5px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.tm-live{display:inline-flex;align-items:center;gap:4px;font-weight:700}
-.tm-live i{width:6px;height:6px;border-radius:50%;background:#3fae6a;display:inline-block;animation:tmpulse 2.2s infinite}
-@keyframes tmpulse{0%,100%{opacity:1}50%{opacity:.2}}
-/* مفتاح الألوان سطر واحد هادئ */
-.tm-key{display:flex;flex-wrap:wrap;gap:9px;margin:9px 0 11px;font-size:10.5px;color:var(--muted)}
-.tm-key span{display:inline-flex;align-items:center;gap:4px}
-.tm-key i{width:9px;height:9px;border-radius:50%;display:inline-block}
-/* عدّادات الحالات: شرائح ملوّنة تُقرأ بلمحة */
-.tm-counts{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:11px}
-.tm-c{flex:1 1 70px;max-width:118px;border-radius:14px;padding:9px 11px;border:1px solid}
-.tm-c b{display:block;font-size:20px;line-height:1.1;font-variant-numeric:tabular-nums}
-.tm-c span{font-size:10.5px;display:block;margin-top:2px;opacity:.85}
-/* اللوح: خلفية كريمية دافئة بملمس خفيف، بلا شبكة مربعات */
-.tm-board{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;
-  border-radius:20px;border:1px solid var(--line);
-  background:
-    radial-gradient(circle at 22% 18%, rgba(255,255,255,.75), transparent 46%),
-    radial-gradient(circle at 78% 82%, rgba(157,178,163,.14), transparent 52%),
-    linear-gradient(158deg,#f7f5ef 0%,#f2efe6 100%)}
-.tm-board.dim{filter:saturate(.55) opacity(.72)}
+/* ===== مركز إدارة الطاولات =====
+   أداة تشغيل: كثافة معلومات عالية، أماكن ثابتة، تباين WCAG AA، بلا شبكة خلفية. */
+.ti{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.ti svg{width:1em;height:1em;display:block}
+
+/* شريط القيادة — صف واحد مضغوط لا بطاقات ضخمة */
+.tcb{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:12px;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+@media(min-width:700px){ .tcb{grid-template-columns:repeat(8,1fr)} }
+.tcb-i{min-width:0;padding:8px 9px;border-inline-end:1px solid var(--line);border-bottom:1px solid var(--line)}
+.tcb-i b{display:block;font-size:15.5px;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcb-i span{display:block;font-size:10px;color:var(--muted);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcb-i.bad b{color:#B3261E} .tcb-i.info b{color:#3B3F8F}
+.tcb-i span.ok{color:#1F6B4F} .tcb-i span.warn{color:#B3261E}
+
+/* لافتة خارج الدوام */
+.tm-closed{display:flex;gap:9px;align-items:flex-start;background:#FDF3DE;border:1px solid #E0A93C;
+  color:#7A5A12;border-radius:13px;padding:10px 12px;font-size:12px;margin-bottom:11px;line-height:1.5}
+.tm-closed .ti{font-size:17px;margin-top:1px}
+
+/* ما يحتاج تدخلاً — مقدمة العرض */
+.tal{border:1px solid #E4B4AE;background:#FDF1EF;border-radius:14px;padding:10px 11px;margin-bottom:11px}
+.tal-h{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:#8F2F26;margin-bottom:7px}
+.tal-h .ti{font-size:16px}
+.tal-h span{background:#B3261E;color:#fff;border-radius:20px;padding:0 7px;font-size:11px;margin-inline-start:auto}
+.tal-list{display:grid;grid-template-columns:1fr;gap:6px}
+@media(min-width:700px){ .tal-list{grid-template-columns:1fr 1fr} }
+@media(min-width:1100px){ .tal-list{grid-template-columns:repeat(3,1fr)} }
+.tal-i{display:block;width:100%;text-align:start;background:#fff;border:1px solid #EBD3CF;
+  border-radius:11px;padding:8px 10px;font:inherit;cursor:pointer;
+  border-inline-start:3px solid #B3261E}
+.tal-i.sev-mid{border-inline-start-color:#B0790F} .tal-i.sev-low{border-inline-start-color:#7E939E}
+.tal-i b{display:block;font-size:13px;color:var(--ink)}
+.tal-i span{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+
+/* اقتراح إعادة التوزيع */
+.tsug{display:flex;gap:9px;align-items:flex-start;background:#EEF4F1;border:1px solid #B6CCC0;
+  border-radius:13px;padding:10px 12px;margin-bottom:11px}
+.tsug .ti{font-size:17px;color:#1F6B4F;margin-top:1px}
+.tsug b{display:block;font-size:12.5px;color:#1B5741}
+.tsug span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+
+/* المرشّحات */
+.tfl{display:flex;gap:6px;align-items:center;margin-bottom:11px;overflow-x:auto;
+  scrollbar-width:none;padding-bottom:2px}
+.tfl::-webkit-scrollbar{display:none}
+.tfl-b{flex:0 0 auto;background:var(--surface);border:1px solid var(--line);color:var(--muted);
+  border-radius:20px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;min-height:34px}
+.tfl-b.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.tfl-s{flex:0 0 auto;background:var(--surface);border:1px solid var(--line);border-radius:20px;
+  padding:6px 10px;font:inherit;font-size:12px;color:var(--ink);min-height:34px;max-width:150px}
+.tfl-v{flex:0 0 auto;margin-inline-start:auto;background:var(--surface);border:1px solid var(--line);
+  border-radius:11px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--ink);font-size:17px}
+
+/* شبكة البطاقات — تتكيف حتى 25 طاولة بلا ازدحام */
+.tgrid{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:430px){ .tgrid{grid-template-columns:1fr 1fr} }
+@media(min-width:760px){ .tgrid{grid-template-columns:repeat(3,1fr)} }
+@media(min-width:1080px){ .tgrid{grid-template-columns:repeat(4,1fr)} }
+
+/* بطاقة الطاولة — أماكن المعلومات ثابتة */
+.tcard{position:relative;display:block;width:100%;text-align:start;font:inherit;cursor:pointer;
+  background:var(--surface);border:1px solid var(--line);border-radius:13px;
+  padding:9px 11px 9px 14px;padding-inline-start:14px;overflow:hidden;
+  transition:border-color .12s ease,transform .1s ease;-webkit-tap-highlight-color:transparent}
+.tcard:active{transform:scale(.99)}
+.tc-edge{position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--line)}
+.tc-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.tc-no{font-size:19px;font-weight:800;line-height:1;min-width:26px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.tc-st{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800}
+.tc-st .ti{font-size:15px}
+.tc-flags{display:inline-flex;gap:4px;margin-inline-start:auto}
+.tf{display:inline-flex;font-size:15px;color:var(--muted)}
+.tf.bad{color:#B3261E} .tf.warn{color:#B0790F} .tf.mild{color:#8A5D06}
+.tc-time{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);
+  margin-bottom:5px;font-variant-numeric:tabular-nums}
+.tc-time b{color:var(--ink);font-weight:800}
+.tc-g{display:inline-flex;align-items:center;gap:3px;margin-inline-start:auto}
+.tc-g .ti{font-size:13px}
+.tc-bot{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}
+.tc-own{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:var(--ink);flex:0 0 auto}
+.tc-own.none{color:var(--muted);font-weight:500;font-style:italic}
+.tc-av{width:20px;height:20px;border-radius:50%;background:#DCE5DE;color:#1F4A38;
+  display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;flex:0 0 auto}
+.tc-le{margin-inline-start:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:56%;text-align:end}
+
+/* ألوان الحالات — لون + حد جانبي + أيقونة + نص */
+.tcard.s-free           .tc-edge{background:#C9CFC7} .tcard.s-free .tc-st{color:#5C6B62}
+.tcard.s-reserved       .tc-edge{background:#A99DD0} .tcard.s-reserved .tc-st{color:#5B4F86}
+.tcard.s-seated         .tc-edge{background:#E0A93C} .tcard.s-seated .tc-st{color:#8A5D06}
+.tcard.s-seated{background:#FEFAF1}
+.tcard.s-ordered        .tc-edge{background:#5B8FC9} .tcard.s-ordered .tc-st{color:#26557F}
+.tcard.s-preparing      .tc-edge{background:#7B74C4} .tcard.s-preparing .tc-st{color:#3E3684}
+.tcard.s-ready          .tc-edge{background:#5364B2} .tcard.s-ready .tc-st{color:#2A377E}
+.tcard.s-served         .tc-edge{background:#2F8D7D} .tcard.s-served .tc-st{color:#1F6B4F}
+.tcard.s-bill_requested .tc-edge{background:#5158B5} .tcard.s-bill_requested .tc-st{color:#3B3F8F}
+.tcard.s-bill_requested{background:#F5F6FC}
+.tcard.s-needs_clean    .tc-edge{background:#7E939E} .tcard.s-needs_clean .tc-st{color:#41545E}
+.tcard.s-needs_clean{background:#F4F7F8}
+.tcard.s-cleaning       .tc-edge{background:#95A29A} .tcard.s-cleaning .tc-st{color:#41545E}
+.tcard.s-out_of_service .tc-edge{background:#9AA29D} .tcard.s-out_of_service .tc-st{color:#45504B}
+.tcard.s-out_of_service{background:#F2F2F0;opacity:.85}
+.tcard.urg{border-color:#D98B83;box-shadow:0 0 0 2px rgba(179,38,30,.1)}
+
+/* توزيع الحمل */
+.tload{margin-top:13px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 12px}
+.tload-h{font-size:12.5px;font-weight:800;margin-bottom:8px;color:var(--ink)}
+.tload-r{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11.5px}
+.tload-r:last-child{margin-bottom:0}
+.tload-n{flex:0 0 auto;min-width:58px;font-weight:700;color:var(--ink)}
+.tload-bar{flex:1;height:7px;background:var(--bg);border-radius:5px;overflow:hidden}
+.tload-bar i{display:block;height:100%;background:#2F8D7D;border-radius:5px}
+.tload-v{flex:0 0 auto;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ===== المخطط ===== */
+.tm-board{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;--tmb:clamp(38px,11.5vw,50px);
+  border-radius:18px;border:1px solid var(--line);
+  background:radial-gradient(circle at 22% 18%,rgba(255,255,255,.75),transparent 46%),
+             radial-gradient(circle at 78% 82%,rgba(157,178,163,.14),transparent 52%),
+             linear-gradient(158deg,#F7F5EF 0%,#F2EFE6 100%)}
 @media(min-width:560px){ .tm-board{aspect-ratio:4/3} }
-/* معالم ثابتة غير قابلة للضغط */
 .tm-land{position:absolute;pointer-events:none;font-size:10px;display:flex;align-items:center;
   justify-content:center;text-align:center;line-height:1.25;color:var(--muted)}
 .tm-land.pool{background:linear-gradient(158deg,rgba(109,183,201,.30),rgba(109,183,201,.13));
-  border:1px solid rgba(109,183,201,.34);border-radius:14px;color:#2b6c79;font-weight:700;font-size:11px}
+  border:1px solid rgba(109,183,201,.34);border-radius:14px;color:#255F6B;font-weight:700;font-size:11px}
 .tm-land.glass{background:repeating-linear-gradient(90deg,rgba(122,150,138,.22) 0 5px,transparent 5px 13px);border-radius:3px}
 .tm-land.door{border:1px dashed var(--line);border-radius:8px;font-weight:700;background:rgba(255,255,255,.5)}
-.tm-land.zone{border:1px dashed rgba(140,160,148,.42);border-radius:26px;background:rgba(255,255,255,.28)}
-.tm-land.band{background:rgba(150,170,157,.16);border-radius:60px}
-.tm-land.n{font-weight:800;color:var(--muted);font-size:11px;background:rgba(255,255,255,.72);
-  border:1px solid var(--line);border-radius:8px}
-/* ===== الطاولة ===== */
+.tm-land.zone{border:1px dashed rgba(140,160,148,.4);border-radius:26px;background:rgba(255,255,255,.26)}
 .tm-t{position:absolute;transform:translate(-50%,-50%);border:none;background:none;padding:0;
   font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;
   display:flex;align-items:center;justify-content:center;min-width:46px;min-height:46px}
 .tm-seat{position:absolute;width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5}
-/* الجسم: يحمل لون الحالة كاملاً */
-/* حجم الطاولة يتبع عرض الشاشة حتى لا تتلاصق على 360px — ومساحة اللمس تبقى 46px من الزر نفسه */
-.tm-board{--tmb:clamp(38px,11.5vw,50px)}
 .tm-body{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
   border:1.5px solid;border-radius:13px;transition:transform .12s ease;
-  box-shadow:0 2px 6px rgba(60,70,64,.09);width:var(--tmb);height:var(--tmb)}
+  box-shadow:0 1px 4px rgba(60,70,64,.08);width:var(--tmb);height:var(--tmb)}
 .tm-t:active .tm-body{transform:scale(.93)}
 .tm-no{background:#fff;border-radius:9px;min-width:22px;padding:0 4px;font-weight:800;font-size:14px;
-  line-height:20px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.07)}
+  line-height:20px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .tm-lbl{font-size:8.5px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;margin-top:2px}
-/* شارة المدة في الزاوية */
-.tm-badge{position:absolute;top:-8px;inset-inline-start:-8px;background:#fff;border:1px solid;
+.tm-badge{position:absolute;top:-8px;inset-inline-start:-8px;background:#fff;border:1px solid currentColor;
   border-radius:9px;font-size:8.5px;font-weight:800;padding:1px 4px;line-height:1.35;
-  font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.09);white-space:nowrap}
-/* اسم المسؤولة أسفل الطاولة */
-.tm-own{position:absolute;top:100%;margin-top:2px;font-size:8px;font-weight:700;color:var(--muted);
-  white-space:nowrap;background:rgba(255,255,255,.82);border-radius:5px;padding:0 3px}
-/* أشكال الأثاث */
+  font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08);white-space:nowrap}
+.tm-own{position:absolute;top:100%;margin-top:2px;font-size:8.5px;font-weight:800;
+  background:#DCE5DE;color:#1F4A38;border-radius:5px;padding:0 4px;white-space:nowrap}
 .tm-t.booth .tm-body{width:calc(var(--tmb) * 1.22);height:calc(var(--tmb) * .96);border-radius:11px}
-/* ظهر الكنبة ملاصق للجدار (يسار المخطط) — left لا inset-inline حتى لا ينعكس مع RTL */
-.tm-t.booth .tm-back{position:absolute;left:4px;top:6px;bottom:6px;width:7px;
-  border-radius:5px;background:currentColor;opacity:.6}
+.tm-t.booth .tm-back{position:absolute;left:4px;top:6px;bottom:6px;width:7px;border-radius:5px;
+  background:currentColor;opacity:.55}
 .tm-t.curved .tm-body{width:calc(var(--tmb) * 1.08);height:calc(var(--tmb) * 1.08);border-radius:50%}
 .tm-t.two_seat .tm-body{width:calc(var(--tmb) * .86);height:calc(var(--tmb) * .82);border-radius:11px}
-.tm-t.high .tm-body{border-radius:50% 50% 13px 13px}
-/* ألوان الحالات */
-.tm-t.s-free       .tm-body{border-color:#89bd9c;background:#e9f4ed;color:#3c7a55}
-.tm-t.s-reserved   .tm-body{border-color:#a196c6;background:#f0edf8;color:#584c85;border-style:dashed}
-.tm-t.s-seated     .tm-body{border-color:#e2ad44;background:#fdf2da;color:#8a6212}
-.tm-t.s-ordered    .tm-body{border-color:#6494cc;background:#e8f0fa;color:#2d5d95}
-.tm-t.s-preparing  .tm-body{border-color:#8079c8;background:#eeecfa;color:#423a90}
-.tm-t.s-ready      .tm-body{border-color:#5364b2;background:#e7ebf9;color:#2a377e}
-.tm-t.s-served     .tm-body{border-color:#369183;background:#e2f2ee;color:#1c6255}
-.tm-t.s-needs_clean{color:#a53a30}
-.tm-t.s-needs_clean .tm-body{border-color:#dd7469;background:#fbe9e7;color:#a53a30}
-.tm-t.s-cleaning   .tm-body{border-color:#95a29a;background:#edf0ee;color:#58645e}
-.tm-t.oos .tm-body{border-color:var(--line);color:#9aa29d;
-  background:repeating-linear-gradient(45deg,#f2f1ee 0 5px,#e8e7e3 5px 10px)}
-.tm-t.overdue .tm-body{box-shadow:0 0 0 3.5px rgba(221,116,105,.24),0 2px 6px rgba(60,70,64,.09)}
-.tm-t.grouped .tm-body{outline:2px dashed #d59a2f;outline-offset:3px}
-.tm-t.isnew .tm-body{outline:2px solid #d59a2f;outline-offset:3px}
-/* ===== بطاقة مؤشر الضغط ===== */
-.tm-pr{display:flex;align-items:center;gap:14px}
-.tm-ring{position:relative;width:88px;height:88px;flex:0 0 auto}
-.tm-ring svg{transform:rotate(-90deg)}
-.tm-ring .tm-rv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.tm-ring .tm-rv b{font-size:23px;line-height:1;font-variant-numeric:tabular-nums}
-.tm-ring .tm-rv span{font-size:9.5px;color:var(--muted);margin-top:1px}
-.tm-pr-txt h4{margin:0 0 3px;font-size:16px}
-.tm-pr-txt p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
-.tm-stats{display:flex;gap:7px;margin-top:11px}
-.tm-stat{flex:1;background:var(--bg);border-radius:12px;padding:8px 10px;text-align:center}
-.tm-stat b{display:block;font-size:16px;font-variant-numeric:tabular-nums}
-.tm-stat span{font-size:10px;color:var(--muted)}
+.tm-t.s-free           .tm-body{border-color:#C9CFC7;background:#FBFAF6;color:#5C6B62}
+.tm-t.s-reserved       .tm-body{border-color:#A99DD0;background:#F1EEF9;color:#5B4F86;border-style:dashed}
+.tm-t.s-seated         .tm-body{border-color:#E0A93C;background:#FDF3DE;color:#8A5D06}
+.tm-t.s-ordered        .tm-body{border-color:#5B8FC9;background:#E8F1F9;color:#26557F}
+.tm-t.s-preparing      .tm-body{border-color:#7B74C4;background:#EDEBFA;color:#3E3684}
+.tm-t.s-ready          .tm-body{border-color:#5364B2;background:#E7EBF9;color:#2A377E}
+.tm-t.s-served         .tm-body{border-color:#2F8D7D;background:#E6F1EB;color:#1F6B4F}
+.tm-t.s-bill_requested .tm-body{border-color:#5158B5;background:#E8EAF6;color:#3B3F8F}
+.tm-t.s-needs_clean    .tm-body{border-color:#7E939E;background:#EAEFF1;color:#41545E}
+.tm-t.s-cleaning       .tm-body{border-color:#95A29A;background:#EEF1F2;color:#41545E}
+.tm-t.s-out_of_service .tm-body{border-color:#9AA29D;color:#45504B;
+  background:repeating-linear-gradient(45deg,#F2F1EE 0 5px,#E8E7E3 5px 10px)}
+.tm-t.urg .tm-body{box-shadow:0 0 0 3px rgba(179,38,30,.22),0 1px 4px rgba(60,70,64,.08)}
+.tm-t.grouped .tm-body{outline:2px dashed #B0790F;outline-offset:3px}
+
+/* ===== لوحة تفاصيل الطاولة ===== */
+.td-hd{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:13px;margin-bottom:10px;
+  background:var(--bg);border:1px solid var(--line);border-inline-start:4px solid var(--line)}
+.td-hd .td-no{font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.td-hd b{display:flex;align-items:center;gap:5px;font-size:14.5px}
+.td-hd b .ti{font-size:17px}
+.td-hd span{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.td-hd.s-seated{border-inline-start-color:#E0A93C} .td-hd.s-seated b{color:#8A5D06}
+.td-hd.s-ordered{border-inline-start-color:#5B8FC9} .td-hd.s-ordered b{color:#26557F}
+.td-hd.s-preparing{border-inline-start-color:#7B74C4} .td-hd.s-preparing b{color:#3E3684}
+.td-hd.s-ready{border-inline-start-color:#5364B2} .td-hd.s-ready b{color:#2A377E}
+.td-hd.s-served{border-inline-start-color:#2F8D7D} .td-hd.s-served b{color:#1F6B4F}
+.td-hd.s-bill_requested{border-inline-start-color:#5158B5} .td-hd.s-bill_requested b{color:#3B3F8F}
+.td-hd.s-needs_clean,.td-hd.s-cleaning{border-inline-start-color:#7E939E}
+.td-hd.s-needs_clean b,.td-hd.s-cleaning b{color:#41545E}
+.td-hd.s-free{border-inline-start-color:#C9CFC7} .td-hd.s-free b{color:#5C6B62}
+.td-time{font-size:12.5px;color:var(--muted);margin-bottom:10px;font-variant-numeric:tabular-nums}
+.td-time b{color:var(--ink)}
+.td-time span{display:block;font-size:11px;margin-top:2px}
+.td-al{display:flex;gap:8px;align-items:flex-start;background:#FDF1EF;border:1px solid #E4B4AE;
+  border-radius:11px;padding:8px 10px;margin-bottom:7px}
+.td-al .ti{font-size:16px;color:#B3261E;margin-top:1px}
+.td-al.sev-mid{background:#FDF6E8;border-color:#E3C98D} .td-al.sev-mid .ti{color:#B0790F}
+.td-al.sev-low{background:#F1F4F5;border-color:#C6D2D6} .td-al.sev-low .ti{color:#41545E}
+.td-al b{display:block;font-size:12.5px}
+.td-al span{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+.td-kv{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
+.td-kv>div{background:var(--bg);border-radius:10px;padding:7px 9px}
+.td-kv span{display:block;font-size:10px;color:var(--muted)}
+.td-kv b{display:block;font-size:12.5px;margin-top:1px}
+.td-prim{margin-bottom:8px}
+.td-sec{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.td-more{margin-bottom:12px}
+.td-more summary{font-size:12px;color:var(--muted);cursor:pointer;padding:5px 0}
+.td-tl{border-top:1px solid var(--line);padding-top:10px}
+.td-tl>b{display:block;font-size:12.5px;margin-bottom:8px}
+.td-tli{display:flex;gap:9px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.td-tli:last-child{border-bottom:none}
+.td-tlt{flex:0 0 auto;min-width:58px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.td-tli b{display:block;font-size:12px}
+.td-tli span{display:block;font-size:11px;color:var(--muted)}
+
 /* بطاقة سؤال التحقق */
-.tm-vf{border:1px solid #e6cf9a;background:linear-gradient(160deg,#fdf6e6,#fbf1dc)}
-.tm-vf h3{margin:0 0 3px;font-size:15.5px;color:#7a5a12}
-.tm-vf .tm-vf-note{font-size:11px;color:#96762e;margin-bottom:9px;line-height:1.5}
+.tm-vf{border:1px solid #E0C68F;background:#FDF6E8}
+.tm-vf h3{margin:0 0 3px;font-size:15.5px;color:#7A5A12}
+.tm-vf .tm-vf-note{font-size:11px;color:#8A6E30;margin-bottom:9px;line-height:1.5}
 .tm-vf-opts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.tm-vf-opt{border:1.5px solid;border-radius:13px;padding:11px 9px;font:inherit;font-size:13px;
-  font-weight:700;cursor:pointer;min-height:48px;background:#fff;text-align:center;line-height:1.3}
+.tm-vf-opt{display:flex;align-items:center;justify-content:center;gap:5px;border:1.5px solid;
+  border-radius:13px;padding:11px 9px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;
+  min-height:48px;background:#fff;text-align:center;line-height:1.3}
+.tm-vf-opt .ti{font-size:15px}
 .tm-vf-opt:active{transform:scale(.97)}
-/* القائمة السفلية: الإجراء المنطقي التالي فقط */
-.tm-act{display:block;width:100%;text-align:start;background:var(--surface);border:1px solid var(--line);
-  border-radius:14px;padding:14px 15px;margin-bottom:8px;font:inherit;font-size:15px;font-weight:700;
-  cursor:pointer;display:flex;align-items:center;gap:11px;min-height:52px;color:var(--ink)}
-.tm-act:active{transform:scale(.985)}
-.tm-act .tm-dot{width:13px;height:13px;border-radius:4px;border:2px solid;flex:0 0 auto}
-.tm-act .tm-sub{font-size:11.5px;font-weight:500;color:var(--muted);display:block;margin-top:1px}
-.tm-closed{background:#fdf3de;border:1px solid #e6cf9a;color:#7a5a12;border-radius:13px;
-  padding:11px 13px;font-size:12.5px;margin-bottom:10px}
 /* بوابة الإشعارات الإجبارية */
 .pushgate{position:fixed;inset:0;z-index:99999;background:rgba(16,29,23,.94);display:flex;align-items:center;justify-content:center;padding:22px}
 .pushgate-card{background:var(--surface);color:var(--ink);border-radius:20px;padding:26px 22px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45)}
@@ -691,7 +797,7 @@ details.qa .qa-body{padding:0 16px 14px}
 .ops-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:var(--brand);margin-bottom:2px}
 .ops-h svg{width:20px;height:20px;stroke:var(--brand);flex:none}
 .ops-h span{flex:1}
-.ops-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+var BUILD = "2026-07-28.2";
 .ops-lbl{font-size:14px;font-weight:600;flex:1;line-height:1.45}
 .ops-btns{display:flex;gap:7px;flex:none}
 .ops-y,.ops-n{width:38px;height:38px;border-radius:11px;border:1.5px solid var(--line);background:var(--surface-2);font-size:18px;font-weight:800;cursor:pointer;line-height:1;color:var(--muted);transition:background .12s,border-color .12s,color .12s}
@@ -1895,52 +2001,181 @@ function drawTab(){
 }
 function animIn(el){ if(!el) return; el.classList.remove('vin'); void el.offsetWidth; el.classList.add('vin'); }
 
-/* ================= خريطة الطاولات التشغيلية =================
-   ليست POS: لا أسعار ولا طلبات. حالة الطاولة تُحدَّث بضغطة أو ضغطتين،
-   وتغذّي محرك الضغط بمصدر واقعي بدل التخمين. */
-/* ar = الاسم الكامل في القائمة، sh = كلمة قصيرة تحت رقم الطاولة حتى لا تتداخل التسميات */
-var TMS = {
-  free:        {ar:'فارغة ومجهزة',        sh:'متاحة',   c:'#7fb894', bg:'#eaf5ee'},
-  reserved:    {ar:'محجوزة',              sh:'محجوزة',  c:'#9a8fbf', bg:'#efecf7'},
-  seated:      {ar:'ينتظرون أخذ الطلب',   sh:'الطلب؟',  c:'#e0a93c', bg:'#fdf3de'},
-  ordered:     {ar:'تم أخذ الطلب',        sh:'أُخذ',    c:'#5b8fc9', bg:'#e9f1fa'},
-  preparing:   {ar:'قيد التجهيز',         sh:'تجهيز',   c:'#7b74c4', bg:'#eeecfa'},
-  ready:       {ar:'جاهز وينتظر التقديم', sh:'جاهز',    c:'#4c5fae', bg:'#e8ebf9'},
-  served:      {ar:'تم التقديم — مشغولة', sh:'مشغولة',  c:'#2f8d7d', bg:'#e4f2ef'},
-  needs_clean: {ar:'تحتاج تنظيفاً',       sh:'تنظيف',   c:'#d97066', bg:'#fbeae8'},
-  cleaning:    {ar:'يجري تجهيزها',        sh:'يُجهَّز',  c:'#8f9c94', bg:'#eef1ef'}
-};
-/* نص الإجراء كما تقوله الموظفة، لا اسم الحالة */
-var TMACT = {
-  seated:      {t:'جلس الزبائن',        s:'ينتظرون أخذ الطلب'},
-  ordered:     {t:'تم أخذ الطلب',       s:'الطلب سُجّل لدى الكاش'},
-  preparing:   {t:'الطلب قيد التجهيز',  s:''},
-  ready:       {t:'الطلب جاهز',         s:'ينتظر التقديم'},
-  served:      {t:'تم تقديم الطلب',     s:'الطاولة مشغولة'},
-  needs_clean: {t:'غادروا — تحتاج تنظيفاً', s:''},
-  cleaning:    {t:'بدأ التنظيف',        s:''},
-  free:        {t:'تم تجهيز الطاولة',   s:'عادت فارغة وجاهزة'},
-  reserved:    {t:'حجز الطاولة',        s:'للكاش والإدارة'}
-};
-var TM = {area:null, data:null, timer:null, admin:false, busy:{}};
+/* ================= مركز إدارة الطاولات =================
+   أداة تشغيل ضيافة: الحالة والوقت والمسؤولة في أماكن ثابتة، تُقرأ في ثانيتين
+   عند 25 طاولة. ليست POS: لا أسعار ولا طلبات ولا مبيعات. */
 
+/* أيقونات Lucide بخط موحّد 1.8 — لا Emoji ولا رموز مخترعة */
+var TIC = (function(){
+  function s(p, fill){
+    return '<svg viewBox="0 0 24 24" fill="'+(fill||'none')+'" stroke="currentColor" stroke-width="1.8" '+
+           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';
+  }
+  return {
+    free:        s('<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>'),
+    reserved:    s('<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
+    seated:      s('<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>'),
+    ordered:     s('<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="m9 14 2 2 4-4"/>'),
+    preparing:   s('<path d="M12 2a3 3 0 0 0-3 3 3 3 0 0 0-2 5.2V12h10v-1.8A3 3 0 0 0 15 5a3 3 0 0 0-3-3Z"/><path d="M7 15h10"/><path d="M8 22h8a2 2 0 0 0 2-2v-5H6v5a2 2 0 0 0 2 2Z"/>'),
+    ready:       s('<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M4 2a17 17 0 0 0-2 5"/><path d="M22 7a17 17 0 0 0-2-5"/><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>'),
+    served:      s('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+    bill:        s('<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 8h8"/><path d="M8 12h6"/>'),
+    clean:       s('<path d="M3 3h.01"/><path d="M7 5h.01"/><path d="M11 7h.01"/><path d="M3 7h.01"/><path d="M7 9h.01"/><path d="M3 11h.01"/><rect x="15" y="5" width="4" height="4" rx="1"/><path d="m19 9 1.5 1.5a2.1 2.1 0 0 1 0 3L18 16"/><path d="M13 14h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z"/>'),
+    cleaning:    s('<path d="M21 12a9 9 0 1 1-6.2-8.6"/><path d="M21 3v6h-6"/>'),
+    oos:         s('<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>'),
+    alert:       s('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>'),
+    clock:       s('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    handover:    s('<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>'),
+    note:        s('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+    guests:      s('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'),
+    map:         s('<path d="M14.1 4.1 20 2v16l-5.9 2.1"/><path d="M14.1 4.1 8.9 2.4"/><path d="M8.9 2.4 4 4v16l4.9-1.6"/><path d="M8.9 2.4v16.4"/><path d="M14.1 4.1v16.4"/>'),
+    list:        s('<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>'),
+    refresh:     s('<path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/>')
+  };
+})();
+
+/* الحالات: أيقونة + لون دلالي + اسم مكتوب + علامة جانبية — لا اعتماد على اللون وحده */
+var TMS = {
+  free:           {ar:'متاحة',            sh:'متاحة',    ic:'free',      c:'#5C6B62', bg:'#FBFAF6', bd:'#C9CFC7'},
+  reserved:       {ar:'محجوزة',           sh:'محجوزة',   ic:'reserved',  c:'#5B4F86', bg:'#F1EEF9', bd:'#A99DD0'},
+  seated:         {ar:'بانتظار الخدمة',   sh:'بانتظار',  ic:'seated',    c:'#8A5D06', bg:'#FDF3DE', bd:'#E0A93C'},
+  ordered:        {ar:'تم أخذ الطلب',     sh:'أُخذ الطلب', ic:'ordered', c:'#26557F', bg:'#E8F1F9', bd:'#5B8FC9'},
+  preparing:      {ar:'قيد التجهيز',      sh:'تجهيز',    ic:'preparing', c:'#3E3684', bg:'#EDEBFA', bd:'#7B74C4'},
+  ready:          {ar:'جاهز للتقديم',     sh:'جاهز',     ic:'ready',     c:'#2A377E', bg:'#E7EBF9', bd:'#5364B2'},
+  served:         {ar:'مشغولة',           sh:'مشغولة',   ic:'served',    c:'#1F6B4F', bg:'#E6F1EB', bd:'#2F8D7D'},
+  bill_requested: {ar:'طلبت الحساب',      sh:'الحساب',   ic:'bill',      c:'#3B3F8F', bg:'#E8EAF6', bd:'#5158B5'},
+  needs_clean:    {ar:'تحتاج تنظيفاً',    sh:'تنظيف',    ic:'clean',     c:'#41545E', bg:'#EAEFF1', bd:'#7E939E'},
+  cleaning:       {ar:'يجري التجهيز',     sh:'يُجهَّز',   ic:'cleaning',  c:'#41545E', bg:'#EEF1F2', bd:'#95A29A'},
+  out_of_service: {ar:'خارج الخدمة',      sh:'موقوفة',   ic:'oos',       c:'#45504B', bg:'#EDEDEA', bd:'#9AA29D'}
+};
+/* الإجراء كما تقوله الموظفة، لا اسم الحالة */
+var TMACT = {
+  seated:         {t:'جلس الضيفات',          s:'تبدأ مدة الطاولة الآن'},
+  ordered:        {t:'تم أخذ الطلب',         s:''},
+  preparing:      {t:'الطلب قيد التجهيز',    s:''},
+  ready:          {t:'الطلب جاهز',           s:'ينتظر التقديم'},
+  served:         {t:'تم تقديم الطلب',       s:'الطاولة مشغولة'},
+  bill_requested: {t:'طلبن الحساب',          s:''},
+  needs_clean:    {t:'غادرن — تحتاج تنظيفاً', s:''},
+  cleaning:       {t:'بدأ التنظيف',          s:''},
+  free:           {t:'تم تجهيز الطاولة',     s:'عادت متاحة'},
+  reserved:       {t:'حجز الطاولة',          s:'للكاش والإدارة'}
+};
+
+var TM = {area:null, data:null, timer:null, tick:null, admin:false,
+          view:'list', filter:'all', emp:null, skew:0, sel:null, busy:false};
+
+function tmIc(k){ return '<span class="ti">'+(TIC[k]||'')+'</span>'; }
+function tmInitials(n){
+  n = String(n||'').trim(); if(!n) return '؟';
+  var p = n.split(/\s+/);
+  return p.length > 1 ? (p[0][0] + p[1][0]) : n.slice(0, 2);
+}
+/* وقت الخادم هو المرجع — لا نثق بساعة الجهاز */
+function tmNow(){ return Date.now() - TM.skew; }
+function tmClock(ts){
+  if(!ts) return '—';
+  var d = new Date(ts), h = d.getHours(), m = d.getMinutes();
+  var ap = h < 12 ? 'ص' : 'م'; h = h % 12; if(!h) h = 12;
+  return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
+}
+function tmDur(mins){
+  mins = Math.max(0, Math.round(+mins || 0));
+  if(mins < 60) return mins + ' د';
+  return Math.floor(mins / 60) + ' س ' + (mins % 60) + ' د';
+}
+function tmMinsSince(ts){ return ts ? (tmNow() - new Date(ts).getTime()) / 60000 : 0; }
+
+/* الحالة المعروضة: خارج الخدمة يتقدم على كل شيء */
+function tmState(x){ return x.oos ? 'out_of_service' : x.state; }
+/* درجة الإلحاح — تُستخدم للترتيب والفرز فقط، ولا تُحرّك الطاولات على المخطط */
+function tmUrg(x){
+  if(x.oos) return 0;
+  if(x.overdue) return 3;
+  if(x.since_seen > 25 && ['served','ordered','preparing'].indexOf(x.state) >= 0) return 2;
+  if(x.long_stay) return 1;
+  return 0;
+}
+
+/* ---------- شريط القيادة ---------- */
+function tmCommandBar(all, meta){
+  var act = all.filter(function(x){ return x.state !== 'free' && !x.oos; });
+  var freeN = all.filter(function(x){ return x.state === 'free' && !x.oos; }).length;
+  var need = all.filter(function(x){ return tmUrg(x) >= 2; }).length;
+  var bill = all.filter(function(x){ return x.state === 'bill_requested'; }).length;
+  var seats = all.reduce(function(s, x){ return s + (x.oos ? 0 : (+x.seats || 0)); }, 0);
+  var occSeats = act.reduce(function(s, x){ return s + (+x.seats || 0); }, 0);
+  var occ = seats ? Math.round(occSeats / seats * 100) : 0;
+  var open = all.filter(function(x){ return x.opened_at; });
+  var avg = open.length ? open.reduce(function(s, x){ return s + tmMinsSince(x.opened_at); }, 0) / open.length : 0;
+
+  function cell(label, val, cls){
+    return '<div class="tcb-i'+(cls ? ' ' + cls : '')+'"><b>'+val+'</b><span>'+esc(label)+'</span></div>';
+  }
+  return '<div class="tcb">'+
+    cell('مشغولة', act.length) +
+    cell('متاحة', freeN) +
+    cell('الإشغال', occ + '%') +
+    cell('تحتاج تدخلاً', need, need ? 'bad' : '') +
+    cell('طلبت الحساب', bill, bill ? 'info' : '') +
+    cell('متوسط الجلوس', avg ? tmDur(avg) : '—') +
+    cell('الضغط', esc(meta.band || '—'), meta.bandCls) +
+    '<div class="tcb-i tcb-end"><b>'+tmClock(tmNow())+'</b>'+
+      '<span class="'+(meta.online ? 'ok' : 'warn')+'">'+
+      (meta.online ? 'متزامن ' + tmClock(meta.synced) : 'بلا اتصال')+'</span></div>'+
+    '</div>';
+}
+
+/* ---------- بطاقة الطاولة: أماكن المعلومات ثابتة في كل بطاقة ---------- */
+function tmCard(x){
+  var k = tmState(x), st = TMS[k] || TMS.free, u = tmUrg(x);
+  var flags = '';
+  if(u >= 3)        flags += '<span class="tf bad" title="تجاوزت وقتها الطبيعي">'+tmIc('alert')+'</span>';
+  else if(u === 2)  flags += '<span class="tf warn" title="بلا متابعة">'+tmIc('clock')+'</span>';
+  else if(x.long_stay) flags += '<span class="tf mild" title="جلوس طويل">'+tmIc('clock')+'</span>';
+  if(x.handed)   flags += '<span class="tf" title="تم تسليمها">'+tmIc('handover')+'</span>';
+  if(x.has_note) flags += '<span class="tf" title="عليها ملاحظة">'+tmIc('note')+'</span>';
+
+  /* سطر الوقت: مفتوحة ← «فُتحت 7:42 م · 48 د» */
+  var timeLine = x.opened_at
+    ? 'فُتحت ' + tmClock(x.opened_at) + ' · <b class="tdur" data-since="' + x.opened_at + '">' +
+      tmDur(tmMinsSince(x.opened_at)) + '</b>'
+    : (x.state === 'free' ? 'جاهزة للاستقبال' : 'منذ <b class="tdur" data-mins="' + (+x.mins) + '">' + tmDur(x.mins) + '</b>');
+
+  var le = x.last_event || {};
+  var leTxt = le.at ? (esc(le.reason || (TMS[le.to] || {}).ar || '') + ' · ' + tmClock(le.at)) : '';
+
+  return '<button class="tcard s-'+esc(k)+(u >= 3 ? ' urg' : '')+'" data-t="'+x.id+'" '+
+    'aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+(x.owner ? ' — المسؤولة '+esc(x.owner) : '')+'">'+
+    '<span class="tc-edge"></span>'+
+    '<span class="tc-top">'+
+      '<span class="tc-no">'+(+x.no)+'</span>'+
+      '<span class="tc-st">'+tmIc(st.ic)+'<span>'+esc(st.ar)+'</span></span>'+
+      '<span class="tc-flags">'+flags+'</span>'+
+    '</span>'+
+    '<span class="tc-time">'+timeLine+
+      (x.guests ? '<span class="tc-g">'+tmIc('guests')+(+x.guests)+'</span>' : '')+
+    '</span>'+
+    '<span class="tc-bot">'+
+      (x.owner
+        ? '<span class="tc-own"><span class="tc-av">'+esc(tmInitials(x.owner))+'</span>'+esc(x.owner)+'</span>'
+        : '<span class="tc-own none">بلا مسؤولة</span>')+
+      (leTxt ? '<span class="tc-le">'+leTxt+'</span>' : '')+
+    '</span>'+
+    '</button>';
+}
+
+/* ---------- المخطط: نفس البيانات بترتيب مكاني ---------- */
 function tmLandmarks(areaId){
-  /* معالم ثابتة تساعد على قراءة الاتجاه — غير قابلة للضغط */
   if(areaId === 2){
     return '<div class="tm-land pool" style="left:6%;top:44%;width:54%;height:38%">المسبح</div>'+
            '<div class="tm-land glass" style="left:4%;top:4%;width:88%;height:4%"></div>'+
-           '<div class="tm-land door" style="left:66%;top:94%;width:24%;height:5%">المدخل</div>'+
-           '<div class="tm-land n" style="left:4%;top:88%;width:9%;height:6%">ش↑</div>';
+           '<div class="tm-land door" style="left:66%;top:94%;width:24%;height:5%">المدخل</div>';
   }
-  /* الصالة: شريط زجاجي علوي، حزام الجلسات المنحنية خلف الطاولات، وحدّ منطقة الجلوس */
   return '<div class="tm-land glass" style="left:4%;top:3%;width:92%;height:4%"></div>'+
          '<div class="tm-land zone" style="left:38%;top:12%;width:38%;height:50%"></div>'+
-         '<div class="tm-land band" style="left:42%;top:21%;width:30%;height:8%"></div>'+
-         '<div class="tm-land band" style="left:42%;top:48%;width:30%;height:8%"></div>'+
-         '<div class="tm-land door" style="left:4%;top:94%;width:20%;height:5%">المدخل</div>'+
-         '<div class="tm-land n" style="left:88%;top:4%;width:9%;height:6%">ش↑</div>';
+         '<div class="tm-land door" style="left:4%;top:94%;width:20%;height:5%">المدخل</div>';
 }
-/* مقاعد حول الطاولة — تجعلها أثاثاً لا مربعاً */
 function tmSeats(type, n){
   n = Math.max(2, Math.min(8, +n || 4));
   if(type === 'booth') return '<span class="tm-back"></span>';
@@ -1950,94 +2185,301 @@ function tmSeats(type, n){
       var ang = (i / n) * 2 * Math.PI - Math.PI / 2;
       pos.push([50 + 44 * Math.cos(ang), 50 + 44 * Math.sin(ang)]);
     }
-  } else if(type === 'two_seat'){
-    pos = [[-9, 50], [109, 50]];
-  } else {
-    pos = [[-9, 30], [-9, 70], [109, 30], [109, 70], [30, -9], [70, -9]].slice(0, n);
-  }
+  } else if(type === 'two_seat'){ pos = [[-9, 50], [109, 50]]; }
+  else { pos = [[-9, 30], [-9, 70], [109, 30], [109, 70], [30, -9], [70, -9]].slice(0, n); }
   return pos.map(function(p){
     return '<span class="tm-seat" style="left:'+p[0]+'%;top:'+p[1]+'%;margin:-3px 0 0 -3px"></span>';
   }).join('');
 }
-function tmRing(score, color){
-  var pct = Math.max(0, Math.min(100, Math.round((+score || 0) * 100)));
-  var r = 38, circ = 2 * Math.PI * r;
-  return '<div class="tm-ring"><svg width="88" height="88" viewBox="0 0 88 88">'+
-    '<circle cx="44" cy="44" r="'+r+'" fill="none" stroke="rgba(150,160,152,.2)" stroke-width="9"/>'+
-    '<circle cx="44" cy="44" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="9" stroke-linecap="round"'+
-    ' stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+(circ * (1 - pct / 100)).toFixed(1)+'"/>'+
-    '</svg><div class="tm-rv"><b>'+pct+'</b><span>من 100</span></div></div>';
+function tmPlan(tables, areaId){
+  return '<div class="tm-board">'+tmLandmarks(areaId)+
+    tables.map(function(x){
+      var k = tmState(x), st = TMS[k] || TMS.free, u = tmUrg(x);
+      return '<button class="tm-t '+esc(x.type)+' s-'+esc(k)+(u >= 3 ? ' urg' : '')+
+        (x.group_id ? ' grouped' : '')+'" data-t="'+x.id+'" style="left:'+(+x.x)+'%;top:'+(+x.y)+'%" '+
+        'aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+'">'+
+        '<span class="tm-body">'+tmSeats(x.type, x.seats)+
+          (x.state !== 'free' && x.mins > 0
+            ? '<span class="tm-badge"><b class="tdur" data-mins="'+(+x.mins)+'">'+tmDur(x.mins)+'</b></span>' : '')+
+          '<span class="tm-no">'+(+x.no)+'</span>'+
+          '<span class="tm-lbl">'+esc(st.sh)+'</span>'+
+          (x.owner ? '<span class="tm-own">'+esc(tmInitials(x.owner))+'</span>' : '')+
+        '</span></button>';
+    }).join('')+'</div>';
 }
-function tmBoardHtml(res){
-  var t = res.tables || [], c = res.counts || {};
-  var pr = res.pressure || {}, open = (res.open || {}).open, area = res.area || {};
-  var booths = t.filter(function(x){ return x.type === 'booth'; }).length;
 
-  var h = '<div class="tm-wrap">';
-  h += '<div class="tm-hd"><h4>خريطة '+esc(area.name || '')+'</h4>'+
-       '<div class="tm-sub">'+t.length+' طاولة'+
-       (booths ? ' · '+booths+' جلسات كنب' : '')+
-       ' · <span class="tm-live"><i></i>متابعة مباشرة</span></div></div>';
+/* ---------- الرسم الكامل ---------- */
+function tmRender(){
+  var host = $('#tmHost'); if(!host || !TM.data) return;
+  var res = TM.data, all = res.tables || [];
+  var pr = res.pressure || {}, open = (res.open || {}).open;
+  var BANDS = {quiet:'هادئ', normal:'طبيعي', high:'مرتفع', peak:'ذروة'};
+
+  var view = all.slice();
+  if(TM.filter === 'attention') view = view.filter(function(x){ return tmUrg(x) >= 2; });
+  else if(TM.filter === 'bill') view = view.filter(function(x){ return x.state === 'bill_requested'; });
+  else if(TM.filter === 'busy') view = view.filter(function(x){ return x.state !== 'free' && !x.oos; });
+  else if(TM.filter === 'free') view = view.filter(function(x){ return x.state === 'free' && !x.oos; });
+  if(TM.emp) view = view.filter(function(x){ return String(x.owner_id) === String(TM.emp); });
+
+  var h = '';
+  h += tmCommandBar(all, {
+    band: pr.counted ? (BANDS[pr.band] || pr.band) : 'غير محسوب',
+    bandCls: pr.band === 'peak' ? 'bad' : (pr.band === 'high' ? 'info' : ''),
+    online: navigator.onLine !== false, synced: TM.synced});
 
   if(!open){
-    h += '<div class="tm-closed"><b>هذه المنطقة غير مفتوحة للخدمة الآن</b><div style="margin-top:3px">'+
-         'وقت الفتح '+esc(area.svc_open || '')+' — لا تدخل طاولاتها في احتساب الضغط قبل ذلك.</div></div>';
+    h += '<div class="tm-closed">'+tmIc('clock')+'<div><b>خارج ساعات الخدمة</b>'+
+         '<div>تفتح '+esc((res.area || {}).svc_open || '')+' — لا تنبيهات ولا احتساب ضغط قبل ذلك.</div></div></div>';
   }
 
-  /* مفتاح مختصر بالحالات الفعلية الموجودة الآن */
-  h += '<div class="tm-key">';
-  ['free','seated','ordered','served','needs_clean'].forEach(function(k){
-    h += '<span><i style="background:'+TMS[k].c+'"></i>'+esc(TMS[k].sh)+'</span>';
-  });
-  h += '</div>';
-
-  /* عدّادات لكل حالة موجودة فعلاً — لا خانات فارغة */
-  h += '<div class="tm-counts">';
-  ['free','seated','ordered','preparing','ready','served','needs_clean','cleaning'].forEach(function(k){
-    if(!c[k]) return;
-    h += '<div class="tm-c" style="border-color:'+TMS[k].c+'55;background:'+TMS[k].bg+';color:'+TMS[k].c+'">'+
-         '<b>'+c[k]+'</b><span>'+esc(TMS[k].sh)+'</span></div>';
-  });
-  h += '</div>';
-
-  h += '<div class="tm-board'+(open ? '' : ' dim')+'" id="tmBoard">'+tmLandmarks(area.id);
-  t.forEach(function(x){
-    var st = TMS[x.state] || TMS.free;
-    h += '<button class="tm-t '+esc(x.type)+' s-'+esc(x.state)+(x.overdue ? ' overdue' : '')+
-         (x.oos ? ' oos' : '')+(x.group_id ? ' grouped' : '')+'" data-tid="'+x.id+'"'+
-         ' style="left:'+(+x.x)+'%;top:'+(+x.y)+'%"'+
-         ' aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+(x.owner ? ' — المسؤولة '+esc(x.owner) : '')+'">'+
-         '<span class="tm-body">'+tmSeats(x.type, x.seats)+
-           (x.state !== 'free' && x.mins > 0
-             ? '<span class="tm-badge" style="border-color:'+st.c+';color:'+st.c+'">'+(+x.mins)+' د</span>' : '')+
-           '<span class="tm-no">'+(+x.no)+'</span>'+
-           '<span class="tm-lbl">'+esc(x.oos ? 'موقوفة' : st.sh)+'</span>'+
-           (x.owner ? '<span class="tm-own">'+esc(x.owner)+'</span>' : '')+
-         '</span></button>';
-  });
-  h += '</div>';
-
-  /* مؤشر الضغط: رقم واحد مفهوم + سبب + أرقام مساندة */
-  if(pr.counted){
-    var BANDS = {quiet:'هادئ', normal:'طبيعي', high:'مرتفع', peak:'ذروة'};
-    var BCOL  = {quiet:'#4a8f63', normal:'#4a8f63', high:'#d59a2f', peak:'#c8564d'};
-    var f = pr.facts || {};
-    h += '<div class="card" style="margin-top:12px"><div class="tm-pr">'+
-         tmRing(pr.score, BCOL[pr.band] || '#4a8f63')+
-         '<div class="tm-pr-txt"><h4>'+esc(BANDS[pr.band] || pr.band)+'</h4>'+
-         '<p>'+esc((pr.reasons || [])[0] || 'الحركة ضمن المعتاد.')+'</p></div></div>'+
-         '<div class="tm-stats">'+
-         '<div class="tm-stat"><b>'+Math.round((f.occupancy || 0) * 100)+'%</b><span>نسبة الإشغال</span></div>'+
-         '<div class="tm-stat"><b>'+(f.overdue || 0)+'</b><span>حالات متأخرة</span></div>'+
-         '<div class="tm-stat"><b>'+(f.events_20min || 0)+'</b><span>تغييرات ٢٠ د</span></div>'+
-         '</div>'+
-         ((pr.reasons || []).length > 1
-           ? '<ul style="margin:9px 0 0;padding-inline-start:16px;font-size:11.5px;color:var(--muted)">'+
-             pr.reasons.slice(1).map(function(r){ return '<li>'+esc(r)+'</li>'; }).join('')+'</ul>' : '')+
-         '<div class="muted" style="font-size:10.5px;margin-top:8px">'+
-         'تقدير تشغيلي من حركة الطاولات — ليس مبيعات ولا طلبات.</div></div>';
+  /* ما يحتاج تدخلاً الآن — مقدمة العرض، بلا تحريك مواقع الطاولات */
+  var al = res.alerts || [];
+  if(al.length){
+    h += '<div class="tal"><div class="tal-h">'+tmIc('alert')+'يحتاج تدخلاً الآن <span>'+al.length+'</span></div>'+
+      '<div class="tal-list">'+al.slice(0, 6).map(function(a){
+        return '<button class="tal-i sev-'+esc(a.sev)+'" data-t="'+a.table_id+'">'+
+          '<b>'+esc(a.title)+'</b><span>'+esc(a.why)+(a.owner ? ' · '+esc(a.owner) : '')+'</span></button>';
+      }).join('')+'</div></div>';
   }
-  return h + '</div>';
+  var sug = (res.load || {}).suggestion;
+  if(sug){
+    h += '<div class="tsug">'+tmIc('handover')+'<div><b>'+esc(sug.text)+'</b><span>'+esc(sug.why)+'</span></div></div>';
+  }
+
+  /* المرشّحات */
+  var F = [['all','الكل'],['attention','تحتاج تدخلاً'],['bill','طلبت الحساب'],['busy','مشغولة'],['free','متاحة']];
+  h += '<div class="tfl">'+F.map(function(f){
+      return '<button class="tfl-b'+(TM.filter === f[0] ? ' on' : '')+'" data-f="'+f[0]+'">'+esc(f[1])+'</button>';
+    }).join('')+
+    '<select class="tfl-s" id="tflEmp"><option value="">كل الموظفات</option>'+
+    ((res.load || {}).rows || []).map(function(r){
+      return '<option value="'+r.employee_id+'"'+(String(TM.emp) === String(r.employee_id) ? ' selected' : '')+'>'+
+             esc(r.name)+' ('+r.active+')</option>';
+    }).join('')+'</select>'+
+    '<button class="tfl-v" id="tmView" title="'+(TM.view === 'list' ? 'عرض المخطط' : 'عرض القائمة')+'">'+
+    tmIc(TM.view === 'list' ? 'map' : 'list')+'</button>'+
+    '</div>';
+
+  if(!view.length){
+    h += '<div class="empty">لا طاولات ضمن هذا المرشّح</div>';
+  } else if(TM.view === 'plan'){
+    h += tmPlan(view, (res.area || {}).id);
+  } else {
+    h += '<div class="tgrid">'+view.map(tmCard).join('')+'</div>';
+  }
+
+  /* توزيع الحمل */
+  var lr = (res.load || {}).rows || [];
+  if(lr.length){
+    h += '<div class="tload"><div class="tload-h">توزيع الحمل</div>'+lr.map(function(r){
+      var mx = Math.max.apply(null, lr.map(function(z){ return z.active; })) || 1;
+      return '<div class="tload-r"><span class="tc-av">'+esc(tmInitials(r.name))+'</span>'+
+        '<span class="tload-n">'+esc(r.name)+'</span>'+
+        '<span class="tload-bar"><i style="width:'+Math.round(r.active / mx * 100)+'%"></i></span>'+
+        '<span class="tload-v">'+r.active+'/'+r.tables+'</span></div>';
+    }).join('')+'</div>';
+  }
+
+  host.innerHTML = h;
+
+  $$('[data-t]', host).forEach(function(b){
+    b.addEventListener('click', function(){ tmDetail(+b.getAttribute('data-t')); });
+  });
+  $$('[data-f]', host).forEach(function(b){
+    b.addEventListener('click', function(){ TM.filter = b.getAttribute('data-f'); tmRender(); });
+  });
+  var se = $('#tflEmp', host);
+  if(se) se.addEventListener('change', function(){ TM.emp = se.value || null; tmRender(); });
+  var vb = $('#tmView', host);
+  if(vb) vb.addEventListener('click', function(){ TM.view = TM.view === 'list' ? 'plan' : 'list'; tmRender(); });
+}
+
+/* المؤقتات تتحرك دون إعادة تحميل ودون استدعاء الخادم */
+function tmTick(){
+  $$('.tdur').forEach(function(el){
+    var s = el.getAttribute('data-since');
+    if(s) el.textContent = tmDur(tmMinsSince(s));
+    else { var m = +el.getAttribute('data-mins') || 0; el.textContent = tmDur(m + (tmTick._n || 0)); }
+  });
+}
+
+/* ---------- لوحة تفاصيل الطاولة ---------- */
+function tmDetail(tid){
+  var fn = TM.admin ? aAct : sAct;
+  fn('tbl_detail', {table_id: tid}).then(function(r){
+    if(!r || !r.ok){ toast((r && r.error) || 'تعذر فتح التفاصيل', true); return; }
+    var t = r.table, st = TMS[t.oos ? 'out_of_service' : t.state] || TMS.free;
+    var s = r.session || {};
+
+    var b = '<div class="td-hd s-'+esc(t.oos ? 'out_of_service' : t.state)+'">'+
+      '<span class="td-no">'+(+t.no)+'</span>'+
+      '<div><b>'+tmIc(st.ic)+esc(st.ar)+'</b>'+
+      '<span>'+esc(t.area)+' · '+(+t.seats)+' مقاعد'+(t.guests ? ' · '+(+t.guests)+' ضيفات' : '')+'</span></div></div>';
+
+    /* الوقت بصيغة واضحة: مفتوحة أو منتهية */
+    if(t.opened_at){
+      b += '<div class="td-time">'+ (s.cleaned_at
+        ? tmClock(s.opened_at)+' – '+tmClock(s.cleaned_at)+' · المدة '+tmDur((new Date(s.cleaned_at)-new Date(s.opened_at))/60000)
+        : 'فُتحت '+tmClock(t.opened_at)+' · المدة <b class="tdur" data-since="'+t.opened_at+'">'+tmDur(t.open_mins)+'</b>')+
+        '<span>آخر متابعة منذ '+tmDur(t.since_seen)+'</span></div>';
+    }
+
+    (r.alerts || []).forEach(function(a){
+      b += '<div class="td-al sev-'+esc(a.sev)+'">'+tmIc('alert')+'<div><b>'+esc(a.title)+'</b><span>'+esc(a.why)+'</span></div></div>';
+    });
+
+    b += '<div class="td-kv">'+
+      '<div><span>المسؤولة</span><b>'+(r.owner ? esc(r.owner.name) : 'بلا مسؤولة')+'</b></div>'+
+      (s.staff && s.staff.length > 1 ? '<div><span>تعاملن معها</span><b>'+esc(s.staff.join('، '))+'</b></div>' : '')+
+      (s.ordered_at ? '<div><span>أخذ الطلب</span><b>'+tmClock(s.ordered_at)+'</b></div>' : '')+
+      (s.served_at ? '<div><span>التقديم</span><b>'+tmClock(s.served_at)+'</b></div>' : '')+
+      (s.bill_at ? '<div><span>طلب الحساب</span><b>'+tmClock(s.bill_at)+'</b></div>' : '')+
+      '</div>';
+
+    /* الإجراء الرئيسي أولاً، ثم الثانوية، ثم الأقل استخداماً */
+    var nx = t.next || [];
+    if(nx.length){
+      var prim = nx[0], a0 = TMACT[prim] || {t: prim, s: ''};
+      b += '<button class="btn block td-prim" data-go="'+esc(prim)+'">'+esc(a0.t)+'</button>';
+      if(nx.length > 1){
+        b += '<div class="td-sec">'+nx.slice(1).map(function(k){
+          var a = TMACT[k] || {t: k};
+          return '<button class="btn sm ghost" data-go="'+esc(k)+'">'+esc(a.t)+'</button>';
+        }).join('')+'</div>';
+      }
+    }
+    b += '<details class="td-more"><summary>إجراءات أخرى</summary>'+
+      '<div class="btnrow"><button class="btn sm ghost" id="tdFu">تسجيل متابعة</button>'+
+      '<button class="btn sm ghost" id="tdHo">تسليم لموظفة</button>'+
+      (TM.admin && (r.free_tables || []).length ? '<button class="btn sm ghost" id="tdMv">نقل الطاولة</button>' : '')+
+      '</div></details>';
+
+    b += '<div class="td-tl"><b>سجل الطاولة اليوم</b>'+
+      ((r.timeline || []).length ? (r.timeline || []).map(function(e){
+        var lbl = e.source === 'handover' ? 'تسليم'
+                : e.source === 'followup' ? 'متابعة'
+                : e.source === 'move' ? 'نقل'
+                : e.source === 'verify' ? 'تحقق'
+                : ((TMS[e.to] || {}).ar || e.to);
+        return '<div class="td-tli"><span class="td-tlt">'+tmClock(e.at)+'</span>'+
+          '<div><b>'+esc(lbl)+'</b>'+(e.reason ? '<span>'+esc(e.reason)+'</span>' : '')+
+          (e.by ? '<span class="muted">'+esc(e.by)+'</span>' : '')+'</div></div>';
+      }).join('') : '<div class="muted small">لا أحداث بعد</div>')+'</div>';
+
+    sheet('طاولة '+(+t.no), b, function(ov, close){
+      function act(fnName, payload, okMsg){
+        if(TM.busy) return; TM.busy = true;
+        $$('button', ov).forEach(function(x){ x.disabled = true; });
+        (TM.admin ? aAct : sAct)(fnName, payload, true).then(function(res){
+          TM.busy = false;
+          if(res && res.ok){ toast(okMsg || 'تم'); close(); tmLoad(TM.area, true); }
+          else {
+            $$('button', ov).forEach(function(x){ x.disabled = false; });
+            if(res && res.code === 'conflict'){ toast(res.error, true, 4200); close(); tmLoad(TM.area, true); }
+            else toast((res && res.error) || 'تعذر التنفيذ', true);
+          }
+        }).catch(function(){
+          TM.busy = false;
+          $$('button', ov).forEach(function(x){ x.disabled = false; });
+          toast('تعذر الاتصال — أعيدي المحاولة', true);
+        });
+      }
+
+      $$('[data-go]', ov).forEach(function(bt){
+        bt.addEventListener('click', function(){
+          var to = bt.getAttribute('data-go');
+          if(to === 'seated'){
+            sheet('عدد الضيفات', '<label class="f">كم ضيفة؟</label>'+
+              '<input class="f" id="tgN" type="number" min="1" max="20" value="'+(t.seats || 4)+'">'+
+              '<div class="btnrow"><button class="btn block" id="tgOk">فتح الطاولة</button></div>',
+              function(ov2, close2){
+                $('#tgOk', ov2).addEventListener('click', function(){
+                  var g = +$('#tgN', ov2).value || null; close2();
+                  act('tbl_set', {table_id: t.id, to: to, version: t.version,
+                                  guests: g, client_event_id: uid()}, 'فُتحت الطاولة');
+                });
+              });
+            return;
+          }
+          act('tbl_set', {table_id: t.id, to: to, version: t.version, client_event_id: uid()});
+        });
+      });
+
+      var fu = $('#tdFu', ov);
+      if(fu) fu.addEventListener('click', function(){
+        act('tbl_followup', {table_id: t.id, note: 'متابعة الطاولة'}, 'سُجّلت المتابعة');
+      });
+
+      var ho = $('#tdHo', ov);
+      if(ho) ho.addEventListener('click', function(){
+        sheet('تسليم الطاولة', '<label class="f">إلى</label><select class="f" id="thE">'+
+          (r.candidates || []).map(function(c){ return '<option value="'+c.id+'">'+esc(c.name)+'</option>'; }).join('')+
+          '</select><label class="f">ملاحظة (اختياري)</label><input class="f" id="thN">'+
+          '<div class="btnrow"><button class="btn block" id="thOk">تسليم</button></div>',
+          function(ov2, close2){
+            $('#thOk', ov2).addEventListener('click', function(){
+              var to = +$('#thE', ov2).value, nt = $('#thN', ov2).value.trim();
+              close2(); act('tbl_handover', {table_id: t.id, to_emp: to, note: nt || null}, 'تم التسليم');
+            });
+          });
+      });
+
+      var mv = $('#tdMv', ov);
+      if(mv) mv.addEventListener('click', function(){
+        sheet('نقل الطاولة', '<label class="f">إلى طاولة متاحة</label><select class="f" id="tmE">'+
+          (r.free_tables || []).map(function(c){ return '<option value="'+c.id+'">طاولة '+(+c.no)+'</option>'; }).join('')+
+          '</select><label class="f">السبب (اختياري)</label><input class="f" id="tmN">'+
+          '<div class="btnrow"><button class="btn block" id="tmOk">نقل</button></div>',
+          function(ov2, close2){
+            $('#tmOk', ov2).addEventListener('click', function(){
+              var to = +$('#tmE', ov2).value, nt = $('#tmN', ov2).value.trim();
+              close2(); act('tbl_move', {from_id: t.id, to_id: to, note: nt || null}, 'نُقلت الطاولة');
+            });
+          });
+      });
+    });
+  }).catch(function(){ toast('تعذر الاتصال', true); });
+}
+
+/* ---------- التحميل والمزامنة ---------- */
+function tmLoad(areaId, quiet){
+  TM.area = areaId;
+  var host = $('#tmHost'); if(!host) return;
+  if(!quiet) host.innerHTML = skel(3);
+  (TM.admin ? aAct : sAct)('tbl_board', {area_id: areaId}).then(function(res){
+    if(!$('#tmHost')) return;
+    if(!res || !res.ok){
+      $('#tmHost').innerHTML = '<div class="empty">'+esc((res && res.error) || 'تعذر تحميل اللوحة')+'</div>';
+      return;
+    }
+    if(res.server_now) TM.skew = Date.now() - new Date(res.server_now).getTime();
+    TM.synced = tmNow();
+    TM.data = res;
+    tmTick._n = 0;
+    tmRender();
+  }).catch(function(){
+    if(!TM.data && $('#tmHost')) $('#tmHost').innerHTML = '<div class="empty">تعذر الاتصال — سيعاد المحاولة</div>';
+  });
+}
+
+function tmOpen(areaId, areaName, isAdmin){
+  TM.admin = !!isAdmin; TM.filter = 'all'; TM.emp = null; TM.data = null;
+  sheet('مركز الطاولات — ' + areaName, '<div id="tmHost">'+skel(3)+'</div>', function(ov, close){
+    tmLoad(areaId);
+    clearInterval(TM.timer); clearInterval(TM.tick);
+    /* عدّاد محلي كل ٣٠ ثانية، ومزامنة كل ١٥ ثانية — بلا استطلاع في الخلفية */
+    TM.tick = setInterval(function(){
+      if(!document.body.contains(ov)){ clearInterval(TM.tick); return; }
+      tmTick._n = (tmTick._n || 0) + 0.5; tmTick();
+    }, 30000);
+    TM.timer = setInterval(function(){
+      if(!document.body.contains(ov)){ clearInterval(TM.timer); return; }
+      if(document.hidden) return;
+      if(document.querySelectorAll('.overlay').length > 1) return;  /* لا تحديث أثناء إجراء مفتوح */
+      tmLoad(areaId, true);
+    }, 15000);
+  });
 }
 
 /* سؤال التحقق: ضغطة واحدة، بلا استجواب، ولا يُحسب على أحد */
@@ -2051,15 +2493,14 @@ function loadVerifyCard(){
       '<div class="tm-vf-opts">'+
       (c.options || []).map(function(o){
         var st = TMS[o.state] || TMS.free;
-        return '<button class="tm-vf-opt" data-vs="'+esc(o.state)+'" '+
-               'style="border-color:'+st.c+';color:'+st.c+'">'+esc(st.ar)+'</button>';
+        return '<button class="tm-vf-opt" data-vs="'+esc(o.state)+'" style="border-color:'+st.bd+';color:'+st.c+'">'+
+               tmIc(st.ic)+esc(st.ar)+'</button>';
       }).join('')+'</div></div>';
     $$('[data-vs]', w).forEach(function(b){
       b.addEventListener('click', function(){
         $$('[data-vs]', w).forEach(function(x){ x.disabled = true; x.style.opacity = '.55'; });
         sAct('tbl_verify_answer', {check_id: c.id, state: b.getAttribute('data-vs')}, true).then(function(res){
-          toast((res && res.msg) || 'شكراً');
-          w.innerHTML = '';
+          toast((res && res.msg) || 'شكراً'); w.innerHTML = '';
         }).catch(function(){
           $$('[data-vs]', w).forEach(function(x){ x.disabled = false; x.style.opacity = ''; });
           toast('تعذر الإرسال', true);
@@ -2067,100 +2508,6 @@ function loadVerifyCard(){
       });
     });
   }).catch(function(){});
-}
-
-/* القائمة السفلية: الإجراء المنطقي التالي فقط، لا صفحة جديدة */
-function tmTapTable(tid){
-  var x = null;
-  (TM.data && TM.data.tables || []).forEach(function(t){ if(t.id === tid) x = t; });
-  if(!x) return;
-  var st = TMS[x.state] || TMS.free;
-  var canEdit = TM.data.can_edit;
-
-  var body = '<div class="muted small" style="margin-bottom:10px">الحالة الآن: <b style="color:'+st.c+'">'+esc(st.ar)+'</b>'+
-             (x.mins>0 ? ' · منذ '+(+x.mins)+' دقيقة' : '')+
-             (x.overdue ? ' · <span style="color:#c8564d;font-weight:700">تجاوزت الوقت الطبيعي</span>' : '')+'</div>';
-
-  if(x.oos){
-    body += '<div class="tm-closed">هذه الطاولة خارج الخدمة'+(x.oos_reason?' — '+esc(x.oos_reason):'')+'</div>';
-  } else if(!canEdit){
-    body += '<div class="tm-closed">المنطقة غير مفتوحة للخدمة الآن — لا يمكن تحديث الحالة.</div>';
-  } else {
-    (x.next||[]).forEach(function(s){
-      var a = TMACT[s] || {t:s, s:''};
-      body += '<button class="tm-act" data-to="'+esc(s)+'">'+
-              '<span class="tm-dot" style="border-color:'+TMS[s].c+';background:'+TMS[s].bg+'"></span>'+
-              '<span>'+esc(a.t)+(a.s?'<span class="tm-sub">'+esc(a.s)+'</span>':'')+'</span></button>';
-    });
-    if(!(x.next||[]).length) body += '<div class="muted small">لا إجراء تالٍ متاح من هذه الحالة.</div>';
-  }
-
-  sheet('طاولة '+(+x.no)+(x.group_id?' (مدموجة)':''), body, function(ov, close){
-    $$('.tm-act', ov).forEach(function(b){
-      b.addEventListener('click', function(){
-        if(b.disabled) return;
-        b.disabled = true; b.style.opacity = '.6';
-        tmSet(x.id, b.getAttribute('data-to'), x.version, function(ok){
-          if(ok) close(); else { b.disabled = false; b.style.opacity = ''; }
-        });
-      });
-    });
-  });
-}
-
-function tmSet(tid, to, version, cb){
-  var fn = TM.admin ? aAct : sAct;
-  var payload = {table_id: tid, to: to, version: version, client_event_id: uid()};
-  fn('tbl_set', payload, true).then(function(res){
-    if(res && res.ok){
-      if(!res.duplicate && !res.noop) toast('تم التحديث');
-      tmLoad(TM.area, true);
-      if(cb) cb(true);
-      return;
-    }
-    /* تعارض: لا نخسر تحديث الزميلة بصمت — نعرض الحالة الأحدث ونطلب إعادة القرار */
-    if(res && res.code === 'conflict'){
-      toast(res.error || 'حدّثت زميلتك هذه الطاولة', true, 4200);
-      tmLoad(TM.area, true);
-    } else {
-      toast((res && res.error) || 'تعذر التحديث', true);
-    }
-    if(cb) cb(false);
-  }).catch(function(){ toast('تعذر الاتصال — أعيدي المحاولة', true); if(cb) cb(false); });
-}
-
-function tmLoad(areaId, quiet){
-  TM.area = areaId;
-  var host = $('#tmHost'); if(!host) return;
-  if(!quiet) host.innerHTML = skel(2);
-  var fn = TM.admin ? aAct : sAct;
-  fn('tbl_board', {area_id: areaId}).then(function(res){
-    var h = $('#tmHost'); if(!h) return;
-    if(!res || !res.ok){
-      h.innerHTML = '<div class="empty">'+esc((res && res.error) || 'تعذر تحميل الخريطة')+'</div>';
-      return;
-    }
-    TM.data = res;
-    h.innerHTML = tmBoardHtml(res);
-    $$('.tm-t', h).forEach(function(b){
-      b.addEventListener('click', function(){ tmTapTable(+b.getAttribute('data-tid')); });
-    });
-  }).catch(function(){});
-}
-
-/* الخريطة تُفتح من شاشة «الآن» ولا تُضاف كتبويب دائم لكل الموظفات */
-function tmOpen(areaId, areaName, isAdmin){
-  TM.admin = !!isAdmin;
-  sheet('خريطة الطاولات — '+areaName, '<div id="tmHost">'+skel(2)+'</div>', function(ov, close){
-    tmLoad(areaId);
-    clearInterval(TM.timer);
-    TM.timer = setInterval(function(){
-      if(!document.body.contains(ov)){ clearInterval(TM.timer); return; }
-      if(document.hidden) return;              /* لا استطلاع في الخلفية */
-      if($('.overlay .tm-act')) return;        /* لا تحديث أثناء اختيار إجراء */
-      tmLoad(areaId, true);
-    }, 12000);
-  });
 }
 
 /* ---------- تبويب: الآن ---------- */
