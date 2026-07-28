@@ -322,10 +322,10 @@ a{color:var(--green)}
 /* بطاقة الطاولة — أماكن المعلومات ثابتة */
 .tcard{position:relative;display:block;width:100%;text-align:start;font:inherit;cursor:pointer;
   background:var(--surface);border:1px solid var(--line);border-radius:13px;
-  padding:9px 11px 9px 14px;padding-inline-start:14px;overflow:hidden;
+  padding:9px 11px 9px 16px;padding-inline-start:16px;overflow:hidden;
   transition:border-color .12s ease,transform .1s ease;-webkit-tap-highlight-color:transparent}
 .tcard:active{transform:scale(.99)}
-.tc-edge{position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--line)}
+.tc-edge{position:absolute;inset-inline-start:0;top:0;bottom:0;width:6px;background:var(--line)}
 .tc-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .tc-no{font-size:19px;font-weight:800;line-height:1;min-width:26px;font-variant-numeric:tabular-nums;color:var(--ink)}
 .tc-st{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800}
@@ -346,22 +346,52 @@ a{color:var(--green)}
 .tc-le{margin-inline-start:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:56%;text-align:end}
 
-/* ألوان الحالات — لون + حد جانبي + أيقونة + نص */
-.tcard.s-free           .tc-edge{background:#C9CFC7} .tcard.s-free .tc-st{color:#5C6B62}
-.tcard.s-reserved       .tc-edge{background:#A99DD0} .tcard.s-reserved .tc-st{color:#5B4F86}
-.tcard.s-seated         .tc-edge{background:#E0A93C} .tcard.s-seated .tc-st{color:#8A5D06}
-.tcard.s-seated{background:#FEFAF1}
-.tcard.s-ordered        .tc-edge{background:#5B8FC9} .tcard.s-ordered .tc-st{color:#26557F}
-.tcard.s-preparing      .tc-edge{background:#7B74C4} .tcard.s-preparing .tc-st{color:#3E3684}
-.tcard.s-ready          .tc-edge{background:#5364B2} .tcard.s-ready .tc-st{color:#2A377E}
-.tcard.s-served         .tc-edge{background:#2F8D7D} .tcard.s-served .tc-st{color:#1F6B4F}
-.tcard.s-bill_requested .tc-edge{background:#5158B5} .tcard.s-bill_requested .tc-st{color:#3B3F8F}
-.tcard.s-bill_requested{background:#F5F6FC}
-.tcard.s-needs_clean    .tc-edge{background:#7E939E} .tcard.s-needs_clean .tc-st{color:#41545E}
-.tcard.s-needs_clean{background:#F4F7F8}
-.tcard.s-cleaning       .tc-edge{background:#95A29A} .tcard.s-cleaning .tc-st{color:#41545E}
-.tcard.s-out_of_service .tc-edge{background:#9AA29D} .tcard.s-out_of_service .tc-st{color:#45504B}
-.tcard.s-out_of_service{background:#F2F2F0;opacity:.85}
+/* ألوان الحالات — الترميز العالمي: أخضر متاحة، أحمر مشغولة، برتقالي أُخذ الطلب،
+   أزرق دوران الطاولة. اللون بارز على ثلاث طبقات: شريط جانبي عريض، تعبئة البطاقة،
+   ولون النص والأيقونة — ولا يُعتمد على اللون وحده أبداً. */
+.tcard.s-free{background:#F2FCF5;border-color:#16A34A55}
+.tcard.s-free .tc-edge{background:#16A34A}
+.tcard.s-free .tc-st{color:#14532D}
+.tcard.s-free .tc-no{color:#14532D}
+.tcard.s-reserved{background:#F8FAFC;border-color:#94A3B855}
+.tcard.s-reserved .tc-edge{background:#94A3B8}
+.tcard.s-reserved .tc-st{color:#334155}
+.tcard.s-reserved .tc-no{color:#334155}
+.tcard.s-seated{background:#FEFCE8;border-color:#EAB30855}
+.tcard.s-seated .tc-edge{background:#EAB308}
+.tcard.s-seated .tc-st{color:#713F12}
+.tcard.s-seated .tc-no{color:#713F12}
+.tcard.s-ordered{background:#FFF7ED;border-color:#EA580C55}
+.tcard.s-ordered .tc-edge{background:#EA580C}
+.tcard.s-ordered .tc-st{color:#7C2D12}
+.tcard.s-ordered .tc-no{color:#7C2D12}
+.tcard.s-preparing{background:#F0FDFA;border-color:#0D948855}
+.tcard.s-preparing .tc-edge{background:#0D9488}
+.tcard.s-preparing .tc-st{color:#134E4A}
+.tcard.s-preparing .tc-no{color:#134E4A}
+.tcard.s-ready{background:#EFF6FF;border-color:#2563EB55}
+.tcard.s-ready .tc-edge{background:#2563EB}
+.tcard.s-ready .tc-st{color:#1E3A8A}
+.tcard.s-ready .tc-no{color:#1E3A8A}
+.tcard.s-served{background:#FEF2F2;border-color:#DC262655}
+.tcard.s-served .tc-edge{background:#DC2626}
+.tcard.s-served .tc-st{color:#7F1D1D}
+.tcard.s-served .tc-no{color:#7F1D1D}
+.tcard.s-bill_requested{background:#FAF5FF;border-color:#A855F755}
+.tcard.s-bill_requested .tc-edge{background:#A855F7}
+.tcard.s-bill_requested .tc-st{color:#581C87}
+.tcard.s-bill_requested .tc-no{color:#581C87}
+.tcard.s-needs_clean{background:#F0F9FF;border-color:#0EA5E955}
+.tcard.s-needs_clean .tc-edge{background:#0EA5E9}
+.tcard.s-needs_clean .tc-st{color:#075985}
+.tcard.s-needs_clean .tc-no{color:#075985}
+.tcard.s-cleaning{background:#F8FCFF;border-color:#38BDF855}
+.tcard.s-cleaning .tc-edge{background:#38BDF8}
+.tcard.s-cleaning .tc-st{color:#0C4A6E}
+.tcard.s-cleaning .tc-no{color:#0C4A6E}
+.tcard.s-out_of_service{background:#F1F5F9;border-color:#CBD5E1;opacity:.8}
+.tcard.s-out_of_service .tc-edge{background:repeating-linear-gradient(45deg,#64748B 0 4px,#94A3B8 4px 8px)}
+.tcard.s-out_of_service .tc-st,.tcard.s-out_of_service .tc-no{color:#334155}
 .tcard.urg{border-color:#D98B83;box-shadow:0 0 0 2px rgba(179,38,30,.1)}
 
 /* توزيع الحمل */
@@ -409,37 +439,49 @@ a{color:var(--green)}
   background:currentColor;opacity:.55}
 .tm-t.curved .tm-body{width:calc(var(--tmb) * 1.08);height:calc(var(--tmb) * 1.08);border-radius:50%}
 .tm-t.two_seat .tm-body{width:calc(var(--tmb) * .86);height:calc(var(--tmb) * .82);border-radius:11px}
-.tm-t.s-free           .tm-body{border-color:#C9CFC7;background:#FBFAF6;color:#5C6B62}
-.tm-t.s-reserved       .tm-body{border-color:#A99DD0;background:#F1EEF9;color:#5B4F86;border-style:dashed}
-.tm-t.s-seated         .tm-body{border-color:#E0A93C;background:#FDF3DE;color:#8A5D06}
-.tm-t.s-ordered        .tm-body{border-color:#5B8FC9;background:#E8F1F9;color:#26557F}
-.tm-t.s-preparing      .tm-body{border-color:#7B74C4;background:#EDEBFA;color:#3E3684}
-.tm-t.s-ready          .tm-body{border-color:#5364B2;background:#E7EBF9;color:#2A377E}
-.tm-t.s-served         .tm-body{border-color:#2F8D7D;background:#E6F1EB;color:#1F6B4F}
-.tm-t.s-bill_requested .tm-body{border-color:#5158B5;background:#E8EAF6;color:#3B3F8F}
-.tm-t.s-needs_clean    .tm-body{border-color:#7E939E;background:#EAEFF1;color:#41545E}
-.tm-t.s-cleaning       .tm-body{border-color:#95A29A;background:#EEF1F2;color:#41545E}
-.tm-t.s-out_of_service .tm-body{border-color:#9AA29D;color:#45504B;
-  background:repeating-linear-gradient(45deg,#F2F1EE 0 5px,#E8E7E3 5px 10px)}
+.tm-t.s-free .tm-body{border-color:#16A34A;background:#DCFCE7;color:#14532D;border-width:2px}
+.tm-t.s-reserved .tm-body{border-color:#94A3B8;background:#F1F5F9;color:#334155;border-width:2px;border-style:dashed}
+.tm-t.s-seated .tm-body{border-color:#EAB308;background:#FEF9C3;color:#713F12;border-width:2px}
+.tm-t.s-ordered .tm-body{border-color:#EA580C;background:#FFEDD5;color:#7C2D12;border-width:2px}
+.tm-t.s-preparing .tm-body{border-color:#0D9488;background:#CCFBF1;color:#134E4A;border-width:2px}
+.tm-t.s-ready .tm-body{border-color:#2563EB;background:#DBEAFE;color:#1E3A8A;border-width:2px}
+.tm-t.s-served .tm-body{border-color:#DC2626;background:#FEE2E2;color:#7F1D1D;border-width:2px}
+.tm-t.s-bill_requested .tm-body{border-color:#A855F7;background:#F3E8FF;color:#581C87;border-width:2px}
+.tm-t.s-needs_clean .tm-body{border-color:#0EA5E9;background:#E0F2FE;color:#075985;border-width:2px}
+.tm-t.s-cleaning .tm-body{border-color:#38BDF8;background:#F0F9FF;color:#0C4A6E;border-width:2px}
+.tm-t.s-out_of_service .tm-body{border-color:#64748B;color:#334155;border-width:2px;background:repeating-linear-gradient(45deg,#E2E8F0 0 5px,#CBD5E1 5px 10px)}
 .tm-t.urg .tm-body{box-shadow:0 0 0 3px rgba(179,38,30,.22),0 1px 4px rgba(60,70,64,.08)}
 .tm-t.grouped .tm-body{outline:2px dashed #B0790F;outline-offset:3px}
 
 /* ===== لوحة تفاصيل الطاولة ===== */
 .td-hd{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:13px;margin-bottom:10px;
-  background:var(--bg);border:1px solid var(--line);border-inline-start:4px solid var(--line)}
+  background:var(--bg);border:1px solid var(--line);border-inline-start:6px solid var(--line)}
 .td-hd .td-no{font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .td-hd b{display:flex;align-items:center;gap:5px;font-size:14.5px}
 .td-hd b .ti{font-size:17px}
 .td-hd span{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
-.td-hd.s-seated{border-inline-start-color:#E0A93C} .td-hd.s-seated b{color:#8A5D06}
-.td-hd.s-ordered{border-inline-start-color:#5B8FC9} .td-hd.s-ordered b{color:#26557F}
-.td-hd.s-preparing{border-inline-start-color:#7B74C4} .td-hd.s-preparing b{color:#3E3684}
-.td-hd.s-ready{border-inline-start-color:#5364B2} .td-hd.s-ready b{color:#2A377E}
-.td-hd.s-served{border-inline-start-color:#2F8D7D} .td-hd.s-served b{color:#1F6B4F}
-.td-hd.s-bill_requested{border-inline-start-color:#5158B5} .td-hd.s-bill_requested b{color:#3B3F8F}
-.td-hd.s-needs_clean,.td-hd.s-cleaning{border-inline-start-color:#7E939E}
-.td-hd.s-needs_clean b,.td-hd.s-cleaning b{color:#41545E}
-.td-hd.s-free{border-inline-start-color:#C9CFC7} .td-hd.s-free b{color:#5C6B62}
+.td-hd.s-free{border-inline-start-color:#16A34A;background:#F2FCF5}
+.td-hd.s-free b{color:#14532D}
+.td-hd.s-reserved{border-inline-start-color:#94A3B8;background:#F8FAFC}
+.td-hd.s-reserved b{color:#334155}
+.td-hd.s-seated{border-inline-start-color:#EAB308;background:#FEFCE8}
+.td-hd.s-seated b{color:#713F12}
+.td-hd.s-ordered{border-inline-start-color:#EA580C;background:#FFF7ED}
+.td-hd.s-ordered b{color:#7C2D12}
+.td-hd.s-preparing{border-inline-start-color:#0D9488;background:#F0FDFA}
+.td-hd.s-preparing b{color:#134E4A}
+.td-hd.s-ready{border-inline-start-color:#2563EB;background:#EFF6FF}
+.td-hd.s-ready b{color:#1E3A8A}
+.td-hd.s-served{border-inline-start-color:#DC2626;background:#FEF2F2}
+.td-hd.s-served b{color:#7F1D1D}
+.td-hd.s-bill_requested{border-inline-start-color:#A855F7;background:#FAF5FF}
+.td-hd.s-bill_requested b{color:#581C87}
+.td-hd.s-needs_clean{border-inline-start-color:#0EA5E9;background:#F0F9FF}
+.td-hd.s-needs_clean b{color:#075985}
+.td-hd.s-cleaning{border-inline-start-color:#38BDF8;background:#F8FCFF}
+.td-hd.s-cleaning b{color:#0C4A6E}
+.td-hd.s-out_of_service{border-inline-start-color:#64748B;background:#F1F5F9}
+.td-hd.s-out_of_service b{color:#334155}
 .td-time{font-size:12.5px;color:var(--muted);margin-bottom:10px;font-variant-numeric:tabular-nums}
 .td-time b{color:var(--ink)}
 .td-time span{display:block;font-size:11px;margin-top:2px}
@@ -755,7 +797,7 @@ nav.bottom button.on{position:relative}
 .hb-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:14px}
 .hb-row.first{border-top:none}
 .hb-k{color:var(--muted);font-weight:700;font-size:13px;flex:none}
-.hb-v{text-align:left;font-weight:600}
+var BUILD = "2026-07-28.4";
 .hb-sub{padding:2px 0 5px;line-height:2.1}
 .hb-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
 .warn{color:var(--amber);font-weight:800}
@@ -2047,19 +2089,22 @@ var TIC = (function(){
   };
 })();
 
-/* الحالات: أيقونة + لون دلالي + اسم مكتوب + علامة جانبية — لا اعتماد على اللون وحده */
+/* الترميز اللوني العالمي لخرائط الطاولات:
+   أخضر متاحة · أصفر جلسوا وينتظرون الطلب · برتقالي أُخذ الطلب ·
+   أحمر مشغولة بالخدمة · أزرق دوران الطاولة بعد المغادرة.
+   ar = الاسم الكامل، sh = كلمة قصيرة، c = النص، bg = التعبئة، bd = الحد. */
 var TMS = {
-  free:           {ar:'متاحة',            sh:'متاحة',    ic:'free',      c:'#5C6B62', bg:'#FBFAF6', bd:'#C9CFC7'},
-  reserved:       {ar:'محجوزة',           sh:'محجوزة',   ic:'reserved',  c:'#5B4F86', bg:'#F1EEF9', bd:'#A99DD0'},
-  seated:         {ar:'بانتظار الخدمة',   sh:'بانتظار',  ic:'seated',    c:'#8A5D06', bg:'#FDF3DE', bd:'#E0A93C'},
-  ordered:        {ar:'تم أخذ الطلب',     sh:'أُخذ الطلب', ic:'ordered', c:'#26557F', bg:'#E8F1F9', bd:'#5B8FC9'},
-  preparing:      {ar:'قيد التجهيز',      sh:'تجهيز',    ic:'preparing', c:'#3E3684', bg:'#EDEBFA', bd:'#7B74C4'},
-  ready:          {ar:'جاهز للتقديم',     sh:'جاهز',     ic:'ready',     c:'#2A377E', bg:'#E7EBF9', bd:'#5364B2'},
-  served:         {ar:'مشغولة',           sh:'مشغولة',   ic:'served',    c:'#1F6B4F', bg:'#E6F1EB', bd:'#2F8D7D'},
-  bill_requested: {ar:'طلبت الحساب',      sh:'الحساب',   ic:'bill',      c:'#3B3F8F', bg:'#E8EAF6', bd:'#5158B5'},
-  needs_clean:    {ar:'تحتاج تنظيفاً',    sh:'تنظيف',    ic:'clean',     c:'#41545E', bg:'#EAEFF1', bd:'#7E939E'},
-  cleaning:       {ar:'يجري التجهيز',     sh:'يُجهَّز',   ic:'cleaning',  c:'#41545E', bg:'#EEF1F2', bd:'#95A29A'},
-  out_of_service: {ar:'خارج الخدمة',      sh:'موقوفة',   ic:'oos',       c:'#45504B', bg:'#EDEDEA', bd:'#9AA29D'}
+  free:           {ar:'متاحة',            sh:'متاحة',    ic:'free',      c:'#14532D', bg:'#DCFCE7', bd:'#16A34A'},
+  reserved:       {ar:'محجوزة',           sh:'محجوزة',   ic:'reserved',  c:'#334155', bg:'#F1F5F9', bd:'#94A3B8'},
+  seated:         {ar:'جلسوا — الطلب؟',   sh:'الطلب؟',   ic:'seated',    c:'#713F12', bg:'#FEF9C3', bd:'#EAB308'},
+  ordered:        {ar:'تم أخذ الطلب',     sh:'أُخذ الطلب', ic:'ordered', c:'#7C2D12', bg:'#FFEDD5', bd:'#EA580C'},
+  preparing:      {ar:'قيد التجهيز',      sh:'تجهيز',    ic:'preparing', c:'#134E4A', bg:'#CCFBF1', bd:'#0D9488'},
+  ready:          {ar:'جاهز للتقديم',     sh:'جاهز',     ic:'ready',     c:'#1E3A8A', bg:'#DBEAFE', bd:'#2563EB'},
+  served:         {ar:'مشغولة',           sh:'مشغولة',   ic:'served',    c:'#7F1D1D', bg:'#FEE2E2', bd:'#DC2626'},
+  bill_requested: {ar:'طلبت الحساب',      sh:'الحساب',   ic:'bill',      c:'#581C87', bg:'#F3E8FF', bd:'#A855F7'},
+  needs_clean:    {ar:'غادروا — تنظيف',   sh:'تنظيف',    ic:'clean',     c:'#075985', bg:'#E0F2FE', bd:'#0EA5E9'},
+  cleaning:       {ar:'يجري التجهيز',     sh:'يُجهَّز',   ic:'cleaning',  c:'#0C4A6E', bg:'#F0F9FF', bd:'#38BDF8'},
+  out_of_service: {ar:'خارج الخدمة',      sh:'موقوفة',   ic:'oos',       c:'#334155', bg:'#E2E8F0', bd:'#64748B'}
 };
 /* الإجراء كما تقوله الموظفة، لا اسم الحالة */
 var TMACT = {
@@ -2150,10 +2195,11 @@ function tmCard(x){
   if(x.has_note) flags += '<span class="tf" title="عليها ملاحظة">'+tmIc('note')+'</span>';
 
   /* سطر الوقت: مفتوحة ← «فُتحت 7:42 م · 48 د» */
-  var timeLine = x.opened_at
-    ? 'فُتحت ' + tmClock(x.opened_at) + ' · <b class="tdur" data-since="' + x.opened_at + '">' +
-      tmDur(tmMinsSince(x.opened_at)) + '</b>'
-    : (x.state === 'free' ? 'جاهزة للاستقبال' : 'منذ <b class="tdur" data-mins="' + (+x.mins) + '">' + tmDur(x.mins) + '</b>');
+  var timeLine = (x.state === 'free' && !x.oos) ? 'جاهزة للاستقبال'
+    : x.opened_at
+      ? 'فُتحت ' + tmClock(x.opened_at) + ' · <b class="tdur" data-since="' + x.opened_at + '">' +
+        tmDur(tmMinsSince(x.opened_at)) + '</b>'
+      : 'منذ <b class="tdur" data-mins="' + (+x.mins) + '">' + tmDur(x.mins) + '</b>';
 
   var le = x.last_event || {};
   var leTxt = le.at ? (esc(le.reason || (TMS[le.to] || {}).ar || '') + ' · ' + tmClock(le.at)) : '';
