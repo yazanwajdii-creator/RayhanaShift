@@ -476,6 +476,19 @@ a{color:var(--green)}
   min-height:48px;background:#fff;text-align:center;line-height:1.3}
 .tm-vf-opt .ti{font-size:15px}
 .tm-vf-opt:active{transform:scale(.97)}
+/* المساهمات الإضافية */
+.cb-live{border:1px solid #B6CCC0;background:#EEF4F1}
+.cb-live-h{display:flex;gap:9px;align-items:center;margin-bottom:9px}
+.cb-live-h .ti{font-size:19px;color:#1F6B4F}
+.cb-live-h b{display:block;font-size:14px;color:#1B5741}
+.cb-live-h span{display:block;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cb-cf{border:1px solid #E0C68F;background:#FDF6E8}
+.cb-two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.cb-opt{border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 10px;
+  font:inherit;cursor:pointer;text-align:center;min-height:66px}
+.cb-opt.on{border-color:#2F8D7D;background:#E6F1EB}
+.cb-opt b{display:block;font-size:13.5px;color:var(--ink)}
+.cb-opt span{display:block;font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.35}
 /* بوابة الإشعارات الإجبارية */
 .pushgate{position:fixed;inset:0;z-index:99999;background:rgba(16,29,23,.94);display:flex;align-items:center;justify-content:center;padding:22px}
 .pushgate-card{background:var(--surface);color:var(--ink);border-radius:20px;padding:26px 22px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45)}
@@ -784,7 +797,7 @@ details.qa .qa-body{padding:0 16px 14px}
 .decision{border-inline-start:3px solid var(--amber);}
 .wkstrip{display:flex;gap:5px;overflow-x:auto;padding:2px 0;-webkit-overflow-scrolling:touch}
 .wkd{flex:1;min-width:42px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:7px 2px;text-align:center;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:1px;align-items:center;color:var(--ink)}
-.wkd .dw{font-size:10px;color:var(--muted);font-weight:700}
+var BUILD = "2026-07-28.3";
 .wkd .dn{font-size:16px;font-weight:800;line-height:1.2}
 .wkd .dc{font-size:9.5px;color:var(--brand);font-weight:700;white-space:nowrap}
 .wkd.on{background:var(--brand);border-color:var(--brand);color:#fff}
@@ -1995,7 +2008,7 @@ function drawTab(){
   else if(S.tab==='grow'){ v.innerHTML=skel(3); loadGrow(v); }
   else v.innerHTML=viewMore();
   wireTab(v); animIn(v);
-  if(S.tab==='now'){ loadPrepCard(); loadOpsCard(); loadTablesCard(); loadVerifyCard(); }
+  if(S.tab==='now'){ loadPrepCard(); loadOpsCard(); loadTablesCard(); loadVerifyCard(); loadContribCard(); }
   if($('#vn_nt',v)) voiceWire(v,'nt');
   if($('#vn_is',v)) voiceWire(v,'is');
 }
@@ -2510,6 +2523,124 @@ function loadVerifyCard(){
   }).catch(function(){});
 }
 
+
+/* ================= المساهمات الإضافية =================
+   زر ثانوي واضح ضمن شريط الإجراءات، لا زر عائم يغطي المحتوى ولا منافس للمهمة. */
+var CCAT = [
+  ['support_colleague','مساندة زميلة'],
+  ['cover_area','تغطية منطقة'],
+  ['proactive','عمل استباقي'],
+  ['fix_blocker','حل عائق أو نقص'],
+  ['handle_report','معالجة بلاغ'],
+  ['training','تدريب أو تسليم'],
+  ['emergency','خدمة أو موقف طارئ'],
+  ['other','عمل آخر']
+];
+var CSTAT = {captured:'مسجّلة', pending_confirmation:'بانتظار تأكيد الزميلة',
+  verified:'مؤكَّدة', approved:'معتمدة', disputed:'محل مراجعة', rejected:'غير معتمدة'};
+
+function loadContribCard(){
+  var w = $('#cbWrap'); if(!w) return;
+  sAct('contrib_mine', {}).then(function(r){
+    if(!r || !r.ok){ w.innerHTML = ''; return; }
+    var h = '';
+
+    /* مساندة جارية: مؤقت وزر إنهاء */
+    if(r.live){
+      h += '<div class="card cb-live"><div class="cb-live-h">'+tmIc('handover')+
+        '<div><b>مساندة جارية</b><span class="tdur" data-since="'+r.live.started_at+'"></span></div></div>'+
+        '<button class="btn block" id="cbEnd">أنهيت المساندة</button></div>';
+    }
+
+    /* طلب تأكيد من زميلة — لا يُستخدم لإدانة أحد */
+    (r.to_confirm || []).forEach(function(c){
+      h += '<div class="card cb-cf"><b>'+esc(c.who)+' سجّلت أنها ساعدتك</b>'+
+        (c.what ? '<div class="small muted" style="margin:3px 0">'+esc(c.what)+'</div>' : '')+
+        '<div class="small muted">'+(+c.minutes || 0)+' دقيقة</div>'+
+        '<div class="btnrow" style="margin-top:7px">'+
+        '<button class="btn sm" data-cy="'+c.id+'">نعم</button>'+
+        '<button class="btn sm ghost" data-cp="'+c.id+'">جزئياً</button>'+
+        '<button class="btn sm ghost" data-cn="'+c.id+'">لم تحدث</button></div></div>';
+    });
+
+    h += '<div class="btnrow" style="margin-top:2px">'+
+         '<button class="btn ghost block" id="cbNew">+ مساهمة إضافية</button></div>';
+    w.innerHTML = h;
+
+    var eb = $('#cbEnd', w);
+    if(eb) eb.addEventListener('click', function(){
+      eb.disabled = true;
+      sAct('contrib_end', {id: r.live.id}, true).then(function(x){
+        toast((x && x.msg) || 'تم'); loadContribCard();
+      }).catch(function(){ eb.disabled = false; toast('تعذر الإرسال', true); });
+    });
+
+    function answer(id, a){
+      sAct('contrib_confirm', {id: id, answer: a}, true).then(function(x){
+        toast((x && x.msg) || 'شكراً'); loadContribCard();
+      });
+    }
+    $$('[data-cy]', w).forEach(function(b){ b.addEventListener('click', function(){ answer(+b.getAttribute('data-cy'), 'yes'); }); });
+    $$('[data-cp]', w).forEach(function(b){ b.addEventListener('click', function(){ answer(+b.getAttribute('data-cp'), 'partial'); }); });
+    $$('[data-cn]', w).forEach(function(b){ b.addEventListener('click', function(){ answer(+b.getAttribute('data-cn'), 'no'); }); });
+
+    $('#cbNew', w).addEventListener('click', contribSheet);
+  }).catch(function(){});
+}
+
+/* قائمة سفلية سريعة، لا صفحة طويلة */
+function contribSheet(){
+  var areas = ((S.state || {}).areas) || [];
+  var mates = ((S.state || {}).mates) || [];
+  sheet('مساهمة إضافية',
+    '<div class="cb-two">'+
+      '<button class="cb-opt" data-k="live"><b>سأساعد الآن</b><span>يبدأ المؤقت ويُحدَّث حِملك</span></button>'+
+      '<button class="cb-opt" data-k="after"><b>أنجزت عملاً إضافياً</b><span>تسجيل بعد الإنجاز</span></button>'+
+    '</div><div id="cbForm"></div>',
+    function(ov, close){
+      $$('.cb-opt', ov).forEach(function(b){
+        b.addEventListener('click', function(){
+          $$('.cb-opt', ov).forEach(function(x){ x.classList.remove('on'); });
+          b.classList.add('on');
+          var kind = b.getAttribute('data-k');
+          $('#cbForm', ov).innerHTML =
+            '<label class="f">نوع العمل</label><select class="f" id="cbC">'+
+              CCAT.map(function(c){ return '<option value="'+c[0]+'">'+esc(c[1])+'</option>'; }).join('')+'</select>'+
+            '<label class="f">المنطقة</label><select class="f" id="cbA"><option value="">—</option>'+
+              areas.map(function(a){ return '<option value="'+a.id+'">'+esc(a.name)+'</option>'; }).join('')+'</select>'+
+            '<label class="f">الزميلة المستفيدة (عند الحاجة)</label><select class="f" id="cbB"><option value="">—</option>'+
+              mates.map(function(m){ return '<option value="'+m.id+'">'+esc(m.name)+'</option>'; }).join('')+'</select>'+
+            '<label class="f">وصف قصير</label><input class="f" id="cbD" maxlength="200" placeholder="مثال: ساعدت ليان بتنظيف أربع طاولات">'+
+            (kind === 'after' ? '<label class="f">المدة التقريبية (دقيقة)</label><input class="f" id="cbM" type="number" min="3" max="180" value="15">' : '')+
+            '<div class="btnrow"><button class="btn block" id="cbGo">'+
+              (kind === 'live' ? 'ابدئي المساندة' : 'سجّلي المساهمة')+'</button></div>'+
+            '<div class="muted" style="font-size:11px;margin-top:6px">تُسجَّل ولا تُعتمد مباشرة — يتحقق منها النظام أو الزميلة. لا مقارنة بينك وبين غيرك.</div>';
+
+          $('#cbGo', ov).addEventListener('click', function(){
+            var btn = this; btn.disabled = true;
+            var payload = {
+              category: $('#cbC', ov).value,
+              area_id: $('#cbA', ov).value || null,
+              beneficiary: $('#cbB', ov).value || null,
+              description: $('#cbD', ov).value.trim()
+            };
+            if(kind === 'after') payload.minutes = +$('#cbM', ov).value || 0;
+            sAct(kind === 'live' ? 'contrib_start' : 'contrib_log', payload, true).then(function(x){
+              btn.disabled = false;
+              if(x && x.ok){
+                toast(x.msg || 'تم');
+                if((x.warnings || []).length){
+                  toast((x.warnings[0] || {}).text || '', true, 4500);
+                }
+                close(); loadContribCard();
+              } else toast((x && x.error) || 'تعذر التسجيل', true, 4200);
+            }).catch(function(){ btn.disabled = false; toast('تعذر الاتصال', true); });
+          });
+        });
+      });
+    });
+}
+
 /* ---------- تبويب: الآن ---------- */
 /* ---------- بطاقات لوحة اليوم (تنبيهات + استراحة + عمليات الشفت) ---------- */
 function dashAlerts(){
@@ -2612,6 +2743,7 @@ function dashOps(mode){
           '<button class="btn sm ghost" data-a="helpClose" data-id="'+h.id+'">'+(h.mine?'إلغاء':'لبّيته ✔')+'</button></div>';
       }).join('') : '<div class="muted small">لا نداءات الآن</div>')+
       '<div class="btnrow"><button class="btn ghost block" data-a="helpNew">طلب مساعدة لمنطقتي</button></div></div></details>');
+    out.push('<div id="cbWrap"></div>');
     out.push('<div id="vfWrap"></div>');
     out.push('<div id="tblWrap"></div>');
     out.push('<div id="opsWrap"></div>');
