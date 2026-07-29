@@ -269,7 +269,7 @@ a{color:var(--green)}
 .tcb-i b{display:block;font-size:15.5px;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--ink);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tcb-i span{display:block;font-size:10px;color:var(--muted);margin-top:1px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  line-height:1.3;overflow-wrap:anywhere;hyphens:auto}
 .tcb-i.bad b{color:#B3261E} .tcb-i.info b{color:#3B3F8F}
 .tcb-i span.ok{color:#1F6B4F} .tcb-i span.warn{color:#B3261E}
 
@@ -781,6 +781,42 @@ nav.bottom .bdg::after{content:'';position:absolute;top:4px;left:calc(50% - 16px
 .tbl td{border-bottom:1px solid var(--line);padding:7px 8px;vertical-align:top}
 .scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
+/* ===== الجداول على الهاتف =====
+   الجدول ذو الأعمدة السبعة داخل شريط تمرير أفقي غير قابل للقراءة على ٣٦٠px:
+   تُخفي كل حركة نصفَ البيانات. تحت ٦٠٠px يصير كل صف بطاقة، وكل خلية سطراً
+   يحمل اسم عموده — نفس البيانات بلا تمرير أفقي ولا فقدان سياق.
+   عنوان العمود يُحقن من JS في data-h، وما لا عنوان له يبقى سطراً كاملاً. */
+@media(max-width:600px){
+  .tbl.rsp, .tbl.rsp tbody, .tbl.rsp tr, .tbl.rsp td{display:block;width:100%}
+  .tbl.rsp thead, .tbl.rsp tr.rsp-head{display:none}
+  .tbl.rsp tr{background:var(--surface);border:1px solid var(--line);border-radius:13px;
+    padding:4px 2px;margin-bottom:9px;box-shadow:var(--sh-1,0 1px 2px rgba(16,29,23,.05))}
+  .tbl.rsp tr:nth-child(even) td{background:transparent}
+  .tbl.rsp td{border:none;border-bottom:1px dashed var(--line);padding:7px 11px;
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px;text-align:end}
+  .tbl.rsp td:last-child{border-bottom:none}
+  .tbl.rsp td::before{content:attr(data-h);flex:0 0 auto;font-size:11.5px;font-weight:700;
+    color:var(--muted);text-align:start}
+  .tbl.rsp td[data-h=""]::before{display:none}
+  .tbl.rsp td.rsp-full{display:block;text-align:start}
+  .tbl.rsp td.rsp-full::before{display:block;margin-bottom:3px}
+  /* الصف الأول من كل بطاقة عنوانها: أبرز خطاً وبلا تسمية مكرّرة */
+  .tbl.rsp td:first-child{font-weight:800;color:var(--ink);font-size:14px;
+    background:var(--surface-2);border-radius:10px;margin:2px 2px 4px;text-align:start}
+  .tbl.rsp td:first-child::before{display:none}
+  .tbl.rsp td.rsp-nolbl::before{display:none}
+  .tbl.rsp td.rsp-nolbl{justify-content:flex-end}
+  .scrollx:has(.tbl.rsp){overflow-x:visible}
+}
+/* مربع الاختيار ٢٠px هدف لمس صغير على الهاتف — يُكبَّر ويوسَّع مساحة ضغطه */
+.check input[type=checkbox], input[type=checkbox]{width:22px;height:22px;min-width:22px;
+  accent-color:var(--brand);cursor:pointer;flex:0 0 auto}
+.check{display:flex;align-items:center;gap:9px;min-height:44px;cursor:pointer}
+.check span{flex:1;line-height:1.45}
+@media(max-width:600px){
+  .x-noop{display:none}
+}
+
 /* ===== قائمة أقسام الإدارة ===== */
 .menu{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .menu button{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:14px 4px 11px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--ink);position:relative;box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s}
@@ -1115,7 +1151,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-29.6"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
+var BUILD = "2026-07-29.7"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1239,9 +1275,50 @@ function mediaFill(){
   });
   mediaSlot._q = rest;
 }
+/* ===== الجداول تتحوّل بطاقات على الهاتف =====
+   كل td يأخذ عنوان عموده في data-h، فتقرأه CSS تحت ٦٠٠px وتعرض كل خلية
+   بسطرها المسمّى. يجري تلقائياً على كل جدول في التطبيق، فلا تحتاج أي شاشة
+   إلى تعديل ولا يمكن أن تُنسى شاشة جديدة. */
+/* صفوف .check تكتب كـ div لا label، فالضغط على النص لا يبدّل شيئاً والمربع
+   وحده هدف صغير على الهاتف. مستمع واحد مفوَّض يغطي كل الصفوف الحالية والقادمة. */
+document.addEventListener('click', function(e){
+  var row = e.target.closest && e.target.closest('.check');
+  if(!row || row.tagName === 'LABEL') return;
+  if(e.target.tagName === 'INPUT') return;            /* الصندوق يتكفّل بنفسه */
+  var box = row.querySelector('input[type=checkbox],input[type=radio]');
+  if(!box || box.disabled) return;
+  box.checked = box.type === 'radio' ? true : !box.checked;
+  box.dispatchEvent(new Event('change', {bubbles:true}));
+});
+function tblResponsive(root){
+  $$('table.tbl', root || document).forEach(function(t){
+    if(t.getAttribute('data-rsp')) return;
+    t.setAttribute('data-rsp', '1');
+    t.classList.add('rsp');
+    var head = t.querySelector('tr');
+    if(!head) return;
+    var heads = Array.prototype.map.call(head.children, function(c){
+      return (c.textContent || '').trim();
+    });
+    Array.prototype.forEach.call(t.rows, function(r, ri){
+      /* هذه الجداول تكتب صفّ العناوين كـ tr>th بلا thead، فلا تطابقه CSS.
+         نعلّمه صراحةً كي يُخفى في عرض البطاقات بدل أن يفيض عن الشاشة. */
+      if(r.querySelector('th')){ r.classList.add('rsp-head'); return; }
+      Array.prototype.forEach.call(r.cells, function(c, ci){
+        if(c.hasAttribute('data-h')) return;
+        c.setAttribute('data-h', heads[ci] || '');
+        var only = c.querySelector('button,input,select,textarea');
+        /* الخلية الطويلة أو التي تحوي عناصر تفاعلية تأخذ سطرها كاملاً */
+        if((c.textContent || '').length > 34 || only) c.classList.add('rsp-full');
+        /* خلية زر وحده لا تحتاج تسمية تكرّر نص الزر */
+        if(only && (c.textContent || '').trim().length <= 12) c.classList.add('rsp-nolbl');
+      });
+    });
+  });
+}
 /* التعبئة تلقائية بعد أي تركيب DOM، فلا يعتمد الأمان على تذكّر استدعائها في كل شاشة */
 try{
-  new MutationObserver(function(){ mediaFill(); })
+  new MutationObserver(function(){ mediaFill(); tblResponsive(); })
     .observe(document.documentElement, { childList:true, subtree:true });
 }catch(e){}
 function toast(msg, err, dur){
