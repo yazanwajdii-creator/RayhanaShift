@@ -16,14 +16,18 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    # منع تضمين التطبيق داخل إطار في موقع آخر (clickjacking)
-    Content-Security-Policy = "frame-ancestors 'none'"
+    # سياسة المحتوى مفروضة الآن (لا إبلاغ فقط). ما تمنعه فعلياً:
+    # تحميل أي سكربت خارجي، وحقن base لسرقة المسارات النسبية، وإرسال أي نموذج
+    # لجهة خارجية، وأي اتصال شبكي لغير Supabase، وأي صورة أو صوت من مصدر غريب،
+    # وobject/embed، وتضمين التطبيق داخل إطار.
+    # 'unsafe-inline' على السكربت يبقى لأن التطبيق ملف واحد بسكربت داخلي؛
+    # إزالته موقوفة على تفكيك index.html — مسجَّلة كبند مؤجّل لا كمنجز.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'"
     X-Frame-Options = "DENY"
     # لا نطلب صلاحيات لا نستخدمها؛ الكاميرا والميكروفون والموقع للأصل نفسه فقط
     Permissions-Policy = "geolocation=(self), microphone=(self), camera=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()"
     Cross-Origin-Opener-Policy = "same-origin"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    # سياسة المحتوى الكاملة تبدأ بوضع الإبلاغ فقط حتى نرصد أي كسر قبل الفرض.
-    # التطبيق ملف واحد بسكربت داخلي، لذا 'unsafe-inline' لازم حالياً؛
-    # الخطوة التالية بعد تفكيك الملف هي نقلها إلى Enforcement بـ hashes.
-    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'"
+    # النسخة الصارمة (بلا unsafe-inline) تبقى في وضع الإبلاغ حتى يُفكَّك الملف،
+    # فنرى ما ستكسره قبل فرضها بدل أن نكتشف ذلك على أجهزة الموظفات.
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'"

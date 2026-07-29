@@ -1003,7 +1003,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-29.3"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
+var BUILD = "2026-07-29.4"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1263,7 +1263,16 @@ window.addEventListener('online', function(){ updateDot(); qSync(); });
 window.addEventListener('offline', updateDot);
 function updateDot(){ var d=$('#syncdot'); if(!d) return; var pending=qGet().length; d.className = (navigator.onLine&&!pending) ? 'dot' : 'dot off'; d.title = pending? pending+' عملية بانتظار المزامنة' : (navigator.onLine?'متصل':'دون اتصال'); }
 /* CRB #1: إلغاء عمليات مهام معلّقة (بعد الانصراف) + قفل التنفيذ خارج الشفت */
-function qClear(pred){ var a=qGet(); a = pred ? a.filter(function(x){ return !pred(x); }) : []; qSet(a); }
+/* إلغاء عمليات معلّقة من الطابور (تُستدعى عند الانصراف لمنع تنفيذ مهام بعده).
+   كانت تنادي qSet المحذوفة بعد الانتقال إلى IndexedDB، فترمي عند كل انصراف. */
+function qClear(pred){
+  return qGetAsync().then(function(a){
+    var doomed = pred ? a.filter(pred) : a;
+    return doomed.reduce(function(chain, item){
+      return chain.then(function(){ return qDrop(item); });
+    }, Promise.resolve());
+  }).then(qRefreshCount);
+}
 function workLocked(){ var a=S.state&&S.state.attendance; return !!(a&&a.out); }
 
 /* ---------- الاتصال بالخادم ---------- */
@@ -1274,7 +1283,11 @@ function rawRpc(fn, action, p){
     method:'POST',
     headers:{ 'Content-Type':'application/json', 'apikey':K, 'Authorization':'Bearer '+K },
     body: JSON.stringify({ p_token: S.token||'', p_action: action, p: p||{} })
-  }).then(function(r){ return r.json(); });
+  }).then(function(r){ return r.json(); }).then(function(res){
+    /* الخادم يدوّر توكن الجلسة دورياً؛ نلتقط الجديد فوراً وإلا بطل القديم عند الطلب التالي */
+    if(res && res.new_token && res.new_token !== S.token){ S.token = res.new_token; saveSess(); }
+    return res;
+  });
 }
 // mutQueue=true: عملية تعديل تُحفظ بالطابور إذا انقطع الاتصال
 function rpc(fn, action, p, mutQueue){
