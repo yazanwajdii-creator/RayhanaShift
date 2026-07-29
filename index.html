@@ -319,6 +319,83 @@ a{color:var(--green)}
 @media(min-width:760px){ .tgrid{grid-template-columns:repeat(3,1fr)} }
 @media(min-width:1080px){ .tgrid{grid-template-columns:repeat(4,1fr)} }
 
+/* ===== أرضية الصالة =====
+   العرض الافتراضي لم يعد قائمة بطاقة لكل طاولة تملأ الشاشة بأربع طاولات.
+   الطاولة هنا قطعة أثاث: شكلها من نوعها، ولونها هو الحالة نفسها لا حاشية
+   باهتة حولها، ورقمها كبير يُقرأ من بعيد. كل طاولات المنطقة في شاشة واحدة. */
+.tfloor{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:10px}
+@media(min-width:430px){ .tfloor{grid-template-columns:repeat(5,1fr);gap:10px} }
+@media(min-width:700px){ .tfloor{grid-template-columns:repeat(7,1fr)} }
+@media(min-width:1000px){ .tfloor{grid-template-columns:repeat(9,1fr)} }
+
+.tt{position:relative;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:1px;font:inherit;cursor:pointer;padding:2px;
+  border:2px solid rgba(0,0,0,.16);border-radius:16px;color:#fff;
+  background:var(--tcol,#64748B);box-shadow:0 2px 0 rgba(0,0,0,.16),0 6px 14px rgba(16,29,23,.16);
+  transition:transform .1s ease,box-shadow .12s ease;-webkit-tap-highlight-color:transparent}
+.tt:active{transform:translateY(1px) scale(.97);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+/* الشكل يتبع نوع الطاولة: دائرية، ثنائية صغيرة، كنبة مستطيلة */
+.tt.curved{border-radius:50%}
+.tt.two_seat{border-radius:13px}
+.tt.booth{border-radius:9px}
+.tt-no{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 2px rgba(0,0,0,.25)}
+@media(min-width:430px){ .tt-no{font-size:25px} }
+.tt-sub{font-size:8.5px;font-weight:800;line-height:1.15;text-align:center;opacity:.95;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+.tt-min{position:absolute;top:-5px;inset-inline-end:-4px;min-width:20px;height:19px;padding:0 5px;
+  border-radius:10px;background:#101D17;color:#fff;font-size:9.5px;font-weight:800;
+  display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;
+  border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.tt-own{position:absolute;bottom:-5px;inset-inline-start:-4px;width:19px;height:19px;border-radius:50%;
+  background:#fff;color:#1F4A38;font-size:8.5px;font-weight:800;
+  display:inline-flex;align-items:center;justify-content:center;border:1.5px solid rgba(0,0,0,.12);
+  box-shadow:0 1px 3px rgba(0,0,0,.22)}
+.tt-fl{position:absolute;top:-5px;inset-inline-start:-4px;width:19px;height:19px;border-radius:50%;
+  background:#fff;color:#26332B;display:inline-flex;align-items:center;justify-content:center;
+  border:1.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.22)}
+.tt-fl .ti{font-size:12px;line-height:1}
+.tt-fl.bad{background:#B3261E;color:#fff} .tt-fl.warn{background:#B0790F;color:#fff}
+/* الطاولة المتجاوزة تنبض حلقتها — تُرى دون قراءة أي نص */
+.tt.urg{animation:ttpulse 1.7s ease-in-out infinite}
+@keyframes ttpulse{0%,100%{box-shadow:0 2px 0 rgba(0,0,0,.16),0 0 0 0 rgba(185,28,28,.55)}
+  50%{box-shadow:0 2px 0 rgba(0,0,0,.16),0 0 0 7px rgba(185,28,28,0)}}
+.tt.oos{opacity:.55;filter:grayscale(.5)}
+.tt.grouped::after{content:'';position:absolute;inset:-6px;border:2px dashed rgba(255,255,255,.55);
+  border-radius:inherit;pointer-events:none}
+@media (prefers-reduced-motion: reduce){ .tt.urg{animation:none;outline:3px solid #B91C1C;outline-offset:2px} }
+
+/* مفتاح الألوان: يشرح اللون ويعمل مرشّحاً في آن — الضغط يُظهر حالة واحدة */
+.tleg{display:flex;gap:5px;margin-top:10px;overflow-x:auto;padding-bottom:3px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tleg::-webkit-scrollbar{display:none}
+.tleg-b{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border-radius:20px;
+  border:1px solid var(--line);background:var(--surface);font:inherit;font-size:10.5px;
+  font-weight:700;color:var(--ink);cursor:pointer;white-space:nowrap;flex:0 0 auto;
+  -webkit-tap-highlight-color:transparent}
+.tleg-b .sw{width:11px;height:11px;border-radius:4px;background:var(--tcol);flex:0 0 auto;
+  border:1px solid rgba(0,0,0,.15)}
+.tleg-b .n{font-variant-numeric:tabular-nums;font-weight:800;color:var(--muted)}
+.tleg-b.on{border-color:var(--tcol);box-shadow:inset 0 0 0 1px var(--tcol)}
+.tleg-b.on .n{color:var(--ink)}
+.tfloor-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:12px}
+.tfloor-h b{font-size:13px}
+.tfloor-h span{font-size:11px;color:var(--muted)}
+
+/* الإشعار زر لا نص: يفتح الشاشة التي يتحدث عنها */
+.ncard{display:block;width:100%;text-align:start;font:inherit;cursor:pointer;
+  background:var(--surface);border:1px solid var(--line);border-radius:13px;
+  padding:10px 12px;margin-bottom:8px;transition:border-color .12s ease,transform .1s ease;
+  -webkit-tap-highlight-color:transparent}
+.ncard:active{transform:scale(.99)}
+.ncard.seen{opacity:.62}
+.nc-t{display:flex;align-items:center;gap:7px}
+.nc-t b{font-size:13.5px;color:var(--ink)}
+.nc-b{display:block;font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+.nc-f{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px}
+.nc-go{font-size:11.5px;font-weight:800;color:var(--brand)}
+.nc-go::after{content:' \2039'}
+
 /* بطاقة الطاولة — أماكن المعلومات ثابتة */
 .tcard{position:relative;display:block;width:100%;text-align:start;font:inherit;cursor:pointer;
   background:var(--surface);border:1px solid var(--line);border-radius:13px;
@@ -1003,7 +1080,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-29.4"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
+var BUILD = "2026-07-29.5"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -2175,17 +2252,39 @@ function loadNotifs(){
     var c=$('#bellCount'); if(c){ c.textContent=res.unread>0?(res.unread>9?'9+':res.unread):''; c.style.display=res.unread>0?'flex':'none'; }
   }).catch(function(){});
 }
+/* وجهة الإشعار: ما الشاشة التي يتحدث عنها، وكيف نصل إليها بضغطة واحدة */
+var NTGO = {shift:'جدول شفتاتي', tasks:'مهامي', cover:'الطلبات والتغطية', handover:'الطلبات والتغطية',
+            requests:'الطلبات والتغطية', issues:'البلاغات', contrib:'شاشة اليوم',
+            tables:'شاشة اليوم', grow:'تطوّري', now:'شاشة اليوم'};
+function notifGo(t){
+  if(t === 'shift' || t === 'tasks' || t === 'grow' || t === 'now'){
+    S.tab = t; paintTabs(); drawTab(); return;
+  }
+  /* الباقي أقسام داخل «المزيد» — نفتح القسم مباشرة لا قائمته */
+  var sec = {cover:'requests', requests:'requests', handover:'requests',
+             issues:'issues', contrib:null, tables:null}[t];
+  if(!sec){ S.tab = 'now'; paintTabs(); drawTab(); return; }
+  S.tab = 'more'; S.moreSec = sec; paintTabs(); drawTab();
+}
 function openNotifs(){
   var pushRow = ('Notification' in window && Notification.permission!=='granted')
     ? '<div class="btnrow"><button class="btn ghost sm block" id="notifPush">تفعيل الإشعارات على هذا الجهاز</button></div>' : '';
   sheet('الإشعارات',
     pushRow +
-    (notifCache.length ? notifCache.map(function(n){
-      return '<div class="card" style="padding:9px 12px'+(n.read?';opacity:.6':'')+'"><b>'+esc(n.title)+'</b>'+(n.read?'':' <span class="chip orange">جديد</span>')+
-        (n.body?'<div class="small">'+esc(n.body)+'</div>':'')+'<div class="muted small">'+fmtD(n.ts)+' '+fmtT(n.ts)+'</div></div>';
+    (notifCache.length ? notifCache.map(function(n, i){
+      /* الإشعار يفتح الشاشة التي يتحدث عنها بدل أن يترك الموظفة تبحث عنها */
+      return '<button class="ncard'+(n.read?' seen':'')+'" data-nt="'+i+'">'+
+        '<span class="nc-t"><b>'+esc(n.title)+'</b>'+(n.read?'':'<span class="chip orange">جديد</span>')+'</span>'+
+        (n.body?'<span class="nc-b">'+esc(n.body)+'</span>':'')+
+        '<span class="nc-f"><span class="muted small">'+fmtD(n.ts)+' '+fmtT(n.ts)+'</span>'+
+        (n.target?'<span class="nc-go">'+esc(NTGO[n.target]||'افتحي')+'</span>':'')+'</span></button>';
     }).join('') : '<div class="empty">لا إشعارات</div>'),
     function(ov, close){
       var pb=$('#notifPush',ov); if(pb) pb.addEventListener('click', function(){ enablePush((S.state&&S.state.push&&S.state.push.vapid_public)||PUSHKEY, function(){}); });
+      $$('[data-nt]',ov).forEach(function(b){ b.addEventListener('click', function(){
+        var n=notifCache[+b.getAttribute('data-nt')]; if(!n||!n.target) return;
+        close(); notifGo(n.target);
+      });});
     });
   sAct('notif_read',{}).then(function(){ loadNotifs(); });
 }
@@ -2389,7 +2488,8 @@ var TIC = (function(){
     guests:      s('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'),
     map:         s('<path d="M14.1 4.1 20 2v16l-5.9 2.1"/><path d="M14.1 4.1 8.9 2.4"/><path d="M8.9 2.4 4 4v16l4.9-1.6"/><path d="M8.9 2.4v16.4"/><path d="M14.1 4.1v16.4"/>'),
     list:        s('<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>'),
-    refresh:     s('<path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/>')
+    refresh:     s('<path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/>'),
+    grid:        s('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>')
   };
 })();
 
@@ -2425,7 +2525,7 @@ var TMACT = {
 };
 
 var TM = {area:null, data:null, timer:null, tick:null, admin:false,
-          view:'list', filter:'all', emp:null, skew:0, sel:null, busy:false};
+          view:'floor', filter:'all', st:null, emp:null, skew:0, sel:null, busy:false};
 
 function tmIc(k){ return '<span class="ti">'+(TIC[k]||'')+'</span>'; }
 function tmInitials(n){
@@ -2529,6 +2629,50 @@ function tmCard(x){
     '</button>';
 }
 
+/* ---------- أرضية الصالة: كل الطاولات في شاشة واحدة ----------
+   الطاولة قطعة أثاث ملوّنة بحالتها، لا بطاقة نصية. الرقم يُقرأ من مسافة،
+   والدقائق والمسؤولة والتنبيه شارات على الحواف فلا تزاحم الرقم. */
+function tmTile(x){
+  var k = tmState(x), st = TMS[k] || TMS.free, u = tmUrg(x);
+  var fl = '';
+  if(u >= 3)           fl = '<span class="tt-fl bad" title="تجاوزت وقتها">'+tmIc('alert')+'</span>';
+  else if(u === 2)     fl = '<span class="tt-fl warn" title="بلا متابعة">'+tmIc('clock')+'</span>';
+  else if(x.has_note)  fl = '<span class="tt-fl" title="عليها ملاحظة">'+tmIc('note')+'</span>';
+  else if(x.handed)    fl = '<span class="tt-fl" title="سُلِّمت">'+tmIc('handover')+'</span>';
+
+  var busy = k !== 'free' && !x.oos;
+  var sub = x.oos ? 'موقوفة'
+          : busy && x.guests ? (+x.guests) + ' ضيفات'
+          : st.sh;
+  return '<button class="tt '+esc(x.type || '')+(u >= 3 ? ' urg' : '')+(x.oos ? ' oos' : '')+
+      (x.group_id ? ' grouped' : '')+'" data-t="'+x.id+'" style="--tcol:'+st.solid+'" '+
+      'aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+(x.owner ? ' — '+esc(x.owner) : '')+
+      (busy && x.mins ? ' — '+tmDur(x.mins) : '')+'">'+
+    fl+
+    (busy && x.mins > 0
+      ? '<span class="tt-min"><b class="tdur" data-mins="'+(+x.mins)+'">'+tmDur(x.mins)+'</b></span>' : '')+
+    '<span class="tt-no">'+(+x.no)+'</span>'+
+    '<span class="tt-sub">'+esc(sub)+'</span>'+
+    (x.owner ? '<span class="tt-own" title="'+esc(x.owner)+'">'+esc(tmInitials(x.owner))+'</span>' : '')+
+    '</button>';
+}
+/* مفتاح الألوان: يشرح كل لون ويعمل مرشّحاً — الحالات الغائبة لا تُعرض */
+function tmLegend(all){
+  var cnt = {};
+  all.forEach(function(x){ var k = tmState(x); cnt[k] = (cnt[k] || 0) + 1; });
+  var order = ['free','seated','ordered','preparing','ready','served','bill_requested',
+               'needs_clean','cleaning','reserved','out_of_service'];
+  var btns = order.filter(function(k){ return cnt[k]; }).map(function(k){
+    var st = TMS[k];
+    return '<button class="tleg-b'+(TM.st === k ? ' on' : '')+'" data-st="'+k+'" '+
+      'style="--tcol:'+st.solid+'"><span class="sw"></span>'+esc(st.ar)+
+      '<span class="n">'+cnt[k]+'</span></button>';
+  }).join('');
+  return btns ? '<div class="tleg">'+
+    '<button class="tleg-b'+(TM.st ? '' : ' on')+'" data-st="" style="--tcol:var(--muted)">'+
+    '<span class="sw"></span>الكل<span class="n">'+all.length+'</span></button>'+btns+'</div>' : '';
+}
+
 /* ---------- المخطط: نفس البيانات بترتيب مكاني ---------- */
 function tmLandmarks(areaId){
   if(areaId === 2){
@@ -2585,6 +2729,7 @@ function tmRender(){
   else if(TM.filter === 'busy') view = view.filter(function(x){ return x.state !== 'free' && !x.oos; });
   else if(TM.filter === 'free') view = view.filter(function(x){ return x.state === 'free' && !x.oos; });
   if(TM.emp) view = view.filter(function(x){ return String(x.owner_id) === String(TM.emp); });
+  if(TM.st)  view = view.filter(function(x){ return tmState(x) === TM.st; });
 
   var h = '';
   h += tmCommandBar(all, {
@@ -2595,6 +2740,39 @@ function tmRender(){
   if(!open){
     h += '<div class="tm-closed">'+tmIc('clock')+'<div><b>خارج ساعات الخدمة</b>'+
          '<div>تفتح '+esc((res.area || {}).svc_open || '')+' — لا تنبيهات ولا احتساب ضغط قبل ذلك.</div></div></div>';
+  }
+
+  /* المرشّحات */
+  /* المرشّحات هنا عرضية فقط — الحالات نفسها يرشّحها مفتاح الألوان، فلا تكرار */
+  var F = TM.view === 'floor'
+    ? [['all','الكل'],['attention','تحتاج تدخلاً']]
+    : [['all','الكل'],['attention','تحتاج تدخلاً'],['bill','طلبت الحساب'],['busy','مشغولة'],['free','متاحة']];
+  h += '<div class="tfl">'+F.map(function(f){
+      return '<button class="tfl-b'+(TM.filter === f[0] ? ' on' : '')+'" data-f="'+f[0]+'">'+esc(f[1])+'</button>';
+    }).join('')+
+    '<select class="tfl-s" id="tflEmp"><option value="">كل الموظفات</option>'+
+    ((res.load || {}).rows || []).map(function(r){
+      return '<option value="'+r.employee_id+'"'+(String(TM.emp) === String(r.employee_id) ? ' selected' : '')+'>'+
+             esc(r.name)+' ('+r.active+')</option>';
+    }).join('')+'</select>'+
+    '<button class="tfl-v" id="tmView" title="'+(TM.view === 'plan' ? 'عرض الأرضية' : (TM.view === 'floor' ? 'عرض التفاصيل' : 'عرض المخطط'))+'">'+
+    tmIc(TM.view === 'floor' ? 'map' : (TM.view === 'plan' ? 'list' : 'grid'))+'</button>'+
+    '</div>';
+
+  /* مفتاح الألوان يسبق الأرضية: اللون يصير مفهوماً قبل أن يُقرأ */
+  if(TM.view === 'floor') h += tmLegend(all);
+
+  h += '<div class="tfloor-h"><b>'+esc((res.area || {}).name || 'الطاولات')+'</b>'+
+       '<span>'+view.length+' من '+all.length+' طاولة</span></div>';
+
+  if(!view.length){
+    h += '<div class="empty">لا طاولات ضمن هذا المرشّح</div>';
+  } else if(TM.view === 'plan'){
+    h += tmPlan(view, (res.area || {}).id);
+  } else if(TM.view === 'list'){
+    h += '<div class="tgrid">'+view.map(tmCard).join('')+'</div>';
+  } else {
+    h += '<div class="tfloor">'+view.map(tmTile).join('')+'</div>';
   }
 
   /* أين عنق الزجاجة؟ الصالة أم المطبخ أم الكاش — القرار يختلف تماماً */
@@ -2626,27 +2804,6 @@ function tmRender(){
     h += '<div class="tsug">'+tmIc('handover')+'<div><b>'+esc(sug.text)+'</b><span>'+esc(sug.why)+'</span></div></div>';
   }
 
-  /* المرشّحات */
-  var F = [['all','الكل'],['attention','تحتاج تدخلاً'],['bill','طلبت الحساب'],['busy','مشغولة'],['free','متاحة']];
-  h += '<div class="tfl">'+F.map(function(f){
-      return '<button class="tfl-b'+(TM.filter === f[0] ? ' on' : '')+'" data-f="'+f[0]+'">'+esc(f[1])+'</button>';
-    }).join('')+
-    '<select class="tfl-s" id="tflEmp"><option value="">كل الموظفات</option>'+
-    ((res.load || {}).rows || []).map(function(r){
-      return '<option value="'+r.employee_id+'"'+(String(TM.emp) === String(r.employee_id) ? ' selected' : '')+'>'+
-             esc(r.name)+' ('+r.active+')</option>';
-    }).join('')+'</select>'+
-    '<button class="tfl-v" id="tmView" title="'+(TM.view === 'list' ? 'عرض المخطط' : 'عرض القائمة')+'">'+
-    tmIc(TM.view === 'list' ? 'map' : 'list')+'</button>'+
-    '</div>';
-
-  if(!view.length){
-    h += '<div class="empty">لا طاولات ضمن هذا المرشّح</div>';
-  } else if(TM.view === 'plan'){
-    h += tmPlan(view, (res.area || {}).id);
-  } else {
-    h += '<div class="tgrid">'+view.map(tmCard).join('')+'</div>';
-  }
 
   /* توزيع الحمل */
   var lr = (res.load || {}).rows || [];
@@ -2670,8 +2827,15 @@ function tmRender(){
   });
   var se = $('#tflEmp', host);
   if(se) se.addEventListener('change', function(){ TM.emp = se.value || null; tmRender(); });
+  $$('[data-st]', host).forEach(function(b){
+    b.addEventListener('click', function(){ TM.st = b.getAttribute('data-st') || null; tmRender(); });
+  });
   var vb = $('#tmView', host);
-  if(vb) vb.addEventListener('click', function(){ TM.view = TM.view === 'list' ? 'plan' : 'list'; tmRender(); });
+  /* ثلاث طرق عرض: الأرضية (افتراضي) ← المخطط المكاني ← قائمة التفاصيل */
+  if(vb) vb.addEventListener('click', function(){
+    TM.view = TM.view === 'floor' ? 'plan' : (TM.view === 'plan' ? 'list' : 'floor');
+    tmRender();
+  });
 }
 
 /* المؤقتات تتحرك دون إعادة تحميل ودون استدعاء الخادم */
