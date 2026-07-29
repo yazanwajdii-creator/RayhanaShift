@@ -396,6 +396,41 @@ a{color:var(--green)}
 .nc-go{font-size:11.5px;font-weight:800;color:var(--brand)}
 .nc-go::after{content:' \2039'}
 
+/* المساهمات: طابور قرار لا جدول */
+.cbc{border-inline-start:3px solid var(--amber)}
+.cbc.done{border-inline-start-color:var(--line);opacity:.72}
+.cbv{flex:0 0 auto;text-align:center;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:11px;padding:5px 10px;min-width:54px}
+.cbv b{display:block;font-size:17px;font-weight:800;line-height:1.1;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.cbv span{display:block;font-size:9.5px;color:var(--muted);font-weight:700}
+.cbwhy{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.cbwhy span{font-size:10.5px;font-weight:700;color:var(--muted);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:14px;padding:3px 8px}
+
+/* التقييم: كل بُعد بشريطه وأساسه الخام */
+.evc{border-inline-start:3px solid var(--brand)}
+.evc.na{border-inline-start-color:var(--amber);opacity:.85}
+.evtot{display:flex;align-items:baseline;gap:4px}
+.evtot b{font-size:22px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.evtot span{font-size:10px;color:var(--muted);font-weight:700}
+.evds{margin-top:9px;display:flex;flex-direction:column;gap:5px}
+.evd{display:flex;align-items:center;gap:8px}
+.evd-l{flex:0 0 62px;font-size:11.5px;font-weight:700;color:var(--muted)}
+.evd-bar{flex:1;height:8px;border-radius:6px;background:var(--surface-2);overflow:hidden;
+  border:1px solid var(--line)}
+.evd-bar i{display:block;height:100%;border-radius:6px;background:var(--brand)}
+.evd-bar.hi i{background:#15803D} .evd-bar.mid i{background:#B0790F} .evd-bar.lo i{background:#B91C1C}
+.evd-bar.na i{background:var(--line)}
+.evd-v{flex:0 0 26px;text-align:end;font-size:12px;font-weight:800;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.evbasis{display:flex;flex-wrap:wrap;gap:4px;margin-top:9px}
+.evbasis span{font-size:10.5px;color:var(--muted);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:14px;padding:3px 8px}
+.evbasis b{color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums}
+.evnotes{margin-top:8px;font-size:11px;color:var(--muted);line-height:1.6;
+  border-top:1px dashed var(--line);padding-top:7px}
+
 /* بطاقة الطاولة — أماكن المعلومات ثابتة */
 .tcard{position:relative;display:block;width:100%;text-align:start;font:inherit;cursor:pointer;
   background:var(--surface);border:1px solid var(--line);border-radius:13px;
@@ -1080,7 +1115,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-29.5"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
+var BUILD = "2026-07-29.6"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -3921,10 +3956,39 @@ function coopSheet(){
 /* ---------- تبويب: تطوري ---------- */
 function tierOf(pts){ pts=pts||0; if(pts>=600) return ['بلاتينية','#5FA8C7']; if(pts>=300) return ['ذهبية','#E0A32E']; if(pts>=120) return ['فضية','#9AA0A6']; if(pts>=40) return ['برونزية','#C77B3B']; return ['بداية الطريق','#8A8172']; }
 function loadGrow(v){
-  Promise.all([sAct('my_progress',{}), sAct('my_month',{}).catch(function(){return {};}), sAct('my_engage',{}).catch(function(){return {};})]).then(function(rs){
-    var res=rs[0], mm=rs[1]||{}, eg=rs[2]||{};
+  Promise.all([sAct('my_progress',{}), sAct('my_month',{}).catch(function(){return {};}),
+               sAct('my_engage',{}).catch(function(){return {};}),
+               sAct('my_eval',{}).catch(function(){return {};})]).then(function(rs){
+    var res=rs[0], mm=rs[1]||{}, eg=rs[2]||{}, me=rs[3]||{};
     if(!res.ok){ v.innerHTML='<div class="empty">'+esc(res.error||'خطأ')+'</div>'; return; }
     var out=[];
+    /* تقييمها هي وحدها: لا ترتيب ولا مقارنة بزميلاتها — وأساس كل بُعد ظاهر
+       كي يكون التقييم أداة تحسّن لا رقماً مبهماً تتلقّاه آخر الشهر. */
+    if(me.ok && me.row){
+      var r=me.row, b=r.basis||{};
+      out.push('<div class="card evc'+(r.total==null?' na':'')+'">'+
+        '<div class="row" style="justify-content:space-between;align-items:center">'+
+          '<b>تقييمي — '+esc(me.month||'')+'</b>'+
+          (r.total!=null ? '<span class="evtot"><b>'+r.total+'</b><span>من ١٠٠</span></span>'
+                         : '<span class="chip orange">لم تكتمل الأدلة بعد</span>')+
+        '</div>'+
+        '<div class="muted small" style="margin-top:2px">'+(+r.shifts||0)+' شفت هذا الشهر</div>'+
+        (r.total!=null
+          ? '<div class="evds">'+EVD.map(function(d){ return evBar(r[d[0]], d[1]); }).join('')+'</div>'
+          : '')+
+        '<div class="evbasis">'+
+          '<span>مهام: <b>'+(b.tasks_done||0)+'</b>/'+(b.tasks_total||0)+'</span>'+
+          '<span>تأخير: <b>'+(b.late_over_10||0)+'</b></span>'+
+          '<span>فحوص فائتة: <b>'+(b.spotchecks_missed||0)+'</b></span>'+
+          '<span>مساهمات معتمدة: <b>'+(b.contrib_approved||0)+'</b></span>'+
+          '<span>تدريب: <b>'+(b.trainings_delivered||0)+'</b></span>'+
+        '</div>'+
+        ((r.notes||[]).length
+          ? '<div class="evnotes">'+r.notes.map(function(n){ return '<div>'+esc(n)+'</div>'; }).join('')+'</div>'
+          : '')+
+        '<div class="evnotes">تقييمك خاص بك — لا يُعرض لزميلاتك ولا يوجد ترتيب بينكن.</div>'+
+      '</div>');
+    }
     // ===== إنجازاتي: نقاط ريحانة + السلسلة =====
     if(eg.ok){
       var tier=tierOf(eg.points), tc=eg.team_core||{}, done=tc.done||0, tot=tc.total||0, pct=tot>0?Math.round(100*done/tot):0;
@@ -4345,7 +4409,7 @@ var SECS=[
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['tables','','خريطة الطاولات'],['templates','','قوالب المهام'],
   ['tasks','','مهام اليوم'],['prep','','محطة التحضير'],['ops','','الجاهزية والسلامة'],['attendance','','الحضور'],['skills','','المهارات'],
   ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
-  ['evals','','التقييم الشهري'],['awards','','التقدير'],['requests','','الطلبات'],
+  ['contrib','','المساهمات الإضافية'],['evals','','التقييم الشهري'],['awards','','التقدير'],['requests','','الطلبات'],
   ['handovers','','التسليمات'],['reports','','التقارير'],['devices','','الأجهزة'],['settings','','الإعدادات'],
   ['audit','','سجل التدقيق'],['flags','','إشارات المراجعة']
 ];
@@ -4353,7 +4417,7 @@ function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }
 var AGROUPS=[
   ['تشغيل اليوم','g1',['board','ocdecisions','live','tables','heat','roster','shifts','tasks','prep','ops','attendance','cover','absence','handovers','issues','logbook','timeline','ptt']],
   ['التواصل والتحليل','g2',['ocanalytics','digest','broadcast','analytics','hours','requests','reports']],
-  ['الفريق','g2',['employees','skills','training','coop','evals','awards']],
+  ['الفريق','g2',['employees','skills','training','coop','contrib','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
   ['النظام','g4',['devices','settings','audit']]
 ];
@@ -6013,18 +6077,190 @@ ADMIN.coop=function(v){
   $('#cpM').addEventListener('change', load); load();
 };
 
-/* ---------- التقييم الشهري ---------- */
+/* ---------- المساهمات الإضافية ----------
+   المساهمة عمل تطوّعت به الموظفة خارج مهامها. البتّ فيها إنصاف لا إجراء
+   إداري: الرفض يستلزم سبباً يصلها، والقيمة تُعرض بأسبابها لا كرقم مبهم. */
+var CCAT_AR={support_colleague:'إسناد زميلة', cover_area:'تغطية منطقة', proactive:'عمل استباقي',
+             fix_blocker:'إزالة عائق', handle_report:'معالجة بلاغ', training:'تدريب',
+             emergency:'طارئ', other:'أخرى'};
+var CST_AR={captured:'بانتظار القرار', pending_confirmation:'بانتظار تأكيد الزميلة',
+            verified:'مؤكَّدة — بانتظار القرار', approved:'معتمدة', rejected:'مرفوضة',
+            disputed:'محل خلاف'};
+ADMIN.contrib=function(v){
+  var showAll=false;
+  v.innerHTML='<div class="card soft" style="padding:10px 12px"><div class="muted small">'+
+    'المساهمة عمل إضافي تطوّعت به الموظفة. المعتمدة وحدها تدخل في التقييم والحمل. '+
+    'الرفض يستلزم سبباً مكتوباً يصل الموظفة نصاً، ولا يُعرض ترتيب علني لأحد.'+
+    '</div></div>'+
+    '<div class="row" style="gap:6px;margin:10px 0"><input class="f grow" id="cbFrom" type="date">'+
+    '<input class="f grow" id="cbTo" type="date"></div>'+
+    '<div id="cbSum"></div><div id="cbList">'+skel(3)+'</div>';
+  var to=today(), from=addDays(to,-14);
+  $('#cbFrom',v).value=from; $('#cbTo',v).value=to;
+
+  function load(){
+    aAct('contrib_list',{from:$('#cbFrom',v).value, to:$('#cbTo',v).value}).then(function(res){
+      if(!res.ok){ $('#cbList',v).innerHTML='<div class="empty">'+esc(res.error||'خطأ')+'</div>'; return; }
+      var rows=res.rows||[], c=res.counts||{};
+      /* المعلّقة أولاً: هي وحدها التي تنتظر قراراً */
+      var pending=rows.filter(function(r){ return ['approved','rejected'].indexOf(r.status)<0; });
+      var done=rows.filter(function(r){ return ['approved','rejected'].indexOf(r.status)>=0; });
+
+      $('#cbSum',v).innerHTML='<div class="tcb">'+
+        '<div class="tcb-i'+(c.pending?' bad':'')+'"><b>'+(c.pending||0)+'</b><span>تنتظر قراراً</span></div>'+
+        '<div class="tcb-i"><b>'+(c.running||0)+'</b><span>جارية الآن</span></div>'+
+        '<div class="tcb-i"><b>'+(c.approved_30||0)+'</b><span>اعتُمدت (٣٠ يوماً)</span></div>'+
+        '<div class="tcb-i"><b>'+(c.rejected_30||0)+'</b><span>رُفضت (٣٠ يوماً)</span></div></div>';
+
+      function card(r,i){
+        var st=CST_AR[r.status]||r.status;
+        var decided=['approved','rejected'].indexOf(r.status)>=0;
+        var val=r.value||{};
+        return '<div class="card cbc'+(decided?' done':'')+'" style="padding:11px 13px">'+
+          '<div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px">'+
+            '<div style="flex:1"><b>'+esc(r.who)+'</b> '+
+              '<span class="chip">'+esc(CCAT_AR[r.category]||r.category)+'</span> '+
+              '<span class="chip '+(r.status==='approved'?'green':(r.status==='rejected'?'red':'orange'))+'">'+esc(st)+'</span>'+
+              (r.left_critical?' <span class="chip red">تركت مهمة حرجة</span>':'')+
+              '<div class="small" style="margin-top:4px">'+esc(r.what||'—')+'</div>'+
+              '<div class="muted small" style="margin-top:3px">'+fmtD(r.day)+
+                (r.minutes?' · '+r.minutes+' دقيقة':'')+(r.area?' · '+esc(r.area):'')+
+                (r.beneficiary?' · لصالح '+esc(r.beneficiary):'')+'</div>'+
+            '</div>'+
+            (val.value!=null?'<div class="cbv"><b>'+val.value+'</b><span>القيمة</span></div>':'')+
+          '</div>'+
+          /* الأسباب معروضة للإدارة فقط — الوثيقة تمنع كشف المعادلة للموظفات */
+          ((val.reasons||[]).length?'<div class="cbwhy">'+val.reasons.map(function(x){
+              return '<span>'+esc(x)+'</span>'; }).join('')+'</div>':'')+
+          (r.confirm?'<div class="muted small">تأكيد الزميلة: '+
+            esc({yes:'نعم',partial:'جزئياً',no:'لا'}[r.confirm]||r.confirm)+'</div>':'')+
+          (decided
+            ? '<div class="muted small" style="margin-top:6px">'+
+              (r.status==='approved'?'اعتُمدت':'رُفضت')+'. القرار وصل الموظفة.</div>'
+            : '<div class="btnrow" style="margin:8px 0 0">'+
+              '<button class="btn sm" data-ok="'+i+'">اعتماد</button>'+
+              '<button class="btn sm ghost red" data-no="'+i+'">رفض مع السبب</button></div>')+
+          '</div>';
+      }
+
+      $('#cbList',v).innerHTML=
+        (pending.length
+          ? '<h3 style="margin:14px 2px 6px;font-size:14px">تنتظر قرارك ('+pending.length+')</h3>'+
+            pending.map(function(r,i){ return card(r,i); }).join('')
+          : '<div class="empty">لا مساهمة تنتظر قراراً في هذه المدة.</div>')+
+        (done.length
+          ? '<h3 style="margin:16px 2px 6px;font-size:14px;color:var(--muted)">مبتوت فيها ('+done.length+')</h3>'+
+            done.slice(0, showAll?done.length:6).map(function(r,i){ return card(r,-1); }).join('')+
+            (done.length>6?'<div class="btnrow"><button class="btn sm ghost block" id="cbMore">'+
+              (showAll?'عرض أقل':'عرض الكل ('+done.length+')')+'</button></div>':'')
+          : '');
+
+      var mb=$('#cbMore',v); if(mb) mb.addEventListener('click', function(){ showAll=!showAll; load(); });
+      $$('[data-ok]',v).forEach(function(b){ b.addEventListener('click', function(){
+        var r=pending[+b.getAttribute('data-ok')]; if(!r) return;
+        decide(r,'approve');
+      });});
+      $$('[data-no]',v).forEach(function(b){ b.addEventListener('click', function(){
+        var r=pending[+b.getAttribute('data-no')]; if(!r) return;
+        decide(r,'reject');
+      });});
+    });
+  }
+
+  function decide(r, dec){
+    var isNo = dec==='reject';
+    sheet(isNo?'رفض مساهمة '+r.who:'اعتماد مساهمة '+r.who,
+      '<div class="muted small">'+esc(r.what||'')+'</div>'+
+      '<label class="f">الدقائق المعتمدة</label>'+
+      '<input class="f" id="cbMin" type="number" min="0" max="480" value="'+(+r.minutes||0)+'">'+
+      '<label class="f">'+(isNo?'سبب الرفض (إلزامي — يصلها نصاً)':'ملاحظة للموظفة (اختياري)')+'</label>'+
+      '<textarea class="f" id="cbNote" style="min-height:80px" placeholder="'+
+        (isNo?'اشرحي لماذا لم تُعتمد — حقها أن تعرف':'مثال: تغطية حقيقية وفّرت افتتاحاً متأخراً')+'"></textarea>'+
+      '<div class="btnrow"><button class="btn block'+(isNo?' ghost red':'')+'" id="cbGo">'+
+      (isNo?'تأكيد الرفض':'اعتماد المساهمة')+'</button></div>',
+      function(ov, close){
+        $('#cbGo',ov).addEventListener('click', function(){
+          var note=$('#cbNote',ov).value.trim();
+          if(isNo && !note){ toast('اكتبي سبب الرفض — سيصل للموظفة نصاً', true); return; }
+          busyWrap(this, function(){
+            return aAct('contrib_decide',{id:r.id, decision:dec, minutes:$('#cbMin',ov).value, note:note})
+              .then(function(x){
+                if(x.ok){ close(); toast(isNo?'رُفضت وأُبلغت الموظفة':'اعتُمدت وأُبلغت الموظفة'); load(); }
+                else toast(x.error||'خطأ', true);
+              });
+          });
+        });
+      });
+  }
+  $('#cbFrom',v).addEventListener('change', load);
+  $('#cbTo',v).addEventListener('change', load);
+  load();
+};
+
+/* ---------- التقييم الشهري ----------
+   الرقم وحده يُساء استعماله. كل بُعد هنا يعرض أساسه الخام، ومن لم تكفِ
+   أدلتها تُعلن قلة الأدلة بدل رقم يوحي بدقة غير موجودة. لا ترتيب علني. */
+var EVD=[['ops','التشغيل','operations'],['reliability','الاعتمادية','reliability'],
+         ['contribution','المبادرة','contribution'],['training','التدريب','training']];
+function evBar(val, w){
+  var pct = val==null ? 0 : Math.max(0, Math.min(100, +val));
+  var cls = val==null ? 'na' : (pct>=80?'hi':(pct>=55?'mid':'lo'));
+  return '<div class="evd"><span class="evd-l">'+esc(w)+'</span>'+
+    '<span class="evd-bar '+cls+'"><i style="width:'+pct+'%"></i></span>'+
+    '<span class="evd-v">'+(val==null?'—':Math.round(pct))+'</span></div>';
+}
 ADMIN.evals=function(v){
-  v.innerHTML='<input class="f" id="evM" type="month" value="'+thisMonth()+'"><div id="evB" style="margin-top:10px"></div>';
+  v.innerHTML='<input class="f" id="evM" type="month" value="'+thisMonth()+'"><div id="evB" style="margin-top:10px">'+skel(3)+'</div>';
   function load(){
     aAct('month_eval',{month:$('#evM').value}).then(function(res){
       if(!res.ok){ $('#evB').innerHTML='<div class="empty">'+esc(res.error||'خطأ')+'</div>'; return; }
-      var w=res.weights||{};
-      var out=['<div class="muted small" style="margin-bottom:8px">الأوزان: تشغيل '+(w.operations||55)+'٪ · اعتمادية '+(w.reliability||20)+'٪ · تعاون '+(w.peer_coop||15)+'٪ · تدريب '+(w.training||10)+'٪ — قابلة للتعديل من الإعدادات. النتائج للإدارة فقط، لا ترتيب علنياً.</div>'];
-      out.push('<div class="scrollx"><table class="tbl"><tr><th>الموظفة</th><th>المجموع</th><th>تشغيل</th><th>اعتمادية</th><th>تعاون</th><th>تدريب</th><th>تغطيات</th></tr>'+
-        (res.rows||[]).map(function(r){
-          return '<tr><td><b>'+esc(r.employee)+'</b></td><td><b>'+r.total+'</b></td><td>'+r.ops+'</td><td>'+r.reliability+'</td><td>'+r.coop+'</td><td>'+r.training+'</td><td>'+(r.coverage_30d||0)+'</td></tr>';
-        }).join('')+'</table></div>');
+      var w=res.weights||{}, rows=res.rows||[];
+      var out=['<div class="card soft" style="padding:10px 12px"><div class="muted small">'+
+        esc(res.policy||'')+'<br>الأوزان: تشغيل '+(w.operations||45)+'٪ · اعتمادية '+(w.reliability||25)+
+        '٪ · مبادرة '+(w.contribution||20)+'٪ · تدريب '+(w.training||10)+'٪ — تُعدَّل من الإعدادات.'+
+        '</div></div>'];
+
+      var scored=rows.filter(function(r){ return r.total!=null; });
+      var unscored=rows.filter(function(r){ return r.total==null; });
+
+      function card(r){
+        var b=r.basis||{};
+        return '<div class="card evc'+(r.total==null?' na':'')+'" style="padding:12px 13px">'+
+          '<div class="row" style="justify-content:space-between;align-items:center">'+
+            '<b>'+esc(r.employee)+'</b>'+
+            (r.total!=null
+              ? '<span class="evtot"><b>'+r.total+'</b><span>من ١٠٠</span></span>'
+              : '<span class="chip orange">أدلة غير كافية</span>')+
+          '</div>'+
+          '<div class="muted small" style="margin-top:2px">'+(+r.shifts||0)+' شفت هذا الشهر</div>'+
+          (r.total!=null
+            ? '<div class="evds">'+EVD.map(function(d){ return evBar(r[d[0]], d[1]); }).join('')+'</div>'
+            : '')+
+          /* الأرقام الخام: من أين جاءت الدرجة فعلاً */
+          '<div class="evbasis">'+
+            '<span>مهام: <b>'+(b.tasks_done||0)+'</b>/'+(b.tasks_total||0)+
+              (b.tasks_returned?' (مرجَعة '+b.tasks_returned+')':'')+'</span>'+
+            '<span>تأخير: <b>'+(b.late_over_10||0)+'</b></span>'+
+            '<span>نسيان بصمة: <b>'+(b.forgot_fixes||0)+'</b></span>'+
+            '<span>فحوص فائتة: <b>'+(b.spotchecks_missed||0)+'</b></span>'+
+            '<span>أسئلة تحقق فائتة: <b>'+(b.verify_missed||0)+'</b></span>'+
+            '<span>مساهمات معتمدة: <b>'+(b.contrib_approved||0)+'</b></span>'+
+            '<span>تدريب: <b>'+(b.trainings_delivered||0)+'</b></span>'+
+            '<span>تغطيات: <b>'+(b.coverages||0)+'</b></span>'+
+          '</div>'+
+          ((r.notes||[]).length
+            ? '<div class="evnotes">'+r.notes.map(function(n){ return '<div>'+esc(n)+'</div>'; }).join('')+'</div>'
+            : '')+
+        '</div>';
+      }
+
+      out.push(scored.length
+        ? scored.map(card).join('')
+        : '<div class="empty">لا تقييم قابل للإصدار هذا الشهر.</div>');
+      if(unscored.length){
+        out.push('<h3 style="margin:16px 2px 6px;font-size:14px;color:var(--muted)">لم تكتمل أدلتهن ('+unscored.length+')</h3>');
+        out.push(unscored.map(card).join(''));
+      }
       $('#evB').innerHTML=out.join('');
     });
   }
