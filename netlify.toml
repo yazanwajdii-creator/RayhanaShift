@@ -11,6 +11,28 @@
   [headers.values]
     Cache-Control = "no-cache"
 
+# app.js و app.css يحملان ?v=BUILD في العنوان، فالمتصفح يجلب نسخة جديدة عند
+# كل إصدار. لذا يُسمح بتخزين طويل: لا يخدم نسخة قديمة لأن العنوان نفسه يتغيّر.
+[[headers]]
+  for = "/app.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/app.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/config.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/version.json"
+  [headers.values]
+    Cache-Control = "no-cache"
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -20,9 +42,11 @@
     # تحميل أي سكربت خارجي، وحقن base لسرقة المسارات النسبية، وإرسال أي نموذج
     # لجهة خارجية، وأي اتصال شبكي لغير Supabase، وأي صورة أو صوت من مصدر غريب،
     # وobject/embed، وتضمين التطبيق داخل إطار.
-    # 'unsafe-inline' على السكربت يبقى لأن التطبيق ملف واحد بسكربت داخلي؛
-    # إزالته موقوفة على تفكيك index.html — مسجَّلة كبند مؤجّل لا كمنجز.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'"
+    # بعد تفكيك index.html صار script-src 'self' فقط: لا سكربت داخلي ولا خارجي
+    # يمكن تنفيذه، وهو الحاجز الفعلي أمام أي حقن نصّي.
+    # 'unsafe-inline' يبقى على style-src وحده لأن الواجهة تستخدم ٦١٣ سمة style
+    # سطرية؛ حقن الأنماط لا ينفّذ سكربتاً تحت script-src صارم، فالمخاطرة محدودة.
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'"
     X-Frame-Options = "DENY"
     # لا نطلب صلاحيات لا نستخدمها؛ الكاميرا والميكروفون والموقع للأصل نفسه فقط
     Permissions-Policy = "geolocation=(self), microphone=(self), camera=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()"
