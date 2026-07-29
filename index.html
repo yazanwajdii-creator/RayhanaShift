@@ -797,8 +797,8 @@ nav.bottom button.on{position:relative}
 .ptt:active{transform:scale(.94)}
 .ptt.rec{background:linear-gradient(180deg,#E4573C,#C0392B);transform:scale(1.6);box-shadow:0 0 0 10px rgba(224,87,60,.22),0 10px 26px rgba(192,57,43,.55);animation:pttpulse 1s infinite}
 @keyframes pttpulse{50%{box-shadow:0 0 0 18px rgba(224,87,60,.05),0 10px 26px rgba(192,57,43,.55)}}
-var BUILD = "2026-07-29.2";
-var BUILD = "2026-07-28.5";
+.ptt.speaking{background:linear-gradient(180deg,var(--green-2),var(--green));box-shadow:0 0 0 7px rgba(62,107,76,.2),0 8px 22px rgba(62,107,76,.45)}
+.ptt-toast{position:fixed;left:14px;bottom:calc(154px + env(safe-area-inset-bottom));z-index:60;background:#26332B;color:#F4EFE4;border-radius:12px;
   padding:8px 13px;font-size:12.5px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.32);display:none;max-width:62vw}
 .ptt-toast.show{display:block;animation:tin .2s}
 .btn.rec{background:linear-gradient(180deg,#E4573C,#C0392B)!important;box-shadow:0 0 0 4px rgba(224,87,60,.18)!important}
@@ -839,7 +839,7 @@ var BUILD = "2026-07-28.5";
 .hb-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:14px}
 .hb-row.first{border-top:none}
 .hb-k{color:var(--muted);font-weight:700;font-size:13px;flex:none}
-var BUILD = "2026-07-28.4";
+.hb-v{text-align:left;font-weight:600}
 .hb-sub{padding:2px 0 5px;line-height:2.1}
 .hb-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
 .warn{color:var(--amber);font-weight:800}
@@ -881,7 +881,10 @@ details.qa .qa-body{padding:0 16px 14px}
 .decision{border-inline-start:3px solid var(--amber);}
 .wkstrip{display:flex;gap:5px;overflow-x:auto;padding:2px 0;-webkit-overflow-scrolling:touch}
 .wkd{flex:1;min-width:42px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:7px 2px;text-align:center;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:1px;align-items:center;color:var(--ink)}
-var BUILD = "2026-07-28.3";
+.ops-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+/* أسماء الأيام بالعربية أطول من عرض الزر عند 360–390px فكانت تتراكب على جارتها */
+.wkd .dw{font-size:10.5px;font-weight:700;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.wkd.on .dw{color:rgba(255,255,255,.9)}
 .wkd .dn{font-size:16px;font-weight:800;line-height:1.2}
 .wkd .dc{font-size:9.5px;color:var(--brand);font-weight:700;white-space:nowrap}
 .wkd.on{background:var(--brand);border-color:var(--brand);color:#fff}
@@ -894,7 +897,7 @@ var BUILD = "2026-07-28.3";
 .ops-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:var(--brand);margin-bottom:2px}
 .ops-h svg{width:20px;height:20px;stroke:var(--brand);flex:none}
 .ops-h span{flex:1}
-var BUILD = "2026-07-28.2";
+.ops-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .ops-lbl{font-size:14px;font-weight:600;flex:1;line-height:1.45}
 .ops-btns{display:flex;gap:7px;flex:none}
 .ops-y,.ops-n{width:38px;height:38px;border-radius:11px;border:1.5px solid var(--line);background:var(--surface-2);font-size:18px;font-weight:800;cursor:pointer;line-height:1;color:var(--muted);transition:background .12s,border-color .12s,color .12s}
@@ -1000,7 +1003,7 @@ details.qa,.acc{border-radius:18px}
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-07-28.1";
+var BUILD = "2026-07-29.3"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
@@ -1703,6 +1706,14 @@ var TSTAT={open:'لم تبدأ', running:'قيد التنفيذ', paused:'موق
 var WFPH={pre_shift:'قبل الافتتاح', opening:'الافتتاح', normal:'تشغيل طبيعي', peak:'ذروة', recovery:'تعافٍ', closing:'إغلاق', finalized:'أُقفل اليوم'};
 var WAIT={none:'لا انتظار', low:'انتظار خفيف', high:'انتظار مرتفع'};
 var REQSTAT={pending:'قيد المراجعة', approved:'مقبول', rejected:'مرفوض'};
+/* أدوار الشفت وأسباب الإسناد — قائمة مغلقة يطابقها قيد في قاعدة البيانات */
+var SROLES=[['floor','الصالة'],['kitchen','المطبخ'],['hookah','الأراجيل'],['cashier','الكاش'],
+            ['runner','نقل الطلبات'],['barista','المشروبات'],['support','مساندة'],
+            ['opener','الافتتاح'],['closer','الإغلاق']];
+var SREASONS=[['manual','إسناد يدوي'],['rotation','دور بالتناوب'],['skill','مهارة مطلوبة'],
+              ['coverage_gap','سدّ فجوة تغطية'],['request','بطلب منها'],['training','تدريب'],
+              ['auto_schedule','جدولة تلقائية']];
+function sRoleName(k){ var n=k||'—'; SROLES.forEach(function(r){ if(r[0]===k) n=r[1]; }); return n; }
 var TRSTAT={created:'جديد', practiced:'تم التطبيق', tested:'تم الاختبار', approved:'معتمد'};
 
 /* ============================ شاشة الدخول ============================ */
@@ -4827,7 +4838,7 @@ ADMIN.shifts=function(v){
       '<div class="row" style="gap:6px;align-items:stretch"><button class="btn sm ghost" id="wkPrev" aria-label="الأسبوع السابق">›</button>'+
       '<div class="wkstrip grow" id="wkStrip"></div>'+
       '<button class="btn sm ghost" id="wkNext" aria-label="الأسبوع التالي">‹</button></div>'+
-      '<div class="btnrow" style="margin:10px 0 0"><button class="btn sm" id="shNew">+ شفت</button><button class="btn sm ghost" id="shCopy">نسخ يوم</button></div>'+
+      '<div class="btnrow" style="margin:10px 0 0"><button class="btn sm" id="shNew">+ شفت</button><button class="btn sm ghost" id="shCopy">نسخ يوم</button><button class="btn sm ghost" id="shCov">تغطية المناطق</button></div>'+
       '<div id="shList" style="margin-top:10px"></div>';
     var cur=[];
     function paintStrip(){
@@ -4843,7 +4854,10 @@ ADMIN.shifts=function(v){
       $('#shList').innerHTML = cur.length ? cur.map(function(s){
         return '<div class="card" style="padding:10px 12px'+(s.status==='absent'?';opacity:.55':'')+'"><div class="row" style="justify-content:space-between">'+
           '<div><b>'+esc(s.employee)+'</b> — '+esc(s.type||'مخصص')+' · '+esc(s.area||'بلا منطقة')+((s.extra_area_names&&s.extra_area_names.length)?' <span class="chip green">+ '+s.extra_area_names.map(esc).join(' + ')+'</span>':'')+(s.status==='absent'?' <span class="chip red">غياب</span>':'')+
-          '<div class="muted small">'+fmtHM(s.start)+' → '+fmtHM(s.end)+(s.daily_role?' · '+esc(s.daily_role):'')+'</div></div>'+
+          '<div class="muted small">'+fmtHM(s.start)+' → '+fmtHM(s.end)+(s.daily_role?' · '+esc(s.daily_role):'')+'</div>'+
+          '<div class="muted small">'+esc(sRoleName(s.role_on_shift))+
+            (s.secondary_zone?' · تساند '+esc(s.secondary_zone):'')+
+            (s.can_float===false?' · <span class="chip">لا تُنقل</span>':' · سحب '+(s.coverage_priority||3))+'</div></div>'+
           '<div class="btnrow" style="margin:0"><button class="btn sm ghost" data-edit="'+s.id+'">تعديل</button><button class="btn sm ghost red" data-del="'+s.id+'">حذف</button></div></div></div>';
       }).join('') : '<div class="empty">لا شفتات — '+DW[(new Date(sel+'T12:00:00').getDay()+1)%7]+' '+fmtD(sel)+'</div>';
       $$('[data-del]',v).forEach(function(b){ b.addEventListener('click', function(){
@@ -4881,22 +4895,90 @@ ADMIN.shifts=function(v){
         '<div class="grow"><label class="f">نهاية مخصصة (اختياري)</label><input class="f" id="sEn" type="time"></div></div>'+
         '<div class="muted small">اتركي الوقتين فارغين لاعتماد أوقات نوع الشفت'+(s?' (الحالي: '+fmtHM(s.start)+' → '+fmtHM(s.end)+')':'')+'.</div>'+
         '<label class="f">دور اليوم (جملة عمل حقيقية — لا شعارات)</label><input class="f" id="sR" placeholder="مثال: اليوم تضبطين سرعة تجهيز الأراجيل تحت 6 دقائق" value="'+(s?esc(s.daily_role||''):'')+'">'+
+        /* إسناد المنطقة: بدونه لا يعرف المحرك من يُنقل حين يظهر الضغط في منطقة */
+        '<hr class="sep"><b>إسناد المنطقة</b>'+
+        '<div class="muted small">هذه الحقول هي ما يعتمد عليه النظام عند اكتشاف ضغط في منطقة: من يملكها، ومن يساندها، ومن يجوز نقلها، وبأي ترتيب.</div>'+
+        '<div class="row"><div class="grow"><label class="f">دورها في هذا الشفت</label><select class="f" id="sRole">'+
+          SROLES.map(function(r){ return '<option value="'+r[0]+'"'+((s&&s.role_on_shift===r[0])?' selected':'')+'>'+r[1]+'</option>'; }).join('')+'</select></div>'+
+        '<div class="grow"><label class="f">منطقة المساندة (اختياري)</label><select class="f" id="sSec"><option value="">— بلا مساندة —</option>'+
+          (A.areas||[]).map(function(ax){ return '<option value="'+ax.id+'"'+((s&&+s.secondary_zone_id===ax.id)?' selected':'')+'>'+esc(ax.name)+'</option>'; }).join('')+'</select></div></div>'+
+        '<div class="row"><div class="grow"><label class="f">ترتيب السحب عند الضغط</label><select class="f" id="sPrio">'+
+          [[1,'١ — تُسحب أولاً'],[2,'٢'],[3,'٣ — الوضع الطبيعي'],[4,'٤'],[5,'٥ — تُسحب أخيراً']].map(function(x){
+            return '<option value="'+x[0]+'"'+((s?(+s.coverage_priority||3):3)===x[0]?' selected':'')+'>'+x[1]+'</option>'; }).join('')+'</select></div>'+
+        '<div class="grow"><label class="f">سبب الإسناد</label><select class="f" id="sWhy">'+
+          SREASONS.map(function(r){ return '<option value="'+r[0]+'"'+((s&&s.assignment_reason===r[0])?' selected':'')+'>'+r[1]+'</option>'; }).join('')+'</select></div></div>'+
+        '<label class="check"><input type="checkbox" id="sFloat" '+((!s||s.can_float!==false)?'checked':'')+'><span>يجوز نقلها مؤقتاً لمنطقة أخرى عند الضغط</span></label>'+
         '<div class="btnrow"><button class="btn block" id="sGo">حفظ الشفت</button></div>',
         function(ov, close){
           $('#sGo',ov).addEventListener('click', function(){
             var p={day:$('#shDay').value, employee_id:+$('#sE',ov).value, type_id:+$('#sT',ov).value, area_id:+$('#sA',ov).value, daily_role:$('#sR',ov).value};
             p.extra_areas=$$('.xa',ov).filter(function(c){return c.checked;}).map(function(c){return +c.value;}).filter(function(idv){return idv!==p.area_id;});
+            p.primary_zone_id=p.area_id;
+            p.secondary_zone_id=$('#sSec',ov).value||'';
+            if(p.secondary_zone_id && +p.secondary_zone_id===p.area_id){ toast('منطقة المساندة لا يمكن أن تكون نفس المنطقة الأساسية', true); return; }
+            p.role_on_shift=$('#sRole',ov).value;
+            p.coverage_priority=+$('#sPrio',ov).value||3;
+            p.assignment_reason=$('#sWhy',ov).value;
+            p.can_float=$('#sFloat',ov).checked;
+            /* التزامن المتفائل: نرسل النسخة التي قرأناها فيرفض الخادم الحفظ فوق تعديل مديرة أخرى */
+            if(s && s.zone_version) p.zone_version=s.zone_version;
             var st=$('#sS',ov).value, en=$('#sEn',ov).value;
             if(st) p.start_time=st;
             if(en) p.end_time=en;
             busyWrap(this, function(){
-              return aAct('shift_save',p).then(function(r){ if(r.ok){close();load();toast('تم ✔');} else toast(r.error||'خطأ',true); });
+              return aAct('shift_save',p).then(function(r){
+                if(r.ok){close();load();toast('تم ✔');}
+                else if(r.code==='zone_conflict'){ close(); load(); toast(r.error, true, 5200); }
+                else toast(r.error||'خطأ',true);
+              });
             });
           });
         });
     }
     $('#shDay').addEventListener('change', load);
     $('#shNew').addEventListener('click', function(){ form(null); });
+    /* تغطية المناطق: «مجدولة» لا تعني «موجودة» — المنطقة التي عليها اسم لم يحضر فجوة حقيقية */
+    $('#shCov').addEventListener('click', function(){
+      var day=$('#shDay').value;
+      aAct('zone_coverage',{day:day}).then(function(res){
+        if(!res.ok){ toast(res.error||'خطأ', true); return; }
+        var zones=res.zones||[];
+        var html='<div class="muted small">'+fmtD(day)+' — '+
+          (res.gaps? '<b>'+res.gaps+'</b> منطقة بلا تغطية فعلية' : 'كل المناطق مغطاة')+
+          (res.unassigned_shifts? ' · '+res.unassigned_shifts+' شفت بلا منطقة أساسية' : '')+'</div>';
+        html+=zones.map(function(z){
+          var own=z.owners||[], sup=z.supporters||[];
+          var present=own.filter(function(o){ return o.present; }).length;
+          var cls = own.length===0 ? 'red' : (present===0 ? 'orange' : 'green');
+          var state = own.length===0 ? 'بلا مالكة مجدولة' : (present===0 ? 'مجدولة ولم تحضر' : present+' حاضرة');
+          return '<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between">'+
+            '<b>'+esc(z.zone)+'</b><span class="chip '+cls+'">'+state+'</span></div>'+
+            (own.length? '<div class="small" style="margin-top:4px">'+own.map(function(o){
+                return esc(o.name)+' <span class="muted">('+esc(sRoleName(o.role))+(o.present?'':' — لم تحضر')+
+                  (o.can_float===false?' · لا تُنقل':'')+')</span>'; }).join('، ')+'</div>'
+              : '<div class="small muted" style="margin-top:4px">لا أحد مسند لهذه المنطقة اليوم.</div>')+
+            (sup.length? '<div class="small muted">مساندة: '+sup.map(function(o){return esc(o.name);}).join('، ')+'</div>':'')+
+            ((own.length && present===0) || !own.length
+              ? '<div class="btnrow" style="margin:6px 0 0"><button class="btn sm ghost" data-pull="'+z.zone_id+'">من يمكن نقلها هنا؟</button></div>' : '')+
+            '</div>';
+        }).join('');
+        sheet('تغطية المناطق', html, function(ov){
+          $$('[data-pull]',ov).forEach(function(b){ b.addEventListener('click', function(){
+            var zid=+b.getAttribute('data-pull');
+            aAct('zone_coverage',{day:day, to_zone:zid}).then(function(r2){
+              var c=((r2.pull||{}).candidates)||[];
+              sheet('مرشحات النقل', c.length ? c.map(function(x){
+                  return '<div class="card" style="padding:9px 12px"><b>'+esc(x.name)+'</b>'+
+                    (x.from_zone?' <span class="chip">من '+esc(x.from_zone)+'</span>':'')+
+                    (x.leaves_gap?' <span class="chip red">سحبها يترك منطقتها بلا أحد</span>':'')+
+                    '<div class="small muted" style="margin-top:3px">'+esc(x.why)+'</div></div>';
+                }).join('') + '<div class="muted small" style="margin-top:8px">'+esc((r2.pull||{}).note||'')+'</div>'
+                : '<div class="empty">لا أحد متاح للنقل الآن — كل الحاضرات إما مثبّتات أو سحبهن يترك فجوة.</div>');
+            });
+          });});
+        });
+      });
+    });
     $('#shCopy').addEventListener('click', function(){
       sheet('نسخ شفتات يوم إلى '+$('#shDay').value,
         '<label class="f">اليوم المصدر</label><input class="f" id="cpFrom" type="date" value="'+addDays($('#shDay').value,-1)+'">'+
