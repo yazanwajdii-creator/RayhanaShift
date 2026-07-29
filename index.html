@@ -797,7 +797,7 @@ nav.bottom button.on{position:relative}
 .ptt:active{transform:scale(.94)}
 .ptt.rec{background:linear-gradient(180deg,#E4573C,#C0392B);transform:scale(1.6);box-shadow:0 0 0 10px rgba(224,87,60,.22),0 10px 26px rgba(192,57,43,.55);animation:pttpulse 1s infinite}
 @keyframes pttpulse{50%{box-shadow:0 0 0 18px rgba(224,87,60,.05),0 10px 26px rgba(192,57,43,.55)}}
-var BUILD = "2026-07-29.1";
+var BUILD = "2026-07-29.2";
 var BUILD = "2026-07-28.5";
   padding:8px 13px;font-size:12.5px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.32);display:none;max-width:62vw}
 .ptt-toast.show{display:block;animation:tin .2s}
@@ -1037,20 +1037,78 @@ function mediaOk(kind, v){
     return u.origin === location.origin || /\.supabase\.co$/i.test(u.hostname);
   }catch(e){ return false; }
 }
+/* ===== وسائط التخزين الخاص =====
+   الصف في قاعدة البيانات لم يعد يحمل الصورة أو الصوت، بل مفتاح الكائن فقط.
+   الملف نفسه في حاوية خاصة، ولا يُقرأ إلا برابط موقّع قصير العمر تُصدره
+   دالة الحافة بعد أن تتحقق أن هذه الموظفة يحق لها قراءته. */
+var MEDIA_KEY_RE = /^\d{4}-\d{2}-\d{2}\/\d+\/[0-9a-f-]{36}\.[a-z0-9]{2,5}$/i;
+function mediaIsKey(v){ return typeof v === 'string' && MEDIA_KEY_RE.test(v); }
+function mediaFn(body){
+  body.token = (typeof S !== 'undefined' && S.token) || '';
+  var K = getKey();
+  return fetch(CONFIG.SUPABASE_URL + '/functions/v1/rko-media', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'apikey':K, 'Authorization':'Bearer '+K },
+    body: JSON.stringify(body)
+  }).then(function(r){ return r.json(); });
+}
+/* رفع: يعيد المفتاح فقط — لا يُرسل base64 إلى الجداول بعد اليوم */
+function mediaPut(kind, dataUrl, usedBy){
+  return mediaFn({ action:'put', kind:kind, data:dataUrl, used_by: usedBy||null })
+    .then(function(r){
+      if(!r || !r.ok || !r.key) throw new Error((r && r.error) || 'تعذّر رفع الملف');
+      return r.key;
+    });
+}
+/* توقيع: يُجمِّع المفاتيح المطلوبة في نداء واحد ويخزّن الرابط حتى قُبيل انتهائه */
+var MSIGN = { cache:{}, q:[], t:null };
+function mediaSign(key, fresh){
+  var hit = MSIGN.cache[key];
+  if(!fresh && hit && hit.exp > Date.now()) return Promise.resolve(hit.url);
+  if(fresh) delete MSIGN.cache[key];
+  return new Promise(function(res){
+    MSIGN.q.push({ k:key, res:res });
+    clearTimeout(MSIGN.t); MSIGN.t = setTimeout(mediaSignFlush, 40);
+  });
+}
+function mediaSignFlush(){
+  var batch = MSIGN.q.splice(0, 40);
+  if(!batch.length) return;
+  if(MSIGN.q.length){ clearTimeout(MSIGN.t); MSIGN.t = setTimeout(mediaSignFlush, 0); }
+  mediaFn({ action:'sign', keys: batch.map(function(b){ return b.k; }) }).then(function(r){
+    var urls = (r && r.urls) || {}, ttl = ((r && r.ttl) || 600) * 1000;
+    batch.forEach(function(b){
+      var u = urls[b.k] || null;
+      if(u) MSIGN.cache[b.k] = { url:u, exp: Date.now() + ttl - 30000 };
+      b.res(u);
+    });
+  }, function(){ batch.forEach(function(b){ b.res(null); }); });
+}
 /* يعيد عنصر DOM جاهزاً (أو null) — لا يعيد نصاً أبداً */
 function mediaEl(kind, v, css){
-  if(!mediaOk(kind, v)) return null;
+  var isKey = mediaIsKey(v);
+  if(!isKey && !mediaOk(kind, v)) return null;
   var el = document.createElement(kind === 'img' ? 'img' : 'audio');
   if(kind === 'img'){ el.alt = ''; }
   else { el.controls = true; el.preload = 'none'; }
   if(css) el.setAttribute('style', css);
-  el.src = v;                                                /* خاصية، لا سلسلة داخل HTML */
+  if(isKey){
+    var tried = false;
+    mediaSign(v).then(function(u){ if(u) el.src = u; else if(el.parentNode) el.parentNode.removeChild(el); });
+    /* انتهت صلاحية الرابط بينما البطاقة مفتوحة؟ يُجدَّد مرة واحدة بصمت */
+    el.addEventListener('error', function(){
+      if(tried) return; tried = true;
+      mediaSign(v, true).then(function(u){ if(u) el.src = u; });
+    });
+  } else {
+    el.src = v;                                              /* خاصية، لا سلسلة داخل HTML */
+  }
   return el;
 }
 /* عنصر نائب يُستبدل لاحقاً بالوسيط الحقيقي عبر mediaFill */
 var MEDIA_SLOT = 0;
 function mediaSlot(kind, v, css){
-  if(!mediaOk(kind, v)) return '';
+  if(!mediaIsKey(v) && !mediaOk(kind, v)) return '';
   var id = 'mslot' + (++MEDIA_SLOT);
   (mediaSlot._q = mediaSlot._q || []).push({ id: id, kind: kind, v: v, css: css });
   return '<span id="' + id + '"></span>';
@@ -1312,6 +1370,17 @@ function pickPhoto(cb){
   });
   inp.click();
 }
+/* التقاط ثم رفع فوري إلى التخزين الخاص.
+   المعاينة تظهر فوراً من الصورة المحلية، والمرسَل للخادم هو المفتاح لا الصورة.
+   إن تعذّر الرفع (شبكة) نعيد الصورة نفسها كي لا تضيع على الموظفة — الخادم يقبل الحالتين. */
+function pickUpload(usedBy, onPreview, onDone){
+  pickPhoto(function(d){
+    if(onPreview) onPreview(d);
+    mediaPut('img', d, usedBy).then(
+      function(k){ onDone(k, ''); },
+      function(e){ toast((e && e.message) || 'تعذّر رفع الصورة — ستُرسل مع الطلب', true); onDone('', d); });
+  });
+}
 
 /* ---------- هوية الجهاز والموقع (حماية الحضور) ---------- */
 function devId(){
@@ -1493,7 +1562,7 @@ function doAttendance(kind, pin, selfie){
   getGeo(function(geo){
     var p={geo:geo, device_token:devTok(), device_id:devId()};
     if(pin) p.pin=pin;
-    if(selfie) p.selfie=selfie;
+    if(selfie){ if(mediaIsKey(selfie)) p.selfie_key=selfie; else p.selfie=selfie; }
     sAct(isOut?'check_out':'check_in', p, false).then(function(res){
       $$(sel).forEach(function(b){ b.classList.remove('busy'); });
       if(res.ok){
@@ -1520,7 +1589,8 @@ function doAttendance(kind, pin, selfie){
               close();
               getGeo(function(g2){
                 var p2={geo:g2, device_token:devTok(), device_id:devId(), ack_open:true};
-                if(pin) p2.pin=pin; if(selfie) p2.selfie=selfie;
+                if(pin) p2.pin=pin;
+                if(selfie){ if(mediaIsKey(selfie)) p2.selfie_key=selfie; else p2.selfie=selfie; }
                 sAct('check_out', p2, false).then(function(r2){
                   if(r2.ok){ qClear(function(x){ return /^(task_|blocker_|recur)/.test(x.action||''); });
                     toast('سُجّل انصرافك — أُعيدت المهام للتوزيع'); refresh(); }
@@ -1534,7 +1604,13 @@ function doAttendance(kind, pin, selfie){
         pinSheet(kind, selfie);
       } else if((res.error||'').indexOf('صورة التحقق')>-1){
         cameraSheet({facing:'user', title:'صورة التحقق المباشرة', watermark:(S.me?S.me.name:'')+(isOut?' · انصراف':' · حضور')},
-          function(d){ doAttendance(kind, pin, d); });
+          function(d){
+            /* الصورة ترتفع للتخزين الخاص أولاً؛ الصف يحمل المفتاح فقط.
+               وإن تعثّرت الشبكة لا نمنع الموظفة من تسجيل حضورها. */
+            mediaPut('img', d, 'attendance').then(
+              function(k){ doAttendance(kind, pin, k); },
+              function(){ doAttendance(kind, pin, d); });
+          });
       } else toast(res.error||'خطأ', true);
     }).catch(function(){ $$(sel).forEach(function(b){ b.classList.remove('busy'); }); });
   });
@@ -1898,6 +1974,12 @@ function recOverlay(on){ var o=document.getElementById('recOverlay');
 
 /* ===== حقل مذكرة صوتية مشترك (التسليم/البلاغات/الملاحظات) — ضغطة للبدء وضغطة للإيقاف ===== */
 var VOICE={};
+/* مفتاح المذكرة في التخزين الخاص بعد رفعها — هو ما يُرسل للخادم، لا الصوت نفسه */
+var VOICEK={};
+/* ما يُرسل مع الطلب: المفتاح إن نجح الرفع، وإلا الصوت نفسه كي لا تضيع المذكرة */
+function voicePayload(id){
+  return VOICEK[id] ? { voice_key: VOICEK[id] } : (VOICE[id] ? { voice: VOICE[id] } : {});
+}
 function voiceFieldHtml(id, label){
   return '<div class="vnote" id="vn_'+id+'">'+
     '<button type="button" class="vn-rec">'+IC.mic+'<span class="vn-lab">'+esc(label||'أضيفي مذكرة صوتية')+'</span></button>'+
@@ -1905,7 +1987,7 @@ function voiceFieldHtml(id, label){
     '<button type="button" class="vn-del">حذف</button></div></div>';
 }
 function voiceReset(scope, id){
-  VOICE[id]=null;
+  VOICE[id]=null; VOICEK[id]=null;
   var w=scope?$('#vn_'+id,scope):$('#vn_'+id); if(!w) return;
   var b=$('.vn-body',w); if(b) b.style.display='none';
   var a=$('.vn-audio',w); if(a){ try{a.pause();}catch(e){} a.removeAttribute('src'); }
@@ -1913,7 +1995,7 @@ function voiceReset(scope, id){
   var btn=$('.vn-rec',w); if(btn) btn.classList.remove('on');
 }
 function voiceWire(scope, id){
-  VOICE[id]=null;
+  VOICE[id]=null; VOICEK[id]=null;
   var w=scope?$('#vn_'+id,scope):$('#vn_'+id); if(!w) return;
   var btn=$('.vn-rec',w), lab=$('.vn-lab',w), body=$('.vn-body',w), au=$('.vn-audio',w), del=$('.vn-del',w);
   if(!recSupported()){ if(btn) btn.disabled=true; if(lab) lab.textContent='التسجيل الصوتي غير مدعوم على هذا المتصفح'; return; }
@@ -1932,7 +2014,12 @@ function voiceWire(scope, id){
     if(!rec) return; rec=false; clearInterval(tick); clearTimeout(maxT); btn.classList.remove('on'); lab.textContent=base;
     var dur=(Date.now()-t0)/1000, wav=recStop();
     if(!wav || dur<0.4){ toast('تسجيل قصير جداً', true); return; }
-    VOICE[id]=wav; au.src=wav; body.style.display='flex';
+    VOICE[id]=wav; VOICEK[id]=null; au.src=wav; body.style.display='flex';
+    /* ترفع المذكرة للتخزين الخاص فور انتهاء التسجيل، فلا ينتظر الإرسال لاحقاً */
+    lab.textContent='يُحفَظ التسجيل…';
+    mediaPut('aud', wav, 'voice:'+id).then(
+      function(k){ if(VOICE[id]===wav){ VOICEK[id]=k; } lab.textContent=base; },
+      function(){ lab.textContent=base; });
   }
   btn.addEventListener('click', function(){ rec?stop():start(); });
   if(del) del.addEventListener('click', function(){ voiceReset(scope,id); });
@@ -2093,10 +2180,15 @@ function showSpotcheck(sc){
       $('#scGo',ov).addEventListener('click', function(){
         cameraSheet({facing:'environment', title:'صورة إثبات النشاط', watermark:(S.me?S.me.name:'')+' · فحص نشاط'},
           function(d){
-            sAct('spotcheck_answer',{id:sc.id, photo:d}, false).then(function(res){
-              if(res.ok){ toast(res.msg||'سُجّل نشاطك ✔'); scDone(); refresh(); }
-              else toast(res.error||'خطأ', true);
-            });
+            function send(p){
+              sAct('spotcheck_answer', p, false).then(function(res){
+                if(res.ok){ toast(res.msg||'سُجّل نشاطك ✔'); scDone(); refresh(); }
+                else toast(res.error||'خطأ', true);
+              });
+            }
+            mediaPut('img', d, 'spotcheck').then(
+              function(k){ send({id:sc.id, photo_key:k}); },
+              function(){ send({id:sc.id, photo:d}); });
           });
       });
     });
@@ -3512,12 +3604,19 @@ function completeFlow(t){
     '<div class="btnrow"><button class="btn ghost block" id="tCant">لم أستطع إكمالها</button></div>';
   sheet('إنهاء: '+t.name, body, function(ov, close){
     var cb=$('#tCant',ov); if(cb) cb.addEventListener('click', function(){ close(); cannotFlow(t); });
-    var photo='';
+    var photo='', photoKey='';
     var pb=$('#tPhoto',ov);
     if(pb) pb.addEventListener('click', function(){
       cameraSheet({facing:'environment', title:'توثيق المهمة — تصوير مباشر',
         watermark:(S.me?S.me.name:'')+' · '+t.name},
-        function(d){ photo=d; var im=$('#tPhotoPrev',ov); im.src=d; im.style.display='block'; pb.textContent='إعادة الالتقاط'; });
+        function(d){
+          photo=d; photoKey=''; var im=$('#tPhotoPrev',ov); im.src=d; im.style.display='block';
+          pb.textContent='يُحفَظ التوثيق…'; pb.disabled=true;
+          /* الصورة ترتفع للتخزين الخاص أثناء كتابة الملاحظة، فلا تنتظر عند الإرسال */
+          mediaPut('img', d, 'task:'+t.id).then(
+            function(k){ if(photo===d){ photoKey=k; photo=''; } pb.textContent='إعادة الالتقاط'; pb.disabled=false; },
+            function(){ pb.textContent='إعادة الالتقاط'; pb.disabled=false; });
+        });
     });
     $('#tGo',ov).addEventListener('click', function(){
       var p={id:t.id};
@@ -3527,7 +3626,10 @@ function completeFlow(t){
         p.ticks=ticks;
       }
       if(t.method==='number'){ var n=$('#tNum',ov).value; if(n==='' ){ toast('أدخلي الرقم', true); return; } p.number=+n; }
-      if(t.needs_photo){ if(!photo){ toast('الصورة مطلوبة لهذه المهمة', true); return; } p.photo=photo; }
+      if(t.needs_photo){
+        if(!photo && !photoKey){ toast('الصورة مطلوبة لهذه المهمة', true); return; }
+        if(photoKey) p.photo_key=photoKey; else p.photo=photo;
+      }
       if(t.needs_two){ p.confirm_id=+$('#tCoId',ov).value; p.confirm_password=$('#tCoPw',ov).value; }
       var note=$('#tNote',ov).value; if(note) p.note=note;
       busyWrap(this, function(){
@@ -3590,7 +3692,9 @@ function handoverSheet(){
           var items={};
           $$('.ho-i',ov).forEach(function(i){ if(i.value.trim()) items[i.getAttribute('data-k')]=i.value.trim(); });
           busyWrap(this, function(){
-            return sAct('handover_send',{to_emp:+$('#hoTo',ov).value, items:items, voice:VOICE.ho||''}, true).then(function(res){
+            var hp={to_emp:+$('#hoTo',ov).value, items:items};
+            var vp=voicePayload('ho'); for(var vk in vp) hp[vk]=vp[vk];
+            return sAct('handover_send', hp, true).then(function(res){
               if(res.ok){ close(); toast('أُرسل التسليم — بانتظار تأكيدها'); refresh(); }
               else toast(res.error||'خطأ', true);
             });
@@ -3951,7 +4055,12 @@ function wireTab(v){
             '<div class="small">'+esc(r.details||'')+'</div>'+(r.admin_note?'<div class="small muted">رد الإدارة: '+esc(r.admin_note)+'</div>':'')+'</div>';
         }).join('')||'<div class="empty">لا طلبات</div>');
       });
-      else if(a==='ntSend'){ var x=$('#ntText').value.trim(); if(!x&&!VOICE.nt){toast('اكتبي الملاحظة أو سجّليها صوتاً',true);return;} sAct('note_send',{text:x, voice:VOICE.nt||''},true).then(function(){ toast('وصلت ملاحظتك'); $('#ntText').value=''; voiceReset(null,'nt'); }); }
+      else if(a==='ntSend'){
+        var x=$('#ntText').value.trim();
+        if(!x&&!VOICE.nt){toast('اكتبي الملاحظة أو سجّليها صوتاً',true);return;}
+        var ntp={text:x}, ntv=voicePayload('nt'); for(var nk in ntv) ntp[nk]=ntv[nk];
+        sAct('note_send', ntp, true).then(function(){ toast('وصلت ملاحظتك'); $('#ntText').value=''; voiceReset(null,'nt'); });
+      }
       else if(a==='lgAdd'){ var lt=$('#lgText').value.trim(); if(!lt){toast('اكتبي التفاصيل',true);return;} sAct('logbook_add',{category:$('#lgCat').value, text:lt},true).then(function(res){ toast(res.msg||'أُضيف'); $('#lgText').value=''; }); }
       else if(a==='lgView') sAct('logbook_day',{}).then(function(res){
         var CATL={note:'ملاحظة',lowstock:'نقص مخزون',incident:'حادثة',maintenance:'عطل',cash:'كاش'};
@@ -3961,8 +4070,13 @@ function wireTab(v){
       });
       else if(a==='isSend'){
         var it=$('#isTitle').value.trim(); if(!it){toast('اكتبي عنوان البلاغ',true);return;}
-        sAct('issue_report',{title:it, category:$('#isCat').value, priority:$('#isPri').value, detail:$('#isDet').value, photo:window._isPhoto||'', voice:VOICE.is||''},true).then(function(res){
-          toast(res.msg||'أُرسل'); $('#isTitle').value=''; $('#isDet').value=''; window._isPhoto=''; var pv=$('#isPrev'); if(pv)pv.style.display='none'; voiceReset(null,'is');
+        var isp={title:it, category:$('#isCat').value, priority:$('#isPri').value, detail:$('#isDet').value};
+        if(window._isPhotoKey) isp.photo_key=window._isPhotoKey; else if(window._isPhoto) isp.photo=window._isPhoto;
+        var isv=voicePayload('is'); for(var ik in isv) isp[ik]=isv[ik];
+        sAct('issue_report', isp, true).then(function(res){
+          toast(res.msg||'أُرسل'); $('#isTitle').value=''; $('#isDet').value='';
+          window._isPhoto=''; window._isPhotoKey='';
+          var pv=$('#isPrev'); if(pv)pv.style.display='none'; voiceReset(null,'is');
         });
       }
       else if(a==='isMine') sAct('my_issues',{}).then(function(res){
@@ -3973,14 +4087,17 @@ function wireTab(v){
       });
       else if(a==='recDone'){
         var needPhoto=b.getAttribute('data-photo')==='1', nm=b.getAttribute('data-name');
-        function send(photo){
-          sAct('recurring_done',{template_id:id, photo:photo||''}, false).then(function(res){
+        function send(extra){
+          var rp={template_id:id}; for(var rk in (extra||{})) rp[rk]=extra[rk];
+          sAct('recurring_done', rp, false).then(function(res){
             if(res.ok){ toast(res.msg||'سُجّلت ✔'); refresh(); }
             else toast(res.error||'خطأ', true);
           });
         }
-        if(needPhoto) cameraSheet({facing:'environment', title:'توثيق: '+nm, watermark:(S.me?S.me.name:'')+' · '+nm}, function(d){ send(d); });
-        else send('');
+        if(needPhoto) cameraSheet({facing:'environment', title:'توثيق: '+nm, watermark:(S.me?S.me.name:'')+' · '+nm},
+          function(d){ mediaPut('img', d, 'recurring:'+id).then(
+            function(k){ send({photo_key:k}); }, function(){ send({photo:d}); }); });
+        else send(null);
       }
       else if(a==='recClaim'){ sAct('recur_claim',{template_id:id},false).then(function(res){ if(res.ok) refresh(); else toast(res.error||'خطأ',true); }); }
       else if(a==='recRelease'){ sAct('recur_release',{template_id:id},false).then(function(){ refresh(); }); }
@@ -4007,7 +4124,12 @@ function wireTab(v){
   var isPB=$('#isPhoto',v);
   if(isPB) isPB.addEventListener('click', function(){
     cameraSheet({facing:'environment', title:'صورة البلاغ', watermark:(S.me?S.me.name:'')+' · بلاغ'}, function(d){
-      window._isPhoto=d; var pv=$('#isPrev',v); if(pv){ pv.src=d; pv.style.display='block'; } isPB.textContent='إعادة الالتقاط';
+      window._isPhoto=d; window._isPhotoKey='';
+      var pv=$('#isPrev',v); if(pv){ pv.src=d; pv.style.display='block'; }
+      isPB.textContent='يُحفَظ…'; isPB.disabled=true;
+      mediaPut('img', d, 'issue').then(
+        function(k){ if(window._isPhoto===d){ window._isPhotoKey=k; window._isPhoto=''; } isPB.textContent='إعادة الالتقاط'; isPB.disabled=false; },
+        function(){ isPB.textContent='إعادة الالتقاط'; isPB.disabled=false; });
     });
   });
   // مقاطع الانتظار
@@ -6248,9 +6370,20 @@ ADMIN.sops=function(v){
           (s?'<div class="btnrow"><button class="btn sm ghost red" id="spDel" type="button">حذف الدليل</button></div>':'')+
           '<div class="btnrow"><button class="btn block" id="spGo">حفظ</button></div>',
           function(ov, close){
-            var photo = (s&&s.photo)||'';
+            /* الدليل المحفوظ قد يحمل مفتاح تخزين أو صورة قديمة بترميز base64 — نميّز بينهما */
+            var cur = (s&&s.photo)||'';
+            var photo = mediaIsKey(cur) ? '' : cur, photoKey = mediaIsKey(cur) ? cur : '';
             $('#spPB',ov).addEventListener('click', function(){
-              pickPhoto(function(d){ photo=d; var pv=$('#spPV',ov); pv.innerHTML=''; var im=mediaEl('img', d, 'max-width:100%;border-radius:10px'); if(im) pv.appendChild(im); $('#spPL',ov).textContent='صورة جاهزة'; });
+              var lab=$('#spPL',ov);
+              pickUpload('sop', function(d){
+                photo=d; photoKey='';
+                var pv=$('#spPV',ov); pv.innerHTML='';
+                var im=mediaEl('img', d, 'max-width:100%;border-radius:10px'); if(im) pv.appendChild(im);
+                lab.textContent='يُحفَظ…';
+              }, function(k, fallback){
+                if(k){ photoKey=k; photo=''; } else { photo=fallback; }
+                lab.textContent='صورة جاهزة';
+              });
             });
             if(s){ $('#spDel',ov).addEventListener('click', function(){
               if(!confirm('حذف هذا الدليل نهائياً؟')) return;
@@ -6261,7 +6394,8 @@ ADMIN.sops=function(v){
               var title=$('#spT',ov).value.trim();
               if(!title){ toast('اكتبي عنوان الدليل', true); return; }
               if(!steps.length){ toast('أضيفي خطوة واحدة على الأقل', true); return; }
-              var p={title:title, category:$('#spC',ov).value, area_id:$('#spA',ov).value||null, steps:steps, photo:photo, sort:+$('#spSort',ov).value||99};
+              var p={title:title, category:$('#spC',ov).value, area_id:$('#spA',ov).value||null, steps:steps,
+                     photo:photo, photo_key:photoKey, sort:+$('#spSort',ov).value||99};
               if(s){ p.id=s.id; p.active=$('#spAct',ov).checked; }
               busyWrap(this, function(){
                 return aAct('sop_save',p).then(function(r){ if(r.ok){ close(); ADMIN.sops(v); toast('تم ✔'); } else toast(r.error||'خطأ',true); });
