@@ -684,6 +684,11 @@ function moodFace(lvl, sz){ sz=sz||26; var m=MOOD_MOUTH[lvl]||MOOD_MOUTH[3];
     '<circle cx="12" cy="12" r="9"/><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="'+m+'"/></svg>'; }
 var MI={
   _def: svgi('<circle cx="12" cy="12" r="8"/>'),
+  dayphase: svgi('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/><path d="M12 12l3.5-2"/>'),
+  openshifts: svgi('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3.5 2"/><path d="M19 5l2-2"/>'),
+  bottleneck: svgi('<path d="M5 4h14l-5 7v6l-4 2v-8L5 4Z"/>'),
+  geo: svgi('<path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10Z"/><circle cx="12" cy="11" r="2.2"/>'),
+  errors: svgi('<path d="M12 4.5 21 19H3L12 4.5Z"/><path d="M12 10v4M12 16.5v.5"/>'),
   board: svgi('<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>'),
   live:  svgi('<path d="M5 12a7 7 0 0 1 14 0"/><path d="M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1"/>'),
   broadcast: svgi('<path d="M4 10v4M8 8l9-4v16l-9-4M8 8v8"/>'),
@@ -2284,10 +2289,37 @@ function heroTaskCard(t){
           (t.blocked?'':'<button class="btn sm ghost red" data-a="tBlock" data-id="'+t.id+'">يوجد مانع</button>')+'</div>')+
     '</div>';
 }
+/* شريط مرحلة اليوم: الموظفة كانت لا ترى أبداً في أي مرحلة الكافيه، فتقرأ
+   الضغط من الطاولات وحدها. المرحلة تغيّر الأولويات فعلياً (ذروة ≠ تهدئة)،
+   ولذلك تُعرض بوضوح مع السبب حين تُعلنه الإدارة.
+   يتحدّث ذاتياً كل دقيقتين بنداء day_state الخفيف — لا بنداء state الكامل
+   لأن ذاك يعيد توليد المهام في الخادم. */
+var DPS_T=null;
+function dayPhaseStrip(day){
+  if(!day || !day.phase) return '';
+  var hot=day.phase==='peak', declared=day.source==='owner';
+  var lbl=(typeof dphName==='function')?dphName(day.phase):day.phase;
+  clearInterval(DPS_T);
+  DPS_T=setInterval(function(){
+    var el=$('#dps'); if(!el){ clearInterval(DPS_T); return; }
+    sAct('day_state',{}).then(function(r){
+      if(!r || !r.ok || !r.day) return;
+      if(S.state) S.state.day=r.day;
+      var box=$('#dps'); if(box) box.outerHTML=dayPhaseStrip(r.day);
+    });
+  }, 120000);
+  return '<div class="dps'+(hot?' hot':'')+'" id="dps">'+
+    '<span class="dps-d" aria-hidden="true"></span>'+
+    '<span class="dps-t">'+esc(lbl)+'</span>'+
+    (day.reason?'<span class="dps-r">'+esc(day.reason)+'</span>':'')+
+    (declared?'<span class="dps-b">من الإدارة</span>':'')+
+  '</div>';
+}
 function viewNow(){
   /* شاشة «الآن» — سياقية: قبل الحضور / أثناء الشفت / قرب الإغلاق / بعد الانصراف */
   var st=S.state, sh=st.shift, att=st.attendance, out=[];
   var inT = att && att['in'], outT = att && att.out;
+  out.push(dayPhaseStrip(st.day));
   out.push(dashAlerts());
   /* سؤال تشغيلي عابر — اختياري، بلا أسماء، ولا يُذكر أنه تحقّق */
   if(st.ask && st.ask.area_id && !S._askDone){
@@ -3047,6 +3079,7 @@ function coverTakeSwap(id){
   });
 }
 var MORE_SECS=[
+  ['myhours','ساعاتي','ساعات عملكِ آخر ٣٠ يوماً وكيف حُسبت', IC.tasks],
   ['requests','الطلبات والإجازات','إجازة، إذن، تبديل وتغطية الشفتات', IC.shift],
   ['fix','نسيتِ الحضور أو الانصراف؟','تعديل يُرسل للإدارة للمراجعة', IC.refresh],
   ['issues','البلاغات والصيانة','عطل، نقص مستلزمات، سلامة', IC.bell],
@@ -3068,6 +3101,7 @@ function viewMore(){
   return back + moreSection(S.moreSec, st);
 }
 function moreSection(sec, st){
+  if(sec==='myhours') return moreHoursCard();
   if(sec==='fix') return moreFixCard();
   if(sec==='requests') return moreReqCard(st)+
     '<div class="card"><h3>تبديل وتغطية الشفتات</h3>'+
@@ -3084,6 +3118,57 @@ function moreSection(sec, st){
     '<button class="btn ghost" data-a="fontToggle">حجم الخط: '+((function(){try{return localStorage.getItem('rko_font')==='lg';}catch(e){return false;}})()?'كبير':'عادي')+'</button>'+
     '<button class="btn ghost" data-a="installApp">تثبيت التطبيق على الجهاز</button></div></div>';
   return '';
+}
+/* ساعاتي: الموظفة ترى ساعاتها هي فقط (الخادم يقصرها على هويتها، لا الواجهة).
+   الأهم أن ترى كيف حُسبت — لأن رقماً بلا قاعدة يولّد شكوى لا حواراً.
+   ولا نسمّيها كشف راتب: البيانات يدوية ولا تُعتبر دقيقة مالياً. */
+var MHST={ full:['green','شفت كامل'], full_with_overtime:['green','كامل + إضافي'],
+  short:['orange','ناقص عن المخطط'], incomplete:['orange','تسجيل غير مكتمل'],
+  no_checkin:['red','بلا تسجيل حضور'], open:['orange','ما زال مفتوحاً'] };
+function moreHoursCard(){
+  setTimeout(function(){
+    var box=$('#mhB'); if(!box) return;
+    sAct('my_hours',{}).then(function(res){
+      if(!res || !res.ok){ box.innerHTML='<div class="empty">تعذّر تحميل ساعاتكِ — حدّثي الصفحة</div>'; return; }
+      var rows=(res.rows||[]).slice().sort(function(a,b){ return a.day<b.day?1:-1; });
+      var t=res.totals||{}, pol=(res.rules||{}).policy||{};
+      box.innerHTML=
+        '<div class="statrow" style="margin-bottom:10px">'+
+          '<div class="stat"><b>'+(t.worked_hours!=null?t.worked_hours:'—')+'</b><span>ساعة عمل</span></div>'+
+          '<div class="stat"><b>'+(t.shifts||0)+'</b><span>شفت</span></div>'+
+          '<div class="stat"><b>'+(t.full||0)+'</b><span>كامل</span></div>'+
+        '</div>'+
+        (rows.length
+          ? '<div class="scrollx"><table class="tbl"><tr><th>اليوم</th><th>الحالة</th><th>حضور فعلي</th><th>عمل محتسب</th></tr>'+
+            rows.map(function(r){
+              var s=MHST[r.status]||['', r.status||'—'];
+              return '<tr><td>'+fmtD(r.day)+'</td>'+
+                '<td><span class="chip '+s[0]+'">'+esc(s[1])+'</span>'+
+                  (r.note?'<div class="muted small">'+esc(r.note)+'</div>':'')+'</td>'+
+                '<td>'+hm(r.present_minutes)+'</td>'+
+                '<td><b>'+hm(r.worked_minutes)+'</b>'+
+                  ((r.break_minutes||0)>0?'<div class="muted small">− '+r.break_minutes+'د استراحة</div>':'')+
+                  ((r.overtime_minutes||0)>0?'<div class="muted small">+ '+r.overtime_minutes+'د إضافي</div>':'')+'</td></tr>';
+            }).join('')+'</table></div>'
+          : '<div class="empty">لا شفتات في آخر ٣٠ يوماً</div>')+
+        '<details class="qa" style="margin-top:12px"><summary>كيف تُحسب الساعات؟</summary>'+
+          '<div class="small" style="line-height:1.85;padding:2px 2px 6px">'+
+            '<div>• <b>وقت العمل المحتسب</b> = وقت تواجدكِ ناقص الاستراحات'+(pol.break_paid?' (الاستراحة مدفوعة)':' (الاستراحة غير مدفوعة)')+'.</div>'+
+            (pol.full_shift_ratio!=null?'<div>• <b>الشفت الكامل</b> يتحقق عند إتمام '+Math.round(pol.full_shift_ratio*100)+'% من المخطّط — لا بمجرد التسجيل.</div>':'')+
+            (pol.late_grace_minutes!=null?'<div>• تأخير حتى '+pol.late_grace_minutes+' دقائق لا يُحسب تأخيراً.</div>':'')+
+            (pol.min_countable_minutes!=null?'<div>• أقل من '+pol.min_countable_minutes+' دقيقة لا يُحتسب شفتاً.</div>':'')+
+            (pol.overtime_after_minutes!=null?'<div>• الوقت الإضافي يبدأ بعد '+pol.overtime_after_minutes+' دقيقة من نهاية الشفت.</div>':'')+
+            '<div style="margin-top:6px">• هذه <b>ليست كشف راتب</b>: الأرقام مبنية على تسجيل يدوي، وأي فرق يُراجَع مع الإدارة.</div>'+
+          '</div></details>';
+      tblResponsive(box);
+    });
+  },0);
+  return '<div class="card"><h3>ساعاتي — آخر ٣٠ يوماً</h3><div id="mhB">'+skel(3)+'</div></div>';
+}
+function hm(min){
+  if(min==null) return '—';
+  var h=Math.floor(min/60), m=Math.round(min%60);
+  return h? (h+'س'+(m?' '+m+'د':'')) : (m+'د');
 }
 function moreFixCard(){
   return '<div class="card"><h3>نسيتِ تسجيل الحضور/الانصراف؟</h3>'+
@@ -3327,15 +3412,17 @@ var SECS=[
   ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
   ['contrib','','المساهمات الإضافية'],['evals','','التقييم الشهري'],['awards','','التقدير'],['requests','','الطلبات'],
   ['handovers','','التسليمات'],['reports','','التقارير'],['devices','','الأجهزة'],['settings','','الإعدادات'],
-  ['audit','','سجل التدقيق'],['flags','','إشارات المراجعة']
+  ['audit','','سجل التدقيق'],['flags','','إشارات المراجعة'],
+  ['dayphase','','مرحلة اليوم'],['openshifts','','شفتات لم تُقفل'],['bottleneck','','عنق الزجاجة'],
+  ['geo','','قرارات الموقع'],['errors','','أخطاء تقنية']
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
-  ['تشغيل اليوم','g1',['board','ocdecisions','live','tables','heat','roster','shifts','tasks','prep','ops','attendance','cover','absence','handovers','issues','logbook','timeline','ptt']],
+  ['تشغيل اليوم','g1',['board','dayphase','ocdecisions','live','tables','bottleneck','heat','roster','shifts','tasks','prep','ops','attendance','openshifts','cover','absence','handovers','issues','logbook','timeline','ptt']],
   ['التواصل والتحليل','g2',['ocanalytics','digest','broadcast','analytics','hours','requests','reports']],
   ['الفريق','g2',['employees','skills','training','coop','contrib','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
-  ['النظام','g4',['devices','settings','audit']]
+  ['النظام','g4',['devices','settings','audit','geo','errors']]
 ];
 function drawAdmin(){
   var v=$('#view'); if(!v) return;
@@ -6195,6 +6282,206 @@ ADMIN.flags=function(v){
     $$('[data-fd]',v).forEach(function(b){ b.addEventListener('click', function(){
       aAct('flag_decide',{id:+b.getAttribute('data-fd'), decision:b.getAttribute('data-d')}).then(function(){ ADMIN.flags(v); });
     });});
+  });
+};
+
+/* ---------- شفتات لم تُقفل ---------- */
+/* لماذا شاشة مستقلة: المالكة غائبة كثيراً، والشفت المفتوح يفسد الساعات
+   والتقييم وحساب الحضور معاً. الإغلاق القسري يُدوَّن في سجل التدقيق. */
+ADMIN.openshifts=function(v){
+  v.innerHTML=skel(2);
+  aAct('open_shifts',{}).then(function(res){
+    var rows=res.rows||[];
+    if(!rows.length){
+      v.innerHTML='<div class="empty">لا شفت مفتوح الآن — كل من سجّلت حضوراً سجّلت انصرافها.</div>';
+      return;
+    }
+    var nowMs=Date.now();
+    v.innerHTML='<div class="muted small" style="margin-bottom:10px">شفتات سُجّل فيها حضور بلا انصراف. '+
+        'الإغلاق القسري يضع وقت الانصراف على نهاية الشفت المخطّطة، ويُسجَّل باسمك في سجل التدقيق — '+
+        'ولا يُحسب تأخيراً ولا وقتاً إضافياً على الموظفة.</div>'+
+      rows.map(function(r){
+        var hrs=r.check_in?((nowMs-new Date(r.check_in).getTime())/3600000):0;
+        var late=hrs>=12;
+        return '<div class="card" style="padding:11px 12px"><div class="row" style="justify-content:space-between;gap:8px">'+
+          '<div style="min-width:0"><b>'+esc(r.employee||'—')+'</b>'+
+            (late?' <span class="chip red">'+Math.floor(hrs)+' ساعة مفتوحة</span>':' <span class="chip orange">'+hrs.toFixed(1)+' ساعة</span>')+
+            '<div class="muted small">'+fmtD(r.day)+' · '+esc(r.area||'بلا منطقة')+' · حضور '+fmtT(r.check_in)+'</div></div>'+
+          /* ليس btn sm: إغلاق شفت قسراً إجراء ذو أثر على ساعات موظفة —
+           حجم الزر يتبع أثره، لا كثافة الصف. */
+        '<button class="btn ghost" data-fc="'+r.shift_id+'" data-who="'+esc(r.employee||'')+'">إغلاق</button>'+
+        '</div></div>';
+      }).join('');
+    $$('[data-fc]',v).forEach(function(b){ b.addEventListener('click', function(){
+      var sid=+b.getAttribute('data-fc'), who=b.getAttribute('data-who');
+      confirmSheet('إغلاق شفت '+who, 'سيُسجَّل الانصراف على نهاية الشفت المخطّطة، ويظهر الإجراء باسمك في سجل التدقيق. تابعي؟',
+        'أغلقي الشفت', function(){
+          aAct('force_checkout',{shift_id:sid}).then(function(r){
+            if(r.ok){ toast('أُغلق الشفت ✔'); ADMIN.openshifts(v); } else toast(r.error||'تعذّر الإغلاق', true);
+          });
+        });
+    });});
+  });
+};
+
+/* ---------- مرحلة اليوم ---------- */
+/* المحرّك يستنتج المرحلة من الساعة وحالة الطاولات. هذه الشاشة تُظهر استنتاجه
+   ومستوى ثقته، وتسمح للمالكة بإعلان مرحلة مختلفة لمدة محددة بسبب مكتوب —
+   لأن المحرّك لا يرى انقطاع كهرباء ولا حجزاً خاصاً. */
+var DPH=[
+  ['closed','مغلق','خارج ساعات العمل'],
+  ['pre_open','قبل الفتح','الفريق في الطريق'],
+  ['opening','التجهيز','مهام الافتتاح'],
+  ['ready_for_first_guest','جاهز لأول ضيفة','التجهيز انتهى'],
+  ['normal','خدمة عادية','إيقاع مستقر'],
+  ['peak','ذروة','ضغط عالٍ — الأولوية للضيفات'],
+  ['recovery','تهدئة','استرجاع الترتيب بعد الذروة'],
+  ['closing_prep','تحضير الإقفال','بدء مهام الإغلاق'],
+  ['service_closed','أُقفلت الخدمة','لا ضيفات جديدة'],
+  ['closing','الإقفال','تنظيف وتسليم'],
+  ['finalized','مُقفل نهائياً','اليوم مُرحَّل']
+];
+function dphName(k){ var n=k; DPH.forEach(function(x){ if(x[0]===k) n=x[1]; }); return n; }
+function dphNote(k){ var n=''; DPH.forEach(function(x){ if(x[0]===k) n=x[2]; }); return n; }
+ADMIN.dayphase=function(v){
+  v.innerHTML=skel(2);
+  aAct('day_state',{}).then(function(res){
+    var d=res.day||{};
+    var conf=d.confidence==='declared'?['orange','مُعلنة منك']
+            :d.confidence==='high'?['green','ثقة عالية']:['','ثقة متوسطة'];
+    v.innerHTML=
+      '<div class="card" style="padding:14px"><div class="muted small">المرحلة الآن</div>'+
+        '<div style="font-size:22px;font-weight:800;letter-spacing:-.01em;margin:2px 0 4px">'+esc(dphName(d.phase))+'</div>'+
+        '<div class="muted small">'+esc(d.reason||dphNote(d.phase))+'</div>'+
+        '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:9px">'+
+          '<span class="chip '+conf[0]+'">'+conf[1]+'</span>'+
+          '<span class="chip">'+(d.source==='owner'?'إعلان الإدارة':'استنتاج المحرّك')+'</span>'+
+          '<span class="chip">منذ '+fmtT(d.since)+'</span>'+
+          '<span class="chip '+(d.is_service_open?'green':'')+'">'+(d.is_service_open?'الخدمة مفتوحة':'الخدمة مغلقة')+'</span>'+
+        '</div>'+
+        '<div class="muted small" style="margin-top:8px">يوم العمل '+esc(d.business_date||'—')+
+          ' · دوام الخدمة '+esc((d.service||{}).open||'—')+'–'+esc((d.service||{}).close||'—')+
+          (d.override?' · التجاوز ساري':'')+'</div>'+
+      '</div>'+
+      '<div class="btnrow" style="margin:4px 0 12px"><button class="btn ghost grow" id="dpTick">أعيدي الحساب الآن</button>'+
+        '<button class="btn grow" id="dpDec">أعلني مرحلة</button></div>'+
+      '<div class="muted small">إعادة الحساب تُشغّل المحرّك فوراً بدل انتظار الدورة. الإعلان يتجاوز المحرّك '+
+        'لمدة تحدّدينها بسبب مكتوب، ثم يعود المحرّك تلقائياً — لا تجاوز دائم.</div>';
+
+    $('#dpTick',v).addEventListener('click', function(){
+      busyWrap(this, function(){
+        return aAct('day_tick_now',{}).then(function(r){
+          if(r.ok){ toast('أُعيد الحساب ✔'); ADMIN.dayphase(v); } else toast(r.error||'تعذّر', true);
+        });
+      });
+    });
+    $('#dpDec',v).addEventListener('click', function(){
+      sheet('إعلان مرحلة',
+        '<label class="f">المرحلة</label><select class="f" id="dpP">'+
+          DPH.map(function(x){ return '<option value="'+x[0]+'"'+(x[0]===d.phase?' selected':'')+'>'+esc(x[1])+' — '+esc(x[2])+'</option>'; }).join('')+
+        '</select>'+
+        '<label class="f">لمدة (دقائق)</label><select class="f" id="dpM">'+
+          [30,60,120,180,240].map(function(m){ return '<option value="'+m+'"'+(m===60?' selected':'')+'>'+m+' دقيقة</option>'; }).join('')+
+        '</select>'+
+        '<label class="f">السبب (يظهر للفريق وفي السجل)</label>'+
+        '<textarea class="f" id="dpR" rows="2" placeholder="مثال: حجز خاص من ٧ إلى ٩"></textarea>'+
+        '<div class="btnrow"><button class="btn block" id="dpGo">أعلني</button></div>',
+        function(ov, close){
+          $('#dpGo',ov).addEventListener('click', function(){
+            var reason=$('#dpR',ov).value.trim();
+            if(reason.length<4){ toast('اكتبي سبباً واضحاً — الفريق سيقرأه', true); return; }
+            var btn=this;
+            busyWrap(btn, function(){
+              return aAct('day_override',{phase:$('#dpP',ov).value, minutes:+$('#dpM',ov).value, reason:reason})
+                .then(function(r){
+                  if(r.ok){ close(); toast('أُعلنت المرحلة ✔'); ADMIN.dayphase(v); }
+                  else toast(r.error||'تعذّر الإعلان', true);
+                });
+            });
+          });
+        });
+    });
+  });
+};
+
+/* ---------- عنق الزجاجة ---------- */
+ADMIN.bottleneck=function(v){
+  v.innerHTML=skel(2);
+  aAct('ops_bottleneck',{}).then(function(res){
+    var all=res.all||{}, areas=res.by_area||[];
+    function block(b, title){
+      var list=b.bottlenecks||[];
+      return '<div class="card" style="padding:12px">'+
+        '<div class="row" style="justify-content:space-between"><b>'+esc(title)+'</b>'+
+          (b.open_tables!=null?'<span class="chip">'+b.open_tables+' طاولة مشغولة</span>':'')+'</div>'+
+        '<div style="font-size:15px;font-weight:700;margin:5px 0 2px">'+esc(b.headline||'—')+'</div>'+
+        (list.length
+          ? '<div class="cbwhy" style="margin-top:6px">'+list.map(function(x){
+              return '<span>'+esc(x.label||x.kind||'')+(x.minutes!=null?' · '+x.minutes+'د':'')+'</span>';
+            }).join('')+'</div>'
+          : '<div class="muted small">لا اختناق مرصود.</div>')+
+        (b.primary_owner?'<div class="muted small" style="margin-top:6px">الجهة المعنية: '+esc(b.primary_owner)+'</div>':'')+
+      '</div>';
+    }
+    v.innerHTML='<div class="muted small" style="margin-bottom:10px">'+
+        esc(all.note||'مشتق من أزمنة حالات الطاولات — ليس مبيعات ولا نظام طلبات')+'</div>'+
+      block(all,'الكافيه كله')+
+      (areas.length?'<h3 style="margin:14px 2px 8px;font-size:14px">حسب المنطقة</h3>'+
+        areas.map(function(a){ return block(a.detail||{}, a.name||'منطقة'); }).join(''):'');
+  });
+};
+
+/* ---------- أخطاء تقنية ---------- */
+/* الأخطاء تُسجَّل في rko_errors مع رقم مرجعي يُعطى للموظفة. بلا هذه الشاشة
+   يبقى الرقم بلا معنى لأن أحداً لا يستطيع البحث عنه. */
+ADMIN.errors=function(v){
+  v.innerHTML=skel(2);
+  aAct('errors_list',{}).then(function(res){
+    var rows=res.rows||[];
+    v.innerHTML='<div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">'+
+        '<span class="chip'+((res.last_24h||0)>0?' orange':' green')+'">آخر ٢٤ ساعة: '+(res.last_24h||0)+'</span>'+
+        '<span class="chip">الإجمالي: '+(res.total||0)+'</span></div>'+
+      '<div class="muted small" style="margin-bottom:10px">إذا أعطى النظام موظفةً رقماً مرجعياً، ابحثي عنه هنا. '+
+        'الموظفة لا ترى تفاصيل تقنية أبداً — ترى رسالة عربية ورقماً فقط.</div>'+
+      (rows.length
+        ? '<div class="scrollx"><table class="tbl"><tr><th>#</th><th>الوقت</th><th>الإجراء</th><th>من</th><th>الرمز</th><th>الرسالة</th></tr>'+
+          rows.map(function(x){
+            return '<tr><td style="direction:ltr">'+x.id+'</td><td>'+fmtD(x.ts)+' '+fmtT(x.ts)+'</td>'+
+              '<td style="direction:ltr;text-align:left">'+esc(x.action||'—')+'</td><td>'+esc(x.who||'—')+'</td>'+
+              '<td style="direction:ltr">'+esc(x.sqlstate||'—')+'</td>'+
+              '<td class="small">'+esc(x.message||'—')+'</td></tr>';
+          }).join('')+'</table></div>'
+        : '<div class="empty">لا أخطاء مسجّلة — النظام لم يرفع خطأ داخلياً واحداً.</div>');
+  });
+};
+
+/* ---------- سجل قرارات الموقع ---------- */
+/* عن قصد: يُعرض مستوى الثقة والمخاطر لكل قرار. الموقع لا يمنع التلاعب
+   مئة بالمئة، وإخفاء ذلك أخطر من إظهاره. */
+ADMIN.geo=function(v){
+  v.innerHTML=skel(2);
+  aAct('geo_log',{}).then(function(res){
+    var rows=res.rows||[];
+    var RK={low:['green','منخفض'], medium:['orange','متوسط'], high:['red','مرتفع']};
+    var DC={accept:['green','مقبول'], reject:['red','مرفوض'], warn:['orange','بتحذير']};
+    v.innerHTML='<div class="muted small" style="margin-bottom:10px">'+
+        'قرارات قبول أو رفض تسجيل الحضور والانصراف بحسب الموقع. '+
+        '<b>الموقع لا يمنع التلاعب تماماً</b> — دقّة الهاتف تتفاوت، ولذلك يُسجَّل مستوى ثقة ومخاطرة لكل قرار '+
+        'بدل الاكتفاء بنعم/لا. اقرئي العمود الأخير قبل أي حديث مع موظفة.</div>'+
+      (rows.length
+        ? '<div class="scrollx"><table class="tbl"><tr><th>الوقت</th><th>من</th><th>النوع</th><th>القرار</th>'+
+          '<th>المسافة</th><th>الدقّة</th><th>الثقة</th><th>المخاطرة</th></tr>'+
+          rows.map(function(g){
+            var dc=DC[g.decision]||['', g.decision||'—'], rk=RK[g.risk]||['', g.risk||'—'];
+            return '<tr><td>'+fmtD(g.at)+' '+fmtT(g.at)+'</td><td>'+esc(g.who||'—')+'</td>'+
+              '<td>'+(g.kind==='out'?'انصراف':'حضور')+'</td>'+
+              '<td><span class="chip '+dc[0]+'">'+esc(dc[1])+'</span>'+(g.code?'<div class="muted small" style="direction:ltr">'+esc(g.code)+'</div>':'')+'</td>'+
+              '<td>'+(g.distance_m!=null?g.distance_m+' م':'—')+'</td>'+
+              '<td>'+(g.accuracy_m!=null?'±'+g.accuracy_m+' م':'—')+'</td>'+
+              '<td>'+esc(g.confidence||'—')+'</td>'+
+              '<td><span class="chip '+rk[0]+'">'+esc(rk[1])+'</span></td></tr>';
+          }).join('')+'</table></div>'
+        : '<div class="empty">لا قرارات موقع مسجّلة بعد</div>');
   });
 };
 

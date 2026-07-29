@@ -105,6 +105,10 @@
      أفتحها هي paper، فيُعاير اللون عليها: 4.70 على paper و5.11 على surface
      و4.56 على surface-2 — الثلاثة فوق حد AA. (كان 4.43 على paper: راسب) */
   --red:#CF5540; --line:#E1E7DB; --muted:#656F67;
+  /* نص أحمر على خلفية .chip.red — وهي rgba(192,90,60,.14) مركّبة فوق السطح،
+     أي #F4E6DF فعلياً لا لوناً معتماً. --red عليها يعطي 3.43 (راسب)؛ هذا 4.90.
+     ٢٥ موضعاً في الواجهة يستخدم .chip red، فالإصلاح على الرمز لا على الموضع. */
+  --red-ink:#B23A22;
   /* حلقة التركيز: لون داكن جداً يظهر على أي خلفية، وهالة بيضاء تفصله عن
      الأزرار الملوّنة نفسها — لأن الكهرماني وحده يعطي 2.48 مقابل الورقة. */
   --focus:#12301F; --focus-halo:#FFFFFF;
@@ -718,7 +722,7 @@ hr.sep{border:0;border-top:1px dashed var(--line);margin:12px 0}
 .chip{display:inline-block;border-radius:20px;padding:3px 11px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--ink);line-height:1.5}
 .chip.green{background:var(--green-soft);color:var(--green)}
 .chip.orange{background:var(--amber-soft);color:var(--amber-ink)}
-.chip.red{background:rgba(192,90,60,.14);color:var(--red)}
+.chip.red{background:rgba(192,90,60,.14);color:var(--red-ink,var(--red))}
 .chip.ink{background:var(--brand);color:#F4EFE4}
 
 /* ===== نماذج ===== */
@@ -1202,3 +1206,23 @@ nav.bottom :focus-visible{
 }
 /* لا نخفي الحلقة أبداً عند :focus-visible مهما فعلت قاعدة أخرى */
 :focus-visible{outline-color:var(--focus)}
+
+/* ===== شريط مرحلة اليوم (شاشة الموظفة) =====
+   أضيق من بطاقة وأوضح من نص: نقطة حالة + اسم المرحلة + سبب الإعلان.
+   في الذروة يقلب لونه لأن المرحلة نفسها هي التنبيه. */
+.dps{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:9px 12px;margin:0 0 10px;box-shadow:var(--sh-1,none)}
+.dps-d{flex:0 0 auto;width:9px;height:9px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 22%,transparent)}
+.dps-t{font-weight:800;font-size:13.5px;letter-spacing:-.01em}
+.dps-r{font-size:11.5px;color:var(--muted);line-height:1.5;flex:1 1 100%}
+.dps-b{margin-inline-start:auto;font-size:10.5px;font-weight:700;color:var(--amber-ink);
+  background:var(--amber-soft);border-radius:20px;padding:2px 9px}
+.dps.hot{border-color:var(--amber);background:var(--amber-soft)}
+.dps.hot .dps-d{background:var(--amber);box-shadow:0 0 0 3px color-mix(in srgb,var(--amber) 26%,transparent);
+  animation:dpspulse 1.6s ease-in-out infinite}
+.dps.hot .dps-t{color:var(--amber-ink)}
+.dps.hot .dps-r{color:var(--amber-ink);opacity:.85}
+@keyframes dpspulse{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--amber) 0%,transparent)}}
+@media (prefers-reduced-motion: reduce){ .dps.hot .dps-d{animation:none} }
