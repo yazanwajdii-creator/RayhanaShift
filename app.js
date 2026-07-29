@@ -1481,7 +1481,10 @@ var TMACT = {
 };
 
 var TM = {area:null, data:null, timer:null, tick:null, admin:false,
-          view:'floor', filter:'all', st:null, emp:null, skew:0, sel:null, busy:false};
+          view:'floor', filter:'all', st:null, emp:null, skew:0, sel:null, busy:false,
+          /* وضع الدمج: مجموعة كبيرة تجلس على طاولتين ملتصقتين فتُعامَلان كوحدة
+             واحدة. merge = الوضع مفعّل، pick = مفاتيح الطاولات المختارة. */
+          merge:false, pick:{}};
 
 function tmIc(k){ return '<span class="ti">'+(TIC[k]||'')+'</span>'; }
 function tmInitials(n){
@@ -1601,7 +1604,8 @@ function tmTile(x){
           : busy && x.guests ? (+x.guests) + ' ضيفات'
           : st.sh;
   return '<button class="tt '+esc(x.type || '')+(u >= 3 ? ' urg' : '')+(x.oos ? ' oos' : '')+
-      (x.group_id ? ' grouped' : '')+'" data-t="'+x.id+'" style="--tcol:'+st.solid+'" '+
+      (x.group_id ? ' grouped' : '')+(TM.merge && TM.pick[x.id] ? ' sel' : '')+
+      '" data-t="'+x.id+'" style="--tcol:'+st.solid+'" '+
       'aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+(x.owner ? ' — '+esc(x.owner) : '')+
       (busy && x.mins ? ' — '+tmDur(x.mins) : '')+'">'+
     fl+
@@ -1711,9 +1715,42 @@ function tmRender(){
       return '<option value="'+r.employee_id+'"'+(String(TM.emp) === String(r.employee_id) ? ' selected' : '')+'>'+
              esc(r.name)+' ('+r.active+')</option>';
     }).join('')+'</select>'+
+    (TM.admin ? '<button class="tfl-b'+(TM.merge ? ' on' : '')+'" id="tmMerge">دمج طاولات</button>' : '')+
     '<button class="tfl-v" id="tmView" title="'+(TM.view === 'plan' ? 'عرض الأرضية' : (TM.view === 'floor' ? 'عرض التفاصيل' : 'عرض المخطط'))+'">'+
     tmIc(TM.view === 'floor' ? 'map' : (TM.view === 'plan' ? 'list' : 'grid'))+'</button>'+
     '</div>';
+
+  /* شريط الدمج: يظهر فقط داخل الوضع، ويقول بوضوح ما يُختار وما لا يُختار */
+  if(TM.admin && TM.merge){
+    var picked = all.filter(function(x){ return TM.pick[x.id]; });
+    h += '<div class="tmg"><div class="tmg-h">'+tmIc('handover')+
+      '<b>اختاري طاولتين متجاورتين أو أكثر</b></div>'+
+      '<div class="tmg-n">تُدمج المتاحة غير المدموجة فقط. الدمج ليوم واحد ويُفصل تلقائياً عند الإقفال، '+
+        'ويُسجَّل في أحداث الطاولات.</div>'+
+      '<div class="tmg-p">'+(picked.length
+        ? picked.map(function(x){ return '<span>'+(+x.no)+'</span>'; }).join('')
+        : '<span class="tmg-e">لم تُختر طاولة بعد</span>')+'</div>'+
+      '<div class="btnrow"><button class="btn grow" id="tmgGo"'+(picked.length < 2 ? ' disabled' : '')+'>'+
+        'دمج '+(picked.length || '')+'</button>'+
+        '<button class="btn ghost grow" id="tmgX">إلغاء</button></div></div>';
+  }
+
+  /* المجموعات القائمة: نُشتقّها من group_id على الطاولات نفسها — لا نداء إضافي */
+  if(TM.admin && !TM.merge){
+    var gm = {};
+    all.forEach(function(x){ if(x.group_id){ (gm[x.group_id] = gm[x.group_id] || []).push(x); } });
+    var gks = Object.keys(gm);
+    if(gks.length){
+      h += '<div class="tmg"><div class="tmg-h">'+tmIc('handover')+'<b>طاولات مدموجة الآن</b></div>'+
+        gks.map(function(g){
+          var nos = gm[g].map(function(x){ return +x.no; }).sort(function(a,b){ return a-b; });
+          return '<div class="row" style="justify-content:space-between;gap:8px;margin-top:8px">'+
+            '<div class="tmg-p" style="margin:0">'+nos.map(function(n){ return '<span>'+n+'</span>'; }).join('')+'</div>'+
+            '<button class="btn ghost" data-ungrp="'+esc(g)+'" data-nos="'+esc(nos.join(' + '))+'">فصل</button>'+
+          '</div>';
+        }).join('')+'</div>';
+    }
+  }
 
   /* مفتاح الألوان يسبق الأرضية: اللون يصير مفهوماً قبل أن يُقرأ */
   if(TM.view === 'floor') h += tmLegend(all);
@@ -1776,7 +1813,51 @@ function tmRender(){
   host.innerHTML = h;
 
   $$('[data-t]', host).forEach(function(b){
-    b.addEventListener('click', function(){ tmDetail(+b.getAttribute('data-t')); });
+    b.addEventListener('click', function(){
+      var id = +b.getAttribute('data-t');
+      /* داخل وضع الدمج النقر يختار، لا يفتح التفاصيل — وإلا لن تُفهم الشاشة */
+      if(TM.admin && TM.merge){
+        var t = null;
+        (TM.data.tables || []).forEach(function(x){ if(+x.id === id) t = x; });
+        if(!t) return;
+        if(t.oos){ toast('طاولة موقوفة عن الخدمة — لا تُدمج', true); return; }
+        if(t.group_id){ toast('هذه الطاولة مدموجة أصلاً — افصليها أولاً', true); return; }
+        if(tmState(t) !== 'free'){ toast('الدمج للطاولات المتاحة فقط', true); return; }
+        if(TM.pick[id]) delete TM.pick[id]; else TM.pick[id] = true;
+        tmRender();
+        return;
+      }
+      tmDetail(id);
+    });
+  });
+  var mb2 = $('#tmMerge', host);
+  if(mb2) mb2.addEventListener('click', function(){
+    TM.merge = !TM.merge; TM.pick = {}; tmRender();
+  });
+  var mgX = $('#tmgX', host);
+  if(mgX) mgX.addEventListener('click', function(){ TM.merge = false; TM.pick = {}; tmRender(); });
+  var mgGo = $('#tmgGo', host);
+  if(mgGo) mgGo.addEventListener('click', function(){
+    var ids = Object.keys(TM.pick).map(Number);
+    if(ids.length < 2){ toast('اختاري طاولتين على الأقل', true); return; }
+    busyWrap(this, function(){
+      return aAct('tbl_group', {area_id: TM.area, tables: ids}).then(function(r){
+        if(r && r.ok){ TM.merge = false; TM.pick = {}; toast('دُمجت الطاولات ✔'); tmLoad(TM.area); }
+        else toast((r && r.error) || 'تعذّر الدمج', true);
+      });
+    });
+  });
+  $$('[data-ungrp]', host).forEach(function(b){
+    b.addEventListener('click', function(){
+      var gid = b.getAttribute('data-ungrp'), nos = b.getAttribute('data-nos');
+      confirmSheet('فصل ' + nos, 'تعود كل طاولة وحدةً مستقلة، ويُسجَّل الفصل في أحداث اليوم. تابعي؟',
+        'افصلي', function(){
+          aAct('tbl_ungroup', {group_id: gid}).then(function(r){
+            if(r && r.ok){ toast('فُصلت الطاولات ✔'); tmLoad(TM.area); }
+            else toast((r && r.error) || 'تعذّر الفصل', true);
+          });
+        });
+    });
   });
   $$('[data-f]', host).forEach(function(b){
     b.addEventListener('click', function(){ TM.filter = b.getAttribute('data-f'); tmRender(); });
@@ -1969,6 +2050,7 @@ function tmLoad(areaId, quiet){
 
 function tmOpen(areaId, areaName, isAdmin){
   TM.admin = !!isAdmin; TM.filter = 'all'; TM.emp = null; TM.data = null;
+  TM.merge = false; TM.pick = {};
   sheet('مركز الطاولات — ' + areaName, '<div id="tmHost">'+skel(3)+'</div>', function(ov, close){
     tmLoad(areaId);
     /* النبضة تعطي الفورية، والاستطلاع يتباعد إلى دقيقة كاحتياط فقط */
@@ -2433,10 +2515,33 @@ function prepRemain(exp){ var ms=new Date(exp).getTime()-Date.now(); if(ms<=0) r
 /* بطاقة الطاولات تظهر فقط للموظفة المكلفة بمنطقة طاولات — لا خيار دائم للجميع */
 function loadTablesCard(){
   var w = $('#tblWrap'); if(!w) return;
-  sAct('tbl_areas', {}).then(function(r){
+  /* «طاولاتي» أولاً ثم المنطقة: الموظفة تحتاج أن تعرف ما هو مسؤوليتها هي
+     قبل خريطة المنطقة كلها. الإسناد يأتي من مسؤولية الطاولات التي تحدّدها
+     الإدارة، فلا اجتهاد في الواجهة. */
+  Promise.all([sAct('tbl_areas', {}), sAct('tbl_my_duty', {})]).then(function(rr){
+    var r = rr[0] || {}, duty = ((rr[1] || {}).tables) || [];
     var mine = ((r && r.areas) || []).filter(function(a){ return a.allowed; });
-    if(!mine.length){ w.innerHTML = ''; return; }
-    w.innerHTML = '<div class="card"><h3>خريطة الطاولات</h3>'+
+    if(!mine.length && !duty.length){ w.innerHTML = ''; return; }
+    var anames = {};
+    ((r && r.areas) || []).forEach(function(a){ anames[a.id] = a.name; });
+    var mineHtml = '';
+    if(duty.length){
+      var byA = {};
+      duty.forEach(function(t){ (byA[t.area_id] = byA[t.area_id] || []).push(t); });
+      mineHtml = '<div class="card"><h3>طاولاتي اليوم <span class="chip">'+duty.length+'</span></h3>'+
+        '<div class="muted small" style="margin-bottom:9px">الطاولات المسندة إليكِ من الإدارة. '+
+          'اللون هو حالتها الآن — اضغطي المنطقة أدناه لتحديثها.</div>'+
+        Object.keys(byA).map(function(aid){
+          return '<div class="mydt-a">'+esc(anames[aid] || 'منطقة')+'</div>'+
+            '<div class="mydt">'+byA[aid].map(function(t){
+              var st = TMS[t.state] || TMS.free;
+              return '<span class="mydt-t" style="--tcol:'+st.solid+'" '+
+                'title="'+esc(st.ar)+'"><b>'+(+t.no)+'</b><span>'+esc(st.sh || st.ar)+'</span></span>';
+            }).join('')+'</div>';
+        }).join('')+'</div>';
+    }
+    if(!mine.length){ w.innerHTML = mineHtml; return; }
+    w.innerHTML = mineHtml + '<div class="card"><h3>خريطة الطاولات</h3>'+
       '<div class="muted small" style="margin-bottom:8px">حدّثي حالة الطاولة بضغطة — يقرأ النظام منها ضغط منطقتك.</div>'+
       mine.map(function(a){
         var open = a.open && a.open.open;
@@ -4439,11 +4544,40 @@ ADMIN.roster=function(v){
 /* خريطة الطاولات للإدارة: متابعة المنطقتين + وضع تعديل التخطيط والترقيم */
 ADMIN.tables=function(v){
   v.innerHTML=skel(3);
-  aAct('tbl_areas',{}).then(function(res){
+  /* تنبيهات كل المناطق معاً: المالكة تفتح هذه الشاشة أولاً، فيجب أن ترى ما
+     يحتاج تدخلاً قبل أن تختار منطقة — لا أن تدخل كل منطقة لتكتشف. */
+  Promise.all([aAct('tbl_areas',{}), aAct('tbl_alerts',{})]).then(function(rr){
+    var res=rr[0]||{}, alr=rr[1]||{};
     var as=(res&&res.areas)||[];
     if(!as.length){ v.innerHTML='<div class="empty">لا توجد مناطق طاولات مُعرَّفة</div>'; return; }
     var BANDS={quiet:'هادئ',normal:'طبيعي',high:'مرتفع',peak:'ذروة',closed:'مغلقة',unknown:'غير معروف'};
-    v.innerHTML=as.map(function(a){
+    var alerts=(alr&&alr.alerts)||[], lrows=((alr&&alr.load)||{}).rows||[];
+    var head='';
+    if(alerts.length){
+      head='<div class="tal"><div class="tal-h">'+tmIc('alert')+'يحتاج تدخلاً الآن <span>'+alerts.length+'</span></div>'+
+        '<div class="tal-list">'+alerts.slice(0,6).map(function(a){
+          return '<div class="tal-i sev-'+esc(a.sev||'')+'"><b>'+esc(a.title||'')+'</b>'+
+            '<span>'+esc(a.why||'')+(a.owner?' · '+esc(a.owner):'')+'</span></div>';
+        }).join('')+'</div></div>';
+    } else {
+      head='<div class="card" style="padding:11px 12px;margin-bottom:10px">'+
+        '<span class="chip green">لا شيء يحتاج تدخلاً الآن</span>'+
+        '<div class="muted small" style="margin-top:5px">التنبيهات تُحتسب داخل ساعات الخدمة فقط.</div></div>';
+    }
+    if(lrows.length){
+      var mx=Math.max.apply(null, lrows.map(function(z){return z.active;}))||1;
+      head+='<div class="tload" style="margin-bottom:10px"><div class="tload-h">توزيع الحمل الآن</div>'+
+        lrows.map(function(r){
+          return '<div class="tload-r"><span class="tc-av">'+esc(tmInitials(r.name))+'</span>'+
+            '<span class="tload-n">'+esc(r.name)+'</span>'+
+            '<span class="tload-bar"><i style="width:'+Math.round(r.active/mx*100)+'%"></i></span>'+
+            '<span class="tload-v">'+r.active+'/'+r.tables+'</span></div>';
+        }).join('')+'</div>';
+    }
+    head+='<div class="btnrow" style="margin-bottom:12px"><button class="btn ghost grow" id="tbVfNow">أطلقي سؤال تحقق الآن</button></div>'+
+      '<div class="muted small" style="margin-bottom:12px">سؤال التحقق يُرسل للمسؤولة عن طاولة تأخّر تحديثها: '+
+        '«هل الطاولة ما زالت كذا؟» بضغطة واحدة. الاختلاف مؤشر على تأخر التحديث لا دليل تقصير، ولا يدخل تقييم أحد.</div>';
+    v.innerHTML=head+as.map(function(a){
       var open=a.open&&a.open.open, pr=a.pressure||{};
       return '<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start">'+
         '<div><b>'+esc(a.name)+'</b>'+
@@ -4451,15 +4585,52 @@ ADMIN.tables=function(v){
           '<div style="margin-top:5px"><span class="chip'+(open?' green':'')+'">'+(open?'مفتوحة':'مغلقة الآن')+'</span>'+
           (pr.counted?'<span class="chip">الضغط: '+esc(BANDS[pr.band]||pr.band)+'</span>':'')+'</div></div>'+
         '</div>'+
-        '<div class="btnrow" style="margin-top:9px">'+
-        '<button class="btn sm" data-tv="'+a.id+'" data-nm="'+esc(a.name)+'">عرض الخريطة</button>'+
+        /* هرمية: «عرض الخريطة» هو الفعل الذي تفتح الإدارة الشاشة من أجله في
+           تسع مرات من عشر، فيأخذ عرض البطاقة كاملاً. ما بعده إعداد ومراجعة
+           تُفتح أحياناً، فتُطوى في صف ثانوي بدل سبعة أزرار متساوية الوزن
+           تجعل الشاشة جداراً من الخيارات على ٣٦٠px. */
+        '<div class="btnrow" style="margin-top:10px">'+
+        '<button class="btn block" data-tv="'+a.id+'" data-nm="'+esc(a.name)+'">عرض الخريطة</button></div>'+
+        (!open?'<div class="btnrow" style="margin-top:6px"><button class="btn ghost block" data-to="'+a.id+'" data-nm="'+esc(a.name)+'">فتح المنطقة مبكراً</button></div>':'')+
+        '<details class="acc" style="margin-top:8px"><summary>إعداد ومراجعة<span class="chev">‹</span></summary>'+
+        '<div class="btnrow" style="flex-wrap:wrap;margin-top:8px">'+
         '<button class="btn sm ghost" data-td="'+a.id+'" data-nm="'+esc(a.name)+'">مسؤولية الطاولات</button>'+
         '<button class="btn sm ghost" data-te="'+a.id+'" data-nm="'+esc(a.name)+'">تعديل التخطيط</button>'+
-        (!open?'<button class="btn sm ghost" data-to="'+a.id+'" data-nm="'+esc(a.name)+'">فتح مبكر</button>':'')+
-        '<button class="btn sm ghost" data-th="'+a.id+'">السجل</button>'+
+        '<button class="btn sm ghost" data-tlv="'+a.id+'" data-nm="'+esc(a.name)+'">نسخ التخطيط</button>'+
+        '<button class="btn sm ghost" data-th="'+a.id+'">سجل الأحداث</button>'+
         '<button class="btn sm ghost" data-tvf="'+a.id+'">أسئلة التحقق</button>'+
-        '</div></div>';
+        '</div></details></div>';
     }).join('');
+
+    /* إطلاق دورة تحقق فوراً بدل انتظار الدورة المجدولة */
+    $('#tbVfNow',v).addEventListener('click', function(){
+      var btn=this;
+      busyWrap(btn, function(){
+        return aAct('tbl_verify_now',{}).then(function(r){
+          if(!r || !r.ok){ toast((r&&r.error)||'تعذّر الإطلاق', true); return; }
+          if(r.skipped==='disabled'){ toast('أسئلة التحقق مُعطّلة من الإعدادات', true); return; }
+          var n=r.made!=null?r.made:((r.checks||[]).length||0);
+          toast(n? ('أُرسل '+n+' سؤال ✔') : 'لا طاولة تأخّر تحديثها الآن');
+        });
+      });
+    });
+
+    /* نسخ التخطيط: من غيّر ترتيب الطاولات ومتى — التخطيط يمسّ الترقيم كله */
+    $$('[data-tlv]',v).forEach(function(b){ b.addEventListener('click', function(){
+      var aid=+b.getAttribute('data-tlv'), nm=b.getAttribute('data-nm');
+      aAct('tbl_layout_versions',{area_id:aid}).then(function(r){
+        var vs=(r&&r.versions)||[];
+        sheet('نسخ تخطيط '+nm, vs.length
+          ? vs.map(function(x){
+              return '<div style="padding:8px 0;border-bottom:1px dashed var(--line)">'+
+                '<b>نسخة '+(+x.version)+'</b>'+(x.current?' <span class="chip green">الحالية</span>':'')+
+                '<div class="muted small">'+esc(x.by||'—')+' · '+fmtD(x.at)+' '+fmtT(x.at)+'</div>'+
+                (x.note?'<div class="small">'+esc(x.note)+'</div>':'')+'</div>';
+            }).join('')+'<div class="muted small" style="margin-top:9px">كل حفظ للتخطيط ينشئ نسخة جديدة، '+
+              'فيبقى أثر من غيّر الترتيب ولماذا.</div>'
+          : '<div class="empty">لا نسخ محفوظة — التخطيط ما زال على حالته الأولى</div>');
+      });
+    });});
 
     $$('[data-tv]',v).forEach(function(b){ b.addEventListener('click', function(){
       tmOpen(+b.getAttribute('data-tv'), b.getAttribute('data-nm'), true); }); });

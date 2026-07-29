@@ -1226,3 +1226,31 @@ nav.bottom :focus-visible{
 .dps.hot .dps-r{color:var(--amber-ink);opacity:.85}
 @keyframes dpspulse{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--amber) 0%,transparent)}}
 @media (prefers-reduced-motion: reduce){ .dps.hot .dps-d{animation:none} }
+
+/* ===== دمج وفصل الطاولات (الإدارة) =====
+   مجموعة كبيرة تجلس على طاولتين ملتصقتين: تُعامَلان وحدةً واحدة ليوم واحد.
+   الشريط يشرح ما يُختار وما لا يُختار قبل الضغط، لا بعد رسالة خطأ. */
+.tmg{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:12px;margin:0 0 10px}
+.tmg-h{display:flex;align-items:center;gap:7px;font-size:14px}
+.tmg-h .ti{flex:0 0 auto;color:var(--brand)}
+.tmg-n{font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:5px}
+.tmg-p{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}
+.tmg-p span{min-width:34px;min-height:34px;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--green-soft);color:var(--brand);border-radius:10px;
+  font-weight:800;font-variant-numeric:tabular-nums;font-size:14px}
+.tmg-p span.tmg-e{background:none;color:var(--muted);font-weight:600;font-size:12px;min-width:0;
+  justify-content:flex-start}
+/* الطاولة المختارة: إطار سميك بلون التركيز نفسه — لا لون جديد يربك المفتاح */
+.tt.sel{outline:3px solid var(--focus);outline-offset:2px;box-shadow:0 0 0 2px var(--focus-halo)}
+.tt.sel .tt-no{text-decoration:underline;text-underline-offset:3px}
+
+/* ===== طاولاتي (شاشة الموظفة) =====
+   شرائح صغيرة بلون الحالة نفسه الذي تعرفه من الأرضية — لا مفردات لونية ثانية. */
+.mydt-a{font-size:11px;font-weight:700;color:var(--muted);margin:8px 0 5px}
+.mydt{display:flex;flex-wrap:wrap;gap:7px}
+.mydt-t{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:52px;min-height:48px;padding:5px 8px;border-radius:12px;
+  border:1.5px solid var(--tcol);background:color-mix(in srgb,var(--tcol) 12%,var(--surface))}
+.mydt-t b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--ink)}
+.mydt-t span{font-size:9.5px;font-weight:700;color:var(--tcol);margin-top:2px;white-space:nowrap}
