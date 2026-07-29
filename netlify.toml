@@ -16,3 +16,14 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    # منع تضمين التطبيق داخل إطار في موقع آخر (clickjacking)
+    Content-Security-Policy = "frame-ancestors 'none'"
+    X-Frame-Options = "DENY"
+    # لا نطلب صلاحيات لا نستخدمها؛ الكاميرا والميكروفون والموقع للأصل نفسه فقط
+    Permissions-Policy = "geolocation=(self), microphone=(self), camera=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    # سياسة المحتوى الكاملة تبدأ بوضع الإبلاغ فقط حتى نرصد أي كسر قبل الفرض.
+    # التطبيق ملف واحد بسكربت داخلي، لذا 'unsafe-inline' لازم حالياً؛
+    # الخطوة التالية بعد تفكيك الملف هي نقلها إلى Enforcement بـ hashes.
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'"

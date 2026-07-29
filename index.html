@@ -797,7 +797,7 @@ nav.bottom button.on{position:relative}
 .ptt:active{transform:scale(.94)}
 .ptt.rec{background:linear-gradient(180deg,#E4573C,#C0392B);transform:scale(1.6);box-shadow:0 0 0 10px rgba(224,87,60,.22),0 10px 26px rgba(192,57,43,.55);animation:pttpulse 1s infinite}
 @keyframes pttpulse{50%{box-shadow:0 0 0 18px rgba(224,87,60,.05),0 10px 26px rgba(192,57,43,.55)}}
-var BUILD = "2026-07-28.6";
+var BUILD = "2026-07-29.1";
 var BUILD = "2026-07-28.5";
   padding:8px 13px;font-size:12.5px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.32);display:none;max-width:62vw}
 .ptt-toast.show{display:block;animation:tin .2s}
@@ -1093,25 +1093,111 @@ function saveSess(){ try{ localStorage.setItem('rko_sess', JSON.stringify({token
 function loadSess(){ try{ var v=JSON.parse(localStorage.getItem('rko_sess')||'null'); if(v&&v.token){ S.token=v.token; S.role=v.role; S.me=v.me; } }catch(e){} }
 function clearSess(){ S.token=null; S.role=null; S.me=null; S.state=null; try{ localStorage.removeItem('rko_sess'); }catch(e){} }
 
-/* ---------- طابور العمليات دون اتصال ---------- */
-function qGet(){ try{ return JSON.parse(localStorage.getItem('rko_q')||'[]'); }catch(e){ return []; } }
-function qSet(a){ try{ localStorage.setItem('rko_q', JSON.stringify(a)); }catch(e){} updateDot(); }
-function qPush(fn, action, p){ var a=qGet(); a.push({fn:fn, action:action, p:p, ts:Date.now()}); qSet(a); }
+/* ---------- طابور العمليات دون اتصال —  IndexedDB ----------
+   localStorage متزامن ومحدود ويُمسح تحت ضغط الذاكرة، وقد يفقد عمليات الموظفة.
+   IndexedDB معاملاتي ولا يُمسح بسهولة، فالعملية المؤجلة لا تضيع.
+   يبقى localStorage احتياطاً لو تعذّر فتح القاعدة. */
+var QDB = null, QMEM = null;
+function qOpen(){
+  if(QDB) return Promise.resolve(QDB);
+  return new Promise(function(res){
+    try{
+      var rq = indexedDB.open('rko_ops', 1);
+      rq.onupgradeneeded = function(e){
+        var db = e.target.result;
+        if(!db.objectStoreNames.contains('q')) db.createObjectStore('q', {keyPath:'id', autoIncrement:true});
+      };
+      rq.onsuccess = function(e){ QDB = e.target.result; res(QDB); };
+      rq.onerror   = function(){ res(null); };
+      setTimeout(function(){ res(QDB); }, 2500);   /* لا نعلّق الواجهة */
+    }catch(e){ res(null); }
+  });
+}
+function qLegacy(){ try{ return JSON.parse(localStorage.getItem('rko_q')||'[]'); }catch(e){ return []; } }
+function qGetAsync(){
+  return qOpen().then(function(db){
+    if(!db) return qLegacy();
+    return new Promise(function(res){
+      try{
+        var tx = db.transaction('q','readonly').objectStore('q').getAll();
+        tx.onsuccess = function(){ res(tx.result || []); };
+        tx.onerror   = function(){ res(qLegacy()); };
+      }catch(e){ res(qLegacy()); }
+    });
+  });
+}
+/* نسخة متزامنة للعدّاد فقط — تُحدَّث بعد كل عملية */
+function qGet(){ return QMEM || qLegacy(); }
+function qRefreshCount(){ return qGetAsync().then(function(a){ QMEM = a; updateDot(); return a; }); }
+
+function qPush(fn, action, p){
+  var item = {fn:fn, action:action, p:p, ts:Date.now(), op_id:(p && p.op_id) || uid()};
+  return qOpen().then(function(db){
+    if(!db){ var a=qLegacy(); a.push(item); try{ localStorage.setItem('rko_q', JSON.stringify(a)); }catch(e){} return; }
+    return new Promise(function(res){
+      try{
+        var tx = db.transaction('q','readwrite');
+        tx.objectStore('q').add(item);
+        tx.oncomplete = function(){ res(); };
+        tx.onerror    = function(){ res(); };
+      }catch(e){ res(); }
+    });
+  }).then(qRefreshCount);
+}
+function qDrop(item){
+  return qOpen().then(function(db){
+    if(!db || item.id === undefined){
+      var a = qLegacy(); a.shift();
+      try{ localStorage.setItem('rko_q', JSON.stringify(a)); }catch(e){}
+      return;
+    }
+    return new Promise(function(res){
+      try{
+        var tx = db.transaction('q','readwrite');
+        tx.objectStore('q').delete(item.id);
+        tx.oncomplete = function(){ res(); }; tx.onerror = function(){ res(); };
+      }catch(e){ res(); }
+    });
+  });
+}
 var syncing=false;
 function qSync(){
-  if(syncing) return; var a=qGet(); if(!a.length || !navigator.onLine) return;
-  syncing=true;
-  var item=a[0];
-  rawRpc(item.fn, item.action, item.p).then(function(res){
-    syncing=false;
-    if(res && res.relogin){ clearSess(); renderLogin(); toast('انتهت الجلسة — سجلي الدخول لتكملة المزامنة', true); return; }
-    if(res && (res.ok || res.error)){
-      if(res.error) toast('رُفضت عملية مؤجلة: '+res.error, true);
-      a.shift(); qSet(a);
-      if(a.length) qSync(); else { toast('تمت مزامنة العمليات المؤجلة'); refresh(); }
-    }
+  if(syncing || !navigator.onLine) return;
+  syncing = true;
+  qGetAsync().then(function(a){
+    if(!a.length){ syncing=false; QMEM=a; updateDot(); return; }
+    var item = a[0];
+    return rawRpc(item.fn, item.action, item.p).then(function(res){
+      if(res && res.relogin){
+        syncing=false; clearSess(); renderLogin();
+        toast('انتهت الجلسة — سجلي الدخول لتكملة المزامنة', true); return;
+      }
+      /* لا نحذف إلا بعد ردّ فعلي من الخادم — لا نجاح كاذب */
+      if(res && (res.ok || res.error)){
+        if(res.error) toast('رُفضت عملية مؤجلة: '+res.error, true);
+        return qDrop(item).then(qRefreshCount).then(function(rest){
+          syncing = false;
+          if(rest.length) qSync();
+          else { toast('تمت مزامنة العمليات المؤجلة'); refresh(); }
+        });
+      }
+      syncing = false;
+    });
   }).catch(function(){ syncing=false; });
 }
+/* ترحيل ما تبقّى في localStorage مرة واحدة */
+(function migrateQueue(){
+  var old = qLegacy();
+  if(!old.length) return;
+  qOpen().then(function(db){
+    if(!db) return;
+    try{
+      var st = db.transaction('q','readwrite').objectStore('q');
+      old.forEach(function(x){ st.add(x); });
+      localStorage.removeItem('rko_q');
+    }catch(e){}
+  }).then(qRefreshCount);
+})();
 window.addEventListener('online', function(){ updateDot(); qSync(); });
 window.addEventListener('offline', updateDot);
 function updateDot(){ var d=$('#syncdot'); if(!d) return; var pending=qGet().length; d.className = (navigator.onLine&&!pending) ? 'dot' : 'dot off'; d.title = pending? pending+' عملية بانتظار المزامنة' : (navigator.onLine?'متصل':'دون اتصال'); }
@@ -2098,6 +2184,66 @@ function drawTab(){
 }
 function animIn(el){ if(!el) return; el.classList.remove('vin'); void el.offsetWidth; el.classList.add('vin'); }
 
+
+/* ================= Realtime: نبضة تغيير بلا بيانات =================
+   جداول RKO كلها deny-all، فلا يجوز الاشتراك المباشر بها. نشترك بقناة
+   rko_rt_pulse التي تحمل نوع الحدث ومنطقة ومعرّفاً فقط — بلا محتوى —
+   ثم نعيد الجلب عبر البوابة. الاستطلاع يبقى احتياطاً بطيئاً. */
+var RT = {sock:null, on:false, subs:[], tries:0, timer:null};
+
+function rtOn(kind, cb){ RT.subs.push({kind:kind, cb:cb}); }
+function rtFire(row){
+  RT.subs.forEach(function(s){
+    if(s.kind === '*' || s.kind === row.kind){ try{ s.cb(row); }catch(e){} }
+  });
+}
+function rtConnect(){
+  if(RT.sock || !S.token) return;
+  var key = getKey(), url;
+  try{ url = CONFIG.SUPABASE_URL.replace(/^http/, 'ws') + '/realtime/v1/websocket?apikey=' +
+             encodeURIComponent(key) + '&vsn=1.0.0'; }catch(e){ return; }
+  var sock;
+  try{ sock = new WebSocket(url); }catch(e){ return; }
+  RT.sock = sock;
+  var ref = 0, hb;
+
+  sock.onopen = function(){
+    RT.on = true; RT.tries = 0;
+    sock.send(JSON.stringify({
+      topic:'realtime:rko', event:'phx_join', ref:String(++ref),
+      payload:{config:{postgres_changes:[{event:'INSERT', schema:'public', table:'rko_rt_pulse'}]}}
+    }));
+    hb = setInterval(function(){
+      if(sock.readyState === 1)
+        sock.send(JSON.stringify({topic:'phoenix', event:'heartbeat', payload:{}, ref:String(++ref)}));
+    }, 25000);
+  };
+  sock.onmessage = function(e){
+    var m; try{ m = JSON.parse(e.data); }catch(x){ return; }
+    if(m.event === 'postgres_changes' && m.payload && m.payload.data && m.payload.data.record){
+      rtFire(m.payload.data.record);
+    }
+  };
+  function down(){
+    clearInterval(hb); RT.on = false; RT.sock = null;
+    /* تراجع أسّي مع سقف — لا نغرق الشبكة */
+    RT.tries = Math.min(RT.tries + 1, 6);
+    clearTimeout(RT.timer);
+    RT.timer = setTimeout(function(){ if(S.token && !document.hidden) rtConnect(); }, 1000 * Math.pow(2, RT.tries));
+  }
+  sock.onclose = down;
+  sock.onerror = function(){ try{ sock.close(); }catch(e){} };
+}
+function rtStop(){
+  clearTimeout(RT.timer);
+  if(RT.sock){ try{ RT.sock.onclose = null; RT.sock.close(); }catch(e){} }
+  RT.sock = null; RT.on = false; RT.subs = [];
+}
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden) return;
+  if(S.token && !RT.sock) rtConnect();
+});
+
 /* ================= مركز إدارة الطاولات =================
    أداة تشغيل ضيافة: الحالة والوقت والمسؤولة في أماكن ثابتة، تُقرأ في ثانيتين
    عند 25 طاولة. ليست POS: لا أسعار ولا طلبات ولا مبيعات. */
@@ -2589,6 +2735,15 @@ function tmOpen(areaId, areaName, isAdmin){
   TM.admin = !!isAdmin; TM.filter = 'all'; TM.emp = null; TM.data = null;
   sheet('مركز الطاولات — ' + areaName, '<div id="tmHost">'+skel(3)+'</div>', function(ov, close){
     tmLoad(areaId);
+    /* النبضة تعطي الفورية، والاستطلاع يتباعد إلى دقيقة كاحتياط فقط */
+    rtConnect();
+    rtOn('table_state', function(row){
+      if(+row.area_id !== +areaId) return;
+      if(!document.body.contains(ov)) return;
+      if(document.querySelectorAll('.overlay').length > 1) return;
+      clearTimeout(TM.rt);
+      TM.rt = setTimeout(function(){ tmLoad(areaId, true); }, 400);  /* تجميع النبضات المتقاربة */
+    });
     clearInterval(TM.timer); clearInterval(TM.tick);
     /* عدّاد محلي كل ٣٠ ثانية، ومزامنة كل ١٥ ثانية — بلا استطلاع في الخلفية */
     TM.tick = setInterval(function(){
@@ -2600,7 +2755,7 @@ function tmOpen(areaId, areaName, isAdmin){
       if(document.hidden) return;
       if(document.querySelectorAll('.overlay').length > 1) return;  /* لا تحديث أثناء إجراء مفتوح */
       tmLoad(areaId, true);
-    }, 15000);
+    }, RT.on ? 60000 : 15000);
   });
 }
 
