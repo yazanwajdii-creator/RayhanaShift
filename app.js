@@ -689,6 +689,8 @@ var MI={
   bottleneck: svgi('<path d="M5 4h14l-5 7v6l-4 2v-8L5 4Z"/>'),
   geo: svgi('<path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10Z"/><circle cx="12" cy="11" r="2.2"/>'),
   errors: svgi('<path d="M12 4.5 21 19H3L12 4.5Z"/><path d="M12 10v4M12 16.5v.5"/>'),
+  assignkpi: svgi('<path d="M4 20V4M4 20h16"/><path d="M7 16l4-5 3 3 5-7"/>'),
+  availability: svgi('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/>'),
   board: svgi('<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>'),
   live:  svgi('<path d="M5 12a7 7 0 0 1 14 0"/><path d="M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1"/>'),
   broadcast: svgi('<path d="M4 10v4M8 8l9-4v16l-9-4M8 8v8"/>'),
@@ -1349,7 +1351,7 @@ function drawTab(){
   else if(S.tab==='grow'){ v.innerHTML=skel(3); loadGrow(v); }
   else v.innerHTML=viewMore();
   wireTab(v); animIn(v);
-  if(S.tab==='now'){ loadPrepCard(); loadOpsCard(); loadTablesCard(); loadVerifyCard(); loadContribCard(); }
+  if(S.tab==='now'){ loadPrepCard(); loadOpsCard(); loadTablesCard(); loadVerifyCard(); loadContribCard(); loadSignalsCard(); }
   if($('#vn_nt',v)) voiceWire(v,'nt');
   if($('#vn_is',v)) voiceWire(v,'is');
 }
@@ -2178,8 +2180,22 @@ function contribSheet(){
     '<div class="cb-two">'+
       '<button class="cb-opt" data-k="live"><b>سأساعد الآن</b><span>يبدأ المؤقت ويُحدَّث حِملك</span></button>'+
       '<button class="cb-opt" data-k="after"><b>أنجزت عملاً إضافياً</b><span>تسجيل بعد الإنجاز</span></button>'+
-    '</div><div id="cbForm"></div>',
+    '</div><div id="cbPre"></div><div id="cbForm"></div>',
     function(ov, close){
+      /* الفحص المسبق يُنادى عند الفتح لا عند الإرسال: الموظفة تعرف قبل أن
+         تكتب أن لا شفت نشطاً لها أو أن هناك مساندة جارية، بدل أن تملأ
+         النموذج ثم تُرفض. الخادم يظل هو من يمنع فعلياً. */
+      sAct('contrib_precheck', {}).then(function(pc){
+        var box = $('#cbPre', ov); if(!box) return;
+        if(pc && pc.ok){
+          if((pc.warnings || []).length){
+            box.innerHTML = '<div class="cbpre warn">'+esc((pc.warnings[0] || {}).text || '')+'</div>';
+          }
+          return;
+        }
+        box.innerHTML = '<div class="cbpre bad">'+esc((pc && pc.error) || 'لا يمكن التسجيل الآن')+'</div>';
+        $$('.cb-opt', ov).forEach(function(x){ x.disabled = true; });
+      }).catch(function(){});
       $$('.cb-opt', ov).forEach(function(b){
         b.addEventListener('click', function(){
           $$('.cb-opt', ov).forEach(function(x){ x.classList.remove('on'); });
@@ -2325,6 +2341,7 @@ function dashOps(mode){
           '<button class="btn sm ghost" data-a="helpClose" data-id="'+h.id+'">'+(h.mine?'إلغاء':'لبّيته ✔')+'</button></div>';
       }).join('') : '<div class="muted small">لا نداءات الآن</div>')+
       '<div class="btnrow"><button class="btn ghost block" data-a="helpNew">طلب مساعدة لمنطقتي</button></div></div></details>');
+    out.push('<div id="sigWrap"></div>');
     out.push('<div id="cbWrap"></div>');
     out.push('<div id="vfWrap"></div>');
     out.push('<div id="tblWrap"></div>');
@@ -2512,6 +2529,70 @@ function viewNow(){
 /* ===== محطة التحضير — تظهر فقط لمن لديها أصناف ضمن منطقتها ===== */
 function prepRemain(exp){ var ms=new Date(exp).getTime()-Date.now(); if(ms<=0) return 'منتهية';
   var h=Math.floor(ms/3600000); if(h>=24) return 'باقٍ '+Math.floor(h/24)+' يوم'+(h%24? ' و'+(h%24)+'س':''); if(h>=1) return 'باقٍ '+h+' ساعة'; return 'باقٍ '+Math.max(1,Math.round(ms/60000))+' د'; }
+/* ===== إشارات الأرضية =====
+   الخادم يبني ضغط المنطقة من إشارات لها عمر ووزن، لكن لم يكن للموظفة أي
+   طريقة لإرسال واحدة: كانت الإشارات تأتي من حالات الطاولات والمحرّك وحدهما.
+   هذا الشريط يعطيها ضغطة واحدة لما تراه عينها ولا تراه الطاولة: دفعة وصلت
+   على الباب، نقص تحضير، منطقتها تحتاج مساندة.
+   لماذا لا تُحسب على أحد: الإشارة عن مكان لا عن شخص، وتنتهي بمهلتها ذاتياً. */
+var SIGT=[
+  ['customer_arrived','ضيفات وصلن','على الباب'],
+  ['waiting_to_order','بانتظار الطلب','جالسات بلا طلب'],
+  ['waiting_delivery','بانتظار التقديم','الطلب جاهز ولم يُقدَّم'],
+  ['waiting_payment','بانتظار الحساب','طلبن الفاتورة'],
+  ['table_to_reset','طاولة تحتاج ترتيب','فارغة وغير مرتبة'],
+  ['sudden_rush','دفعة مفاجئة','ضغط غير معتاد الآن'],
+  ['prep_level','نقص تحضير','مادة أو شاف على وشك النفاد'],
+  ['zone_needs_support','منطقتي تحتاج مساندة','لا أكفي وحدي']
+];
+/* التراكمية تُجمع (خمس ضيفات = خمس إشارات)، وغيرها تُستبدل بالأحدث */
+var SIGCUM={customer_arrived:1, waiting_to_order:1, waiting_delivery:1,
+            waiting_payment:1, table_to_reset:1};
+function sigName(t){ var n=t; SIGT.forEach(function(x){ if(x[0]===t) n=x[1]; }); return n; }
+function loadSignalsCard(){
+  var w=$('#sigWrap'); if(!w) return;
+  var zone=((S.state||{}).my_zone||{}).area_id || ((S.state||{}).shift||{}).area_id || null;
+  sAct('board_live', zone?{zone_id:zone}:{}).then(function(r){
+    if(!r || !r.ok){ w.innerHTML=''; return; }
+    var live=r.live||[];
+    w.innerHTML='<div class="card"><h3>إشارات الأرضية</h3>'+
+      '<div class="muted small" style="margin-bottom:9px">ما تراه عينكِ ولا تراه الطاولة. '+
+        'الإشارة عن مكان لا عن شخص، وتنتهي وحدها بعد مهلتها — لا تُحسب على أحد.</div>'+
+      '<div class="sigb">'+SIGT.map(function(s){
+        var cur=null; live.forEach(function(l){ if(l.type===s[0]) cur=l; });
+        return '<button class="sigb-b'+(cur?' on':'')+'" data-sig="'+s[0]+'">'+
+          '<b>'+esc(s[1])+'</b><span>'+esc(s[2])+'</span>'+
+          (cur?'<i class="sigb-n">'+(+cur.count||1)+'</i>':'')+'</button>';
+      }).join('')+'</div>'+
+      (live.length
+        ? '<div class="sigl"><div class="sigl-h">قائمة الآن</div>'+live.map(function(l){
+            var old=(+l.oldest_min||0)>=10;
+            return '<div class="sigl-r"><b>'+esc(sigName(l.type))+'</b>'+
+              '<span class="sigl-c">'+(+l.count||1)+'</span>'+
+              '<span class="sigl-m'+(old?' old':'')+'">'+(+l.oldest_min||0)+' د</span>'+
+              '<button class="btn sm ghost" data-sigx="'+esc(l.type)+'">أُنجزت</button></div>';
+          }).join('')+'</div>'
+        : '<div class="muted small">لا إشارة قائمة الآن.</div>')+
+    '</div>';
+    function send(type, op){
+      return sAct('board_signal', {type:type, zone_id:zone, op:op||'add',
+        /* مفتاح لا-تكرار للإشارات غير التراكمية: ضغطتان متتاليتان بالخطأ
+           لا تُنتجان إشارتين. التراكمية تُعدّ فعلاً فلا مفتاح لها. */
+        idem: SIGCUM[type] ? null : (type+'|'+(zone||0)+'|'+Math.floor(Date.now()/20000))
+      }, true).then(function(x){
+        if(x && x.ok){ if(op==='close') toast('أُغلقت الإشارة ✔'); loadSignalsCard(); }
+        else toast((x && x.error)||'تعذّر الإرسال', true);
+      });
+    }
+    $$('[data-sig]',w).forEach(function(b){ b.addEventListener('click', function(){
+      b.disabled=true; send(b.getAttribute('data-sig')).catch(function(){ b.disabled=false; });
+    });});
+    $$('[data-sigx]',w).forEach(function(b){ b.addEventListener('click', function(){
+      b.disabled=true; send(b.getAttribute('data-sigx'),'close').catch(function(){ b.disabled=false; });
+    });});
+  }).catch(function(){ w.innerHTML=''; });
+}
+
 /* بطاقة الطاولات تظهر فقط للموظفة المكلفة بمنطقة طاولات — لا خيار دائم للجميع */
 function loadTablesCard(){
   var w = $('#tblWrap'); if(!w) return;
@@ -3368,7 +3449,8 @@ function wireTab(v){
           sAct('blocker_resolve',{task_id:id},true).then(function(r){ if(r.ok){ toast(r.msg||'استؤنفت'); refresh(); } else toast(r.error||'خطأ',true); });
         });
       }
-      else if(a==='mood'){ sAct('pulse_send',{mood:+b.getAttribute('data-m')},true).then(function(res){ toast(res.msg||'شكراً'); $$('.moodb').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }); }
+      /* بطاقة المزاج أُزيلت بقرار سابق، فلم يبق في الواجهة أي data-a="mood".
+         حُذف المعالج معها كي لا يبقى فرع ميت يوهم بوجود الميزة. */
       else if(a==='covAccept') sAct('coverage_respond',{id:id, accept:true}, false).then(function(res){ if(res.ok) toast(res.msg||'شكراً لكِ'); else toast(res.error||'خطأ',true); refresh(); });
       else if(a==='covDecline'){
         confirmSheet('الاعتذار عن التغطية','هل تؤكدين الاعتذار عن تغطية الغياب اليوم؟ الاعتذار حقك ولن يُحسب ضدك.','أعتذر اليوم',function(){
@@ -3519,13 +3601,14 @@ var SECS=[
   ['handovers','','التسليمات'],['reports','','التقارير'],['devices','','الأجهزة'],['settings','','الإعدادات'],
   ['audit','','سجل التدقيق'],['flags','','إشارات المراجعة'],
   ['dayphase','','مرحلة اليوم'],['openshifts','','شفتات لم تُقفل'],['bottleneck','','عنق الزجاجة'],
-  ['geo','','قرارات الموقع'],['errors','','أخطاء تقنية']
+  ['geo','','قرارات الموقع'],['errors','','أخطاء تقنية'],
+  ['assignkpi','','كفاءة الإسناد'],['availability','','توفّر الموظفات']
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
   ['تشغيل اليوم','g1',['board','dayphase','ocdecisions','live','tables','bottleneck','heat','roster','shifts','tasks','prep','ops','attendance','openshifts','cover','absence','handovers','issues','logbook','timeline','ptt']],
-  ['التواصل والتحليل','g2',['ocanalytics','digest','broadcast','analytics','hours','requests','reports']],
-  ['الفريق','g2',['employees','skills','training','coop','contrib','evals','awards']],
+  ['التواصل والتحليل','g2',['ocanalytics','digest','broadcast','analytics','hours','assignkpi','requests','reports']],
+  ['الفريق','g2',['employees','availability','skills','training','coop','contrib','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
   ['النظام','g4',['devices','settings','audit','geo','errors']]
 ];
@@ -4855,12 +4938,33 @@ ADMIN.templates=function(v){
           '<label class="f">تدوير يومي على الموظفات — عدد المكلَّفات (0 = بلا تدوير، 2 = مثل مسح الواجهة)</label><input class="f" id="pRot" type="number" min="0" value="'+(t?(t.rotate_size||0):0)+'">'+
           '<div class="muted small">يُسنِد المهمة تلقائياً لهذا العدد من الموظفات بالتناوب العادل يومياً بين الحاضرات (يستثني المستثنيات).</div>'+
           (t?'<div class="btnrow" style="margin-top:8px"><button class="btn ghost block" type="button" id="pOrder">ترتيب دور الموظفات على هذه المهمة</button></div><div class="muted small">للمهام الدوّارة: رتّبي الموظفات يدوياً (هبه ← رؤى ← بشرى) فيمرّرها النظام بينهنّ بالترتيب. اتركيه فارغاً للتوزيع العادل التلقائي.</div>':'')+
+          /* المهارة المشترطة تُحفظ بإجراء منفصل لأن له حارساً خاصاً على الخادم:
+             لا يُقبل اشتراط مهارة لا تتقنها موظفات كافيات، وإلا صارت المهمة
+             بلا مرشّحة فارتفع الإسناد اليدوي. لذلك لا تُدمج مع حفظ القالب. */
+          (t?'<hr class="sep"><label class="f">مهارة مشترطة (اختياري)</label>'+
+             '<select class="f" id="pSk"><option value="">لا اشتراط</option>'+
+             (A.skills||[]).map(function(s){
+               var nm=s.name||s;
+               return '<option value="'+esc(nm)+'"'+(t.required_skill===nm?' selected':'')+'>'+esc(nm)+'</option>';
+             }).join('')+'</select>'+
+             '<div class="btnrow" style="margin-top:6px"><button class="btn ghost block" type="button" id="pSkGo">احفظي المهارة المشترطة</button></div>'+
+             '<div class="muted small">لن يُسند النظام هذه المهمة إلا لمن تتقن المهارة. '+
+               'إن لم يكن العدد كافياً سيرفض الحفظ ويخبرك — الاشتراط بلا مؤدّيات يعطّل المهمة لا يحميها.</div>':'')+
           '<label class="f">لماذا هذه المهمة مهمة</label><input class="f" id="pRe" value="'+(t?esc(t.reason||''):'')+'">'+
           '<label class="f">أثر إهمالها</label><input class="f" id="pIm" value="'+(t?esc(t.impact||''):'')+'">'+
           (t?'<div class="check"><input type="checkbox" id="pAct" '+(t.active?'checked':'')+'><span>مفعّل</span></div>':'')+
           '<div class="btnrow"><button class="btn block" id="pGo">حفظ</button></div>',
           function(ov, close){
             var _ob=$('#pOrder',ov); if(_ob) _ob.addEventListener('click', function(){ taskOrderSheet(t.id, t.name); });
+            var _sk=$('#pSkGo',ov); if(_sk) _sk.addEventListener('click', function(){
+              busyWrap(this, function(){
+                return aAct('template_skill_set',{id:t.id, required_skill:$('#pSk',ov).value})
+                  .then(function(r){
+                    if(!r || !r.ok){ toast((r&&r.error)||'تعذّر الحفظ', true, 4500); return; }
+                    toast(r.cleared? 'أُزيل الاشتراط ✔' : 'حُفظت المهارة المشترطة ✔');
+                  });
+              });
+            });
             $('#pGo',ov).addEventListener('click', function(){
               var cl=$('#pC',ov).value.split('\n').map(function(x){return x.trim();}).filter(Boolean);
               var p={name:$('#pN',ov).value, area_id:+$('#pA',ov).value, phase:$('#pPh',ov).value, expected:+$('#pX',ov).value,
@@ -5184,7 +5288,22 @@ ADMIN.absence=function(v){
     v.innerHTML='<div id="abToday"></div><div class="card"><h3>الإبلاغ عن غياب اليوم</h3>'+
       '<label class="f">الغائبة</label><select class="f" id="abE">'+staffOpts()+'</select>'+
       '<label class="f">السبب (اختياري)</label><input class="f" id="abR">'+
-      '<div class="btnrow"><button class="btn orange block" id="abGo">توليد خطط التغطية</button></div></div><div id="abOut"></div>';
+      '<div class="btnrow"><button class="btn orange block" id="abGo">توليد خطط التغطية</button></div></div>'+
+      /* تغطية حدثت بلا خطة نظام: زميلة غطّت شفتاً بمكالمة، أو الإدارة رتّبتها
+         هاتفياً. بلا هذا لا يظهر في سجل التغطية من حمل عن من، فيبدو رصيد
+         التغطية أنقص مما هو، وهو رصيد يُقرأ عند طلب إجازة. */
+      '<details class="acc" style="margin:0 0 12px"><summary>تدوين تغطية حدثت خارج النظام<span class="chev">‹</span></summary>'+
+        '<div style="padding:4px 2px 2px">'+
+        '<label class="f">من غطّت</label><select class="f" id="clE">'+staffOpts()+'</select>'+
+        '<label class="f">نوع التغطية</label><select class="f" id="clK">'+
+          '<option value="cover_absence">تغطية غياب</option>'+
+          '<option value="cover_late">تغطية تأخير</option>'+
+          '<option value="extra_shift">شفت إضافي</option>'+
+          '<option value="stayed_late">بقيت بعد شفتها</option></select>'+
+        '<label class="f">التفاصيل</label><input class="f" id="clD" maxlength="200" placeholder="مثال: غطّت شفت ليان المسائي باتفاق هاتفي">'+
+        '<div class="btnrow"><button class="btn ghost block" id="clGo">دوّني التغطية</button></div>'+
+        '<div class="muted small">يُسجَّل في سجل التغطية ليُقرأ عند طلبات الإجازة — لا يولّد شفتاً ولا يعدّل ساعات.</div>'+
+        '</div></details><div id="abOut"></div>';
     var CVS={pending:'<span class="chip orange">بانتظار موافقتها</span>', accepted:'<span class="chip green">قبلت التغطية ✔</span>', declined:'<span class="chip red">اعتذرت — اختاري بديلة</span>'};
     function loadToday(){
       aAct('absences_day',{}).then(function(res){
@@ -5196,6 +5315,17 @@ ADMIN.absence=function(v){
       }).catch(function(){});
     }
     loadToday();
+    $('#clGo').addEventListener('click', function(){
+      var det=$('#clD').value.trim();
+      if(det.length<4){ toast('اكتبي تفاصيل التغطية — السجل بلا تفصيل لا يُقرأ لاحقاً', true); return; }
+      busyWrap(this, function(){
+        return aAct('coverage_log_add',{employee_id:+$('#clE').value, kind:$('#clK').value, detail:det})
+          .then(function(r){
+            if(r && r.ok){ toast('دُوّنت التغطية ✔'); $('#clD').value=''; }
+            else toast((r&&r.error)||'تعذّر التدوين', true);
+          });
+      });
+    });
     $('#abGo').addEventListener('click', function(){
       aAct('absence_report',{employee_id:+$('#abE').value, reason:$('#abR').value}).then(function(res){
         if(!res.ok){ toast(res.error||'خطأ',true); return; }
@@ -6279,8 +6409,51 @@ ADMIN.live=function(v){
 /* ---------- سجل الساعات ---------- */
 ADMIN.hours=function(v){
   var d28=addDays(today(),-27);
-  v.innerHTML='<div class="row"><input class="f grow" id="hrFrom" type="date" value="'+d28+'"><input class="f grow" id="hrTo" type="date" value="'+today()+'"><button class="btn sm" id="hrGo">عرض</button></div><div id="hrB" style="margin-top:10px"></div>';
+  v.innerHTML='<div class="row"><input class="f grow" id="hrFrom" type="date" value="'+d28+'"><input class="f grow" id="hrTo" type="date" value="'+today()+'"><button class="btn sm" id="hrGo">عرض</button></div>'+
+    /* ملخّص لكل موظفة (hours_ledger) للقرار السريع، وتفصيل يوم بيوم
+       (hours_report) للحوار مع موظفة على يوم بعينه. عرضان لسؤالين مختلفين. */
+    '<div class="tfl" style="margin-top:9px"><button class="tfl-b on" data-hv="sum">ملخّص</button>'+
+      '<button class="tfl-b" data-hv="det">تفصيل يوم بيوم</button></div>'+
+    '<div id="hrB" style="margin-top:10px"></div>';
+  $$('[data-hv]',v).forEach(function(b){ b.addEventListener('click', function(){
+    $$('[data-hv]',v).forEach(function(x){ x.className='tfl-b'; });
+    b.className='tfl-b on';
+    if(b.getAttribute('data-hv')==='det') loadDetail(); else load();
+  });});
+  function loadDetail(){
+    $('#hrB').innerHTML=skel(3);
+    aAct('hours_report',{from:$('#hrFrom').value, to:$('#hrTo').value}).then(function(res){
+      if(!res||!res.ok){ $('#hrB').innerHTML='<div class="empty">تعذّر التحميل</div>'; return; }
+      var rows=(res.rows||[]).slice().sort(function(a,b){
+        return a.name===b.name ? (a.day<b.day?1:-1) : (a.name>b.name?1:-1); });
+      var t=res.totals||{}, pol=((res.rules||{}).policy)||{};
+      if(!rows.length){ $('#hrB').innerHTML='<div class="empty">لا سجلات بهذا النطاق</div>'; return; }
+      $('#hrB').innerHTML=
+        '<div class="statrow" style="margin-bottom:10px">'+
+          '<div class="stat"><b>'+(t.worked_hours!=null?t.worked_hours:'—')+'</b><span>ساعة عمل</span></div>'+
+          '<div class="stat"><b>'+(t.full||0)+'</b><span>شفت كامل</span></div>'+
+          '<div class="stat"><b>'+(t.incomplete||0)+'</b><span>غير مكتمل</span></div>'+
+        '</div>'+
+        '<div class="scrollx"><table class="tbl"><tr><th>الموظفة</th><th>اليوم</th><th>الحالة</th>'+
+          '<th>تواجد</th><th>عمل محتسب</th><th>إضافي</th></tr>'+
+        rows.map(function(r){
+          var s=MHST[r.status]||['', r.status||'—'];
+          return '<tr><td><b>'+esc(r.name||'—')+'</b></td><td>'+fmtD(r.day)+'</td>'+
+            '<td><span class="chip '+s[0]+'">'+esc(s[1])+'</span>'+
+              (r.note?'<div class="muted small">'+esc(r.note)+'</div>':'')+'</td>'+
+            '<td>'+hm(r.present_minutes)+'</td><td><b>'+hm(r.worked_minutes)+'</b></td>'+
+            '<td>'+((r.overtime_minutes||0)>0?r.overtime_minutes+' د':'—')+'</td></tr>';
+        }).join('')+'</table></div>'+
+        '<div class="muted small" style="margin-top:10px;line-height:1.75">'+
+          'القاعدة المطبَّقة: العمل المحتسب = التواجد ناقص الاستراحات'+(pol.break_paid?' (مدفوعة)':' (غير مدفوعة)')+
+          (pol.full_shift_ratio!=null?' · الشفت الكامل عند '+Math.round(pol.full_shift_ratio*100)+'% من المخطّط':'')+
+          (pol.min_countable_minutes!=null?' · أقل من '+pol.min_countable_minutes+' دقيقة لا يُحتسب':'')+
+          '. <b>ليست بيانات مالية دقيقة</b> — التسجيل يدوي.</div>';
+      tblResponsive($('#hrB'));
+    });
+  }
   function load(){
+    $('#hrB').innerHTML=skel(3);
     aAct('hours_ledger',{from:$('#hrFrom').value, to:$('#hrTo').value}).then(function(res){
       var rows=res.rows||[];
       if(!rows.length){ $('#hrB').innerHTML='<div class="empty">لا سجلات بهذا النطاق</div>'; return; }
@@ -6295,7 +6468,11 @@ ADMIN.hours=function(v){
       });
     });
   }
-  $('#hrGo').addEventListener('click', load); load();
+  /* زر «عرض» يحدّث العرض المفتوح حالياً، لا الملخّص دائماً */
+  $('#hrGo').addEventListener('click', function(){
+    var det=$('[data-hv="det"]'); if(det && det.className.indexOf('on')>-1) loadDetail(); else load();
+  });
+  load();
 };
 
 /* ---------- أجهزة الكافيه ---------- */
@@ -6364,7 +6541,11 @@ ADMIN.settings=function(v){
         '<button class="btn sm" id="agLoc">اعتماد موقعي الحالي</button>'+
         '<button class="btn sm orange" id="agSave">حفظ إعدادات الحماية</button></div>'+
       '</div>';
-    var resetCard='<div class="card" style="border:1.5px solid #E5B8AB;background:#FBF1EE"><h3 style="color:var(--red)">تصفير بيانات التجربة</h3>'+
+    /* كانت الخلفية والحدّ ألواناً ست عشرية سطرية (#FBF1EE و#E5B8AB) لا تنقلب
+       مع السمة، فيصير في الوضع الداكن نصٌّ فاتح على خلفية فاتحة بتباين 1.06 —
+       أي غير مقروء تماماً في أخطر بطاقة في التطبيق. الصنف danger يحمل الآن
+       اللونين من الرموز فينقلبان معها. */
+    var resetCard='<div class="card danger-card"><h3 style="color:var(--red-ink)">تصفير بيانات التجربة</h3>'+
       '<div class="small muted">لمرحلة التجربة: يحذف السجلات المحددة نهائياً ولا يمس البنية (الموظفات، المناطق، أنواع الشفتات، قوالب المهام، المهارات، الأجهزة، الإعدادات).</div>'+
       '<div class="check"><input type="checkbox" id="rsOps" checked><span>العمليات اليومية: شفتات، حضور، مهام، استراحات، ضغط، نداءات، تسليمات، غياب وتغطية، تعاون، إشارات</span></div>'+
       '<div class="check"><input type="checkbox" id="rsReq"><span>الطلبات والملاحظات</span></div>'+
@@ -6453,6 +6634,111 @@ ADMIN.flags=function(v){
     $$('[data-fd]',v).forEach(function(b){ b.addEventListener('click', function(){
       aAct('flag_decide',{id:+b.getAttribute('data-fd'), decision:b.getAttribute('data-d')}).then(function(){ ADMIN.flags(v); });
     });});
+  });
+};
+
+/* ---------- كفاءة الإسناد التلقائي ---------- */
+/* محرّك الإسناد يوزّع المهام بلا مشرفة. سؤال المالكة الحقيقي ليس «هل يعمل؟»
+   بل «كم مرة اضطررت لتصحيحه؟» — فالمقاييس معروضة كنسب مع هدفها، لا كأرقام
+   مجرّدة، ومكتوب صراحةً ماذا يعني تجاوز الهدف. */
+ADMIN.assignkpi=function(v){
+  v.innerHTML=skel(2);
+  var d14=addDays(today(),-13);
+  aAct('wf_assign_kpi',{from:d14, to:today()}).then(function(res){
+    var k=res.kpi||{}, c=k.counts||{};
+    function pct(x){ return x==null?'—':(Math.round(x*1000)/10)+'%'; }
+    function bar(label, val, target, invert, note){
+      var v100=Math.max(0, Math.min(100, (val||0)*100));
+      var bad = target!=null && (invert ? (val||0) > target : (val||0) < target);
+      return '<div class="evd"><span class="evd-l">'+esc(label)+'</span>'+
+        '<span class="evd-bar"><i class="'+(bad?'bad':'')+'" style="width:'+v100+'%"></i></span>'+
+        '<span class="evd-v">'+pct(val)+'</span></div>'+
+        (target!=null?'<div class="muted small" style="margin:-2px 0 7px 0">الهدف '+pct(target)+
+          (bad?' — <b>متجاوَز</b>':' — ضمن الهدف')+(note?' · '+esc(note):'')+'</div>':'');
+    }
+    v.innerHTML=
+      '<div class="muted small" style="margin-bottom:10px">آخر ١٤ يوماً. المقصود قياس المحرّك لا الموظفات: '+
+        'كل نسبة هنا عن قرارات النظام، ولا شيء منها يدخل تقييم أحد.</div>'+
+      '<div class="statrow" style="margin-bottom:12px">'+
+        '<div class="stat"><b>'+(c.decisions||0)+'</b><span>قرار إسناد</span></div>'+
+        '<div class="stat"><b>'+(c.auto||0)+'</b><span>تلقائي</span></div>'+
+        '<div class="stat"><b>'+(c.manual||0)+'</b><span>يدوي</span></div>'+
+      '</div>'+
+      '<div class="card" style="padding:13px">'+
+        bar('إسناد يدوي', k.manual_assignment_rate, k.manual_assignment_target, true,
+            'ارتفاعه يعني أن المحرّك لا يجد مرشّحة — راجعي المهارات والتغطية')+
+        bar('نجاح التلقائي', k.auto_assignment_success_rate, 0.85, false)+
+        bar('تجاوز الإدارة', k.owner_override_rate, 0.1, true, 'تصحيح متكرر = قاعدة ناقصة لا موظفة مخطئة')+
+        bar('إعادة إسناد', k.reassignment_rate, 0.1, true)+
+      '</div>'+
+      '<div class="cbwhy" style="margin-top:10px">'+
+        '<span>استثناءات: '+(c.exceptions||0)+'</span>'+
+        '<span>مهام حرجة بلا إسناد: '+(k.unassigned_critical_tasks||0)+'</span>'+
+        '<span>فجوات تغطية: '+(c.coverage_uncovered||0)+'</span>'+
+      '</div>'+
+      (k.manual_rate_breached
+        ? '<div class="card" style="padding:11px 12px;margin-top:10px;border:1.5px solid var(--amber)">'+
+          '<b>الإسناد اليدوي فوق هدفه</b><div class="muted small" style="margin-top:4px">'+
+          'المعنى العملي: المحرّك لا يجد من يصلح للمهمة فتتدخّلين أنتِ. '+
+          'الأثر يظهر عادةً من مهارة مشترطة لا تتقنها موظفات كافيات، أو تغطية ناقصة في نوع شفت.'+
+          '</div></div>' : '')+
+      '<div class="btnrow" style="margin-top:12px"><button class="btn ghost block" id="akRun">شغّلي الإسناد التلقائي الآن</button></div>'+
+      '<div class="muted small" style="margin-top:6px">يُشغّل دورة إسناد فوراً للمهام المعلّقة بدل انتظار الدورة المجدولة. '+
+        'لا يُلغي إسناداً قائماً ولا يتجاوز تثبيت الإدارة.</div>';
+    $('#akRun',v).addEventListener('click', function(){
+      busyWrap(this, function(){
+        return aAct('wf_autoassign_now',{}).then(function(r){
+          if(r && r.ok){ toast((r.assigned||0)? ('أُسندت '+r.assigned+' مهمة ✔') : 'لا مهمة معلّقة قابلة للإسناد'); ADMIN.assignkpi(v); }
+          else toast((r&&r.error)||'تعذّر التشغيل', true);
+        });
+      });
+    });
+  });
+};
+
+/* ---------- توفّر الموظفات الأسبوعي ---------- */
+/* المحرّك يبني الجدول على التوفّر، ولم تكن هناك طريقة لإدخاله — فكانت
+   القاعدة الافتراضية «الكل متاح دائماً»، وهي غير صحيحة عملياً. */
+var AVST=[['available','متاحة',''],['preferred','تفضّل هذا اليوم','green'],['unavailable','غير متاحة','red']];
+ADMIN.availability=function(v){
+  v.innerHTML=skel(3);
+  lookups(function(){
+    var emps=(A.emps||[]).filter(function(e){ return e.active && e.role==='staff'; });
+    /* roster_rules هو من يحمل availability (لا roster_get، فذاك للمسوّدة) */
+    aAct('roster_rules',{}).then(function(res){
+      var av={};
+      ((res&&res.availability)||[]).forEach(function(a){ av[a.employee_id+'|'+a.dow]=a.state; });
+      if(!emps.length){ v.innerHTML='<div class="empty">لا موظفات نشطات</div>'; return; }
+      v.innerHTML='<div class="muted small" style="margin-bottom:10px">'+
+          'الجدولة التلقائية تقرأ هذا الجدول. «غير متاحة» قيد صارم لا يخترقه المحرّك، '+
+          'و«تفضّل» ترجيح لا ضمان. الافتراضي متاحة.</div>'+
+        emps.map(function(e){
+          return '<div class="card" style="padding:11px 12px"><b>'+esc(e.name)+'</b>'+
+            '<div class="avg">'+DOWAR.map(function(dn,i){
+              var st=av[e.id+'|'+i]||'available';
+              var cls=st==='unavailable'?'no':(st==='preferred'?'pref':'');
+              return '<button class="avg-d '+cls+'" data-av="'+e.id+'" data-dow="'+i+'" '+
+                'data-st="'+st+'" aria-label="'+esc(e.name+' — '+dn)+'">'+
+                '<b>'+esc(dn.slice(0,3))+'</b><span>'+
+                (st==='unavailable'?'لا':(st==='preferred'?'يُفضّل':'متاحة'))+'</span></button>';
+            }).join('')+'</div></div>';
+        }).join('')+
+        '<div class="muted small" style="margin-top:8px">اضغطي اليوم لتتبدّل حالته: متاحة ← تفضّل ← غير متاحة.</div>';
+      $$('[data-av]',v).forEach(function(b){ b.addEventListener('click', function(){
+        var cur=b.getAttribute('data-st');
+        var order=['available','preferred','unavailable'];
+        var next=order[(order.indexOf(cur)+1)%3];
+        b.disabled=true;
+        aAct('roster_availability_set',{employee_id:+b.getAttribute('data-av'),
+          dow:+b.getAttribute('data-dow'), state:next}).then(function(r){
+          b.disabled=false;
+          if(!r || !r.ok){ toast((r&&r.error)||'تعذّر الحفظ', true); return; }
+          b.setAttribute('data-st', next);
+          b.className='avg-d '+(next==='unavailable'?'no':(next==='preferred'?'pref':''));
+          $('span',b).textContent = next==='unavailable'?'لا':(next==='preferred'?'يُفضّل':'متاحة');
+        }).catch(function(){ b.disabled=false; toast('تعذّر الاتصال', true); });
+      });});
+    });
   });
 };
 
