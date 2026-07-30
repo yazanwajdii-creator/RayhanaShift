@@ -2758,7 +2758,7 @@ function loadTablesCard(){
 
    الآن: صفحة كاملة، واللون يقول الحالة لا الإلحاح، والإلحاح حلقةٌ حول
    البلاطة. والرؤية للجميع، والتعديل بحسب النطاق الذي يعلنه الخادم. */
-var FLR = {area:null, areas:null, data:null, sel:null, st:null, timer:null, tick:null,
+var FLR = {area:null, areas:null, data:null, sel:null, f:'all', timer:null, tick:null,
            busy:false, skew:0, synced:0};
 
 /* لون الحالة رمزُ CSS لا سُدسي ثابت، فينقلب مع السمة تلقائياً */
@@ -2801,27 +2801,6 @@ function flrLandscape(on){
    مربّعان متمركزان على نقطتين لا يتقاطعان إلا إذا كان الفارق الأكبر في
    أحد المحورين (مسافة تشيبيشيف) أصغر من ضلعهما — فنجعل الضلع أصغر منها. */
 /* أيّ طاولتين هما المتلاصقتان؟ نقولها بالاسم كي تُصلَح من تخطيط الطاولات */
-function flrTightPair(list, wpx, hpx){
-  var best=null, d=Infinity;
-  for(var i=0;i<list.length;i++) for(var j=i+1;j<list.length;j++){
-    var dx=Math.abs((+list[i].x-+list[j].x)/100*wpx);
-    var dy=Math.abs((+list[i].y-+list[j].y)/100*hpx);
-    var ch=Math.max(dx,dy);
-    if(ch<d){ d=ch; best=[+list[i].no, +list[j].no]; }
-  }
-  return best;
-}
-function flrTileSize(list, wpx, hpx){
-  var d = Infinity;
-  for(var i=0;i<list.length;i++) for(var j=i+1;j<list.length;j++){
-    var dx = Math.abs((+list[i].x - +list[j].x)/100*wpx);
-    var dy = Math.abs((+list[i].y - +list[j].y)/100*hpx);
-    var ch = Math.max(dx,dy);
-    if(ch < d) d = ch;
-  }
-  if(!isFinite(d)) d = 120;
-  return Math.floor(d * 0.94);
-}
 
 function loadFloor(){
   var w=$('#flrHost'); if(!w) return;
@@ -2854,7 +2833,7 @@ function loadFloor(){
       FLR.rt=setTimeout(function(){ flrBoard(true); },400);
     });
     if(!FLR.rz){
-      FLR.rz=function(){ if($('#flrHost') && FLR.data) flrFit(); };
+      FLR.rz=function(){ if($('#flrHost') && FLR.data) flrPaint(); };
       window.addEventListener('resize', FLR.rz);
       window.addEventListener('orientationchange', FLR.rz);
     }
@@ -2893,111 +2872,80 @@ function flrMine(t){
   var d=FLR.data||{};
   return (d.duty_tables||[]).map(Number).indexOf(+t.id)>=0;
 }
-function flrList(){
-  var all=((FLR.data||{}).tables)||[];
-  var q=(FLR.q||'').trim();
-  return all.filter(function(x){
-    if(FLR.st && tmState(x)!==FLR.st) return false;
-    if(q && String(x.no).indexOf(q)!==0) return false;
-    return true;
-  });
-}
 
 /* يُقاس بعد الرسم: عرض اللوح الفعلي ثم ضلع البلاطة المشتقّ منه.
    إن نزل الضلع تحت حدّ اللمس (٤٤px) فالمخطّط نفسه مزدحم — ننتقل إلى
    الشبكة ونقولها صراحةً بدل أن نعرض بلاطات متراكبة. */
-function flrFit(){
-  var bd=$('#flrBoard'); if(!bd) return;
-  var list=flrList().filter(function(x){ return x.x!=null && x.y!=null; });
-  var r=bd.getBoundingClientRect();
-  if(r.width<40) return;
-  var sz=flrTileSize(list, r.width, r.height);
-  /* لا نُكبّر البلاطة أبداً فوق ما تسمح به أقرب طاولتين — ذلك بالضبط ما
-     أنتج التراكب المُبلَّغ. وإن كان المسموح دون حدّ اللمس فالمخطّط نفسه
-     فيه طاولتان متلاصقتان في البيانات: ننتقل إلى الشبكة ونقول السبب،
-     ولا نعرض بلاطات متراكبة ولا بلاطة لا تُلمس. */
-  if(sz < 44 && list.length > 1){
-    FLR.view='grid'; FLR.tight=flrTightPair(list, r.width, r.height);
-    flrPaint(); return;
-  }
-  bd.removeAttribute('data-tight');
-  bd.style.setProperty('--tsz', Math.min(96, sz)+'px');
-}
 
+/* ═══════ شبكة الطاولات — معيار طرفيّات الخدمة ═══════
+   لماذا شبكة موحّدة لا مخطّط بالإحداثيات؟ لأن هذا ما تفعله كل الطرفيّات
+   المهنية (Toast · Square · Lightspeed · TouchBistro)، ولسببٍ تشغيلي لا
+   ذوقي: الموظفة تحفظ موضع الطاولة في الشبكة خلال يومين، والترتيب ثابت لا
+   يتغيّر إن حُرّكت طاولة في الصالة. والمخطّط المرسوم يخدم سؤال المالكة
+   («أين يزدحم المكان») لا سؤال الموظفة («أي طاولة تنتظرني الآن») — ولذلك
+   بقي في لوحة الإدارة وخرج من شاشة الخدمة.
+
+   الترتيب برقم الطاولة دائماً — لا يُعاد الترتيب بالإلحاح، فإعادة الترتيب
+   تُبطل ذاكرة اليد وتجعل الضغط الخطأ أسهل. الإلحاح يُقرأ من اللون والحلقة،
+   والعزل يتمّ بمرشّح لا بحركة. */
 function flrPaint(){
   var w=$('#flrHost'); if(!w||!FLR.data) return;
   var res=FLR.data, all=res.tables||[], ar=res.area||{};
-  var view=flrList();
   var sel=null; all.forEach(function(x){ if(+x.id===+FLR.sel) sel=x; });
-  var actN =all.filter(function(x){ return !x.oos && ST_ACT.indexOf(x.state)>=0; }).length;
-  var lateN=all.filter(function(x){ return !x.oos && x.state!=='free' && tmUrg(x)>=3; }).length;
+
+  var needN=all.filter(function(x){ return !x.oos && ST_ACT.indexOf(x.state)>=0; }).length;
+  var mineN=all.filter(flrMine).length;
   var freeN=all.filter(function(x){ return !x.oos && x.state==='free'; }).length;
+  var busyN=all.filter(function(x){ return !x.oos && x.state!=='free'; }).length;
 
-  var h='<div class="flrx">';
+  var view=all.filter(function(x){
+    if(FLR.f==='need') return !x.oos && ST_ACT.indexOf(x.state)>=0;
+    if(FLR.f==='mine') return flrMine(x);
+    if(FLR.f==='free') return !x.oos && x.state==='free';
+    return true;
+  }).sort(function(a,b){ return (+a.no)-(+b.no); });
 
-  /* سطرٌ واحد لا ثلاثة: خروج · المنطقة · رقمان · تبديل العرض.
-     كان هنا شريط بحث بعرض الشاشة، وبطاقتا منطقة تكرّران ما في العنوان،
-     وأربع بطاقات عدّ — قبل أن تظهر طاولة واحدة. الشاشة أداة عمل، لا تقرير. */
-  h+='<div class="flrx-bar"><div class="flrx-r1">'+
+  var h='<div class="flrx'+(sel?' has-sel':'')+'">';
+
+  /* الشريط: خروج · المناطق · مرشّحات · نبض */
+  h+='<header class="flrx-bar">'+
     '<button class="flrx-x" id="flrExit" aria-label="خروج">‹</button>'+
     (FLR.areas&&FLR.areas.length>1
-      ? '<span class="flrx-seg">'+FLR.areas.map(function(a){
+      ? '<div class="flrx-seg">'+FLR.areas.map(function(a){
           return '<button data-fa="'+(+a.id)+'"'+(+a.id===+FLR.area?' class="on"':'')+'>'+
             esc(a.name.replace('الصالة ','').replace('الساحة ',''))+'</button>';
-        }).join('')+'</span>'
-      : '<span class="flrx-ttl"><b>'+esc(ar.name||'الصالة')+'</b></span>')+
-    '<span class="flrx-kpi">'+
-      (actN?'<b class="a" title="تحتاج حركة">'+actN+'</b>':'')+
-      (lateN?'<b class="l" title="تجاوزت وقتها">'+lateN+'</b>':'')+'</span>'+
-    '<span class="flrx-v">'+
-      '<button data-fv="map"'+(FLR.view!=='grid'?' class="on"':'')+' aria-label="مخطّط">'+TIC.map+'</button>'+
-      '<button data-fv="grid"'+(FLR.view==='grid'?' class="on"':'')+' aria-label="شبكة">'+TIC.grid+'</button>'+
-    '</span></div>'+
-    (all.length>24 ? '<div class="flrx-srch"><input id="flrQ" type="search" inputmode="numeric" '+
-      'placeholder="رقم الطاولة" value="'+esc(FLR.q||'')+'" aria-label="بحث برقم الطاولة"></div>' : '')+
-  '</div>';
+        }).join('')+'</div>'
+      : '<div class="flrx-ttl"><b>'+esc(ar.name||'الصالة')+'</b></div>')+
+    '<div class="flrx-f">'+
+      [['all','الكل',all.length],['need','تحتاج حركة',needN],
+       ['mine','طاولاتي',mineN],['free','متاحة',freeN]]
+      .filter(function(f){ return f[0]==='all' || f[2]>0; })
+      .map(function(f){
+        return '<button data-ff="'+f[0]+'"'+((FLR.f||'all')===f[0]?' class="on"':'')+'>'+
+          f[1]+'<i>'+f[2]+'</i></button>';
+      }).join('')+
+    '</div>'+
+    '<div class="flrx-live"><span class="flrx-dot"></span>'+busyN+'/'+all.length+'</div>'+
+  '</header>';
 
-  h+='<div class="flrx-body">';
-  if(!view.length){
-    h+='<div class="empty">لا طاولة تطابق المرشّح</div>';
-  } else if(FLR.view==='grid'){
-    /* ثلاث فرق لا شبكة واحدة: ما يحتاج حركةً الآن يأخذ المساحة، وما
-       يعمل يأخذ أقلّ، والمتاحة تنكمش إلى أرقام. كانت خمس عشرة بلاطة
-       متساوية — عشرٌ منها لطاولات لا تطلب شيئاً، فامتلأت الشاشة بمربّعات
-       بيضاء متطابقة لا تقول شيئاً. */
-    var need=view.filter(function(x){ return !x.oos && ST_ACT.indexOf(x.state)>=0; });
-    var busy=view.filter(function(x){ return !x.oos && x.state!=='free' && ST_ACT.indexOf(x.state)<0; });
-    var idle=view.filter(function(x){ return x.oos || x.state==='free'; });
-    if(need.length) h+='<div class="flrs need"><h4>تحتاج حركة الآن<i>'+need.length+'</i></h4>'+
-      '<div class="flrg lg">'+need.map(flrGridTile).join('')+'</div></div>';
-    if(busy.length) h+='<div class="flrs"><h4>قيد الخدمة<i>'+busy.length+'</i></h4>'+
-      '<div class="flrg">'+busy.map(flrGridTile).join('')+'</div></div>';
-    if(idle.length) h+='<div class="flrs"><h4>متاحة<i>'+idle.length+'</i></h4>'+
-      '<div class="flrq">'+idle.map(flrChip).join('')+'</div></div>';
-  } else {
-    h+='<div class="flr-board" id="flrBoard">'+flrLandmarks(+ar.id)+
-       view.filter(function(x){ return x.x!=null && x.y!=null; }).map(flrTile).join('')+'</div>';
-    if(FLR.tight) h+='<div class="flrx-hint">تعذّر عرض المخطّط دون تراكب — '+
-      'الطاولتان '+(+FLR.tight[0])+' و'+(+FLR.tight[1])+' متلاصقتان في التخطيط.</div>';
-  }
+  h+='<main class="flrx-grid-wrap">'+
+     (view.length
+       ? '<div class="flrx-grid">'+view.map(flrCardTile).join('')+'</div>'
+       : '<div class="empty">لا طاولة في هذا المرشّح</div>')+
+     '</main>';
+
+  h+='<aside class="flrx-side">'+(sel?flrSelPanel(sel, ar):flrSideEmpty())+'</aside>';
   h+='</div>';
 
-  h+='<div class="flrx-foot">'+(sel?flrSelPanel(sel, ar):'')+'</div></div>';
-
   w.innerHTML=h;
-  flrFit();
 
   var ex=$('#flrExit',w);
   if(ex) ex.addEventListener('click', function(){
     flrLandscape(false); S.tab='now'; paintTabs(); drawTab(); });
-  $$('[data-fv]',w).forEach(function(b){ b.addEventListener('click', function(){
-    FLR.view=b.getAttribute('data-fv'); FLR.tight=null; flrPaint(); }); });
-  var qi=$('#flrQ',w);
-  if(qi) qi.addEventListener('input', function(){
-    FLR.q=qi.value; var at=document.activeElement===qi;
-    flrPaint(); if(at){ var n=$('#flrQ'); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } } });
   $$('[data-fa]',w).forEach(function(b){ b.addEventListener('click', function(){
-    FLR.area=+b.getAttribute('data-fa'); FLR.sel=null; FLR.st=null; FLR.tight=null; flrBoard(false); }); });
+    FLR.area=+b.getAttribute('data-fa'); FLR.sel=null; flrBoard(false); }); });
+  $$('[data-ff]',w).forEach(function(b){ b.addEventListener('click', function(){
+    FLR.f=b.getAttribute('data-ff'); flrPaint(); }); });
   $$('[data-ft]',w).forEach(function(b){ b.addEventListener('click', function(){
     var id=+b.getAttribute('data-ft');
     FLR.sel=(FLR.sel===id)?null:id; flrPaint(); }); });
@@ -3009,68 +2957,45 @@ function flrPaint(){
   updateTimers();
 }
 
-/* معالم الأرضية: المسبح والمدخل — ثوابت مكانية تُسقط الخريطة على الصالة */
-function flrLandmarks(areaId){
-  if(areaId === 2){
-    return '<div class="flr-land" style="inset-inline-start:6%;top:44%;width:54%;height:34%">المسبح</div>'+
-           '<div class="flr-land" style="inset-inline-start:66%;top:92%;width:26%;height:6%">المدخل</div>';
-  }
-  return '<div class="flr-land" style="inset-inline-start:38%;top:12%;width:38%;height:46%"></div>'+
-         '<div class="flr-land" style="inset-inline-start:4%;top:92%;width:22%;height:6%">المدخل</div>';
-}
-function flrTile(x){
-  var k=tmState(x), st=TMS[k]||TMS.free, u=tmUrg(x);
-  var busy=(k!=='free' && !x.oos);
-  var cls='flr-t'+(x.type==='curved'?' round':'')+(x.oos?' oos':'')+
-          (u>=3?' late':(u>0?' soon':''))+(flrMine(x)?' mine':'')+(+FLR.sel===+x.id?' sel':'');
-  return '<button class="'+cls+'" data-ft="'+x.id+'" '+
-    'style="--tc:'+stCol(k)+';--tc-on:'+stOn(k)+';inset-inline-start:'+(+x.x)+'%;top:'+(+x.y)+'%" '+
-    'aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+
-      (busy&&x.mins?' — منذ '+esc(tmDur(x.mins)):'')+
-      (flrMine(x)?' — من طاولاتك':'')+(u>=3?' — تجاوزت وقتها':'')+'">'+
-    (busy&&x.mins>0?'<span class="m tdur" data-mins="'+(+x.mins)+'">'+tmDur(x.mins)+'</span>':'')+
-    '<span class="n">'+(+x.no)+'</span>'+
-    '<span class="s">'+esc(st.sh||st.ar)+'</span>'+
-  '</button>';
+function flrSideEmpty(){
+  return '<div class="flrx-side-e">'+TIC.grid+'<b>اختاري طاولة</b>'+
+    '<span>تظهر حالتها وأزرار تحديثها هنا</span></div>';
 }
 
-/* الشبكة: لا مواقع ولا تراكب ممكن — وهي الوضع الآمن حين يزدحم المخطّط */
-function flrGridTile(x){
+/* بطاقة الطاولة: رقمٌ يُقرأ من مترين، حالةٌ مكتوبة، ووقتٌ منذ آخر تغيير.
+   الضيفات والمسؤولة في السطر السفلي — معلومة ثانوية لا تُزاحم الرقم. */
+function flrCardTile(x){
   var k=tmState(x), st=TMS[k]||TMS.free, u=tmUrg(x);
   var busy=(k!=='free' && !x.oos);
-  var cls='flrg-t'+(x.oos?' oos':'')+(u>=3?' late':(u>0?' soon':''))+
+  var cls='flrc'+(x.oos?' oos':'')+(u>=3?' late':(u>0?' soon':''))+
           (flrMine(x)?' mine':'')+(+FLR.sel===+x.id?' sel':'');
+  var foot='';
+  if(busy && x.guests) foot+='<span class="g">'+(+x.guests)+'</span>';
+  if(x.owner) foot+='<span class="o">'+esc(tmInitials(x.owner))+'</span>';
   return '<button class="'+cls+'" data-ft="'+x.id+'" '+
     'style="--tc:'+stCol(k)+';--tc-on:'+stOn(k)+'" '+
     'aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+
-      (busy&&x.mins?' — منذ '+esc(tmDur(x.mins)):'')+'">'+
-    '<span class="no">'+(+x.no)+'</span>'+
-    '<span class="st">'+esc(st.ar)+'</span>'+
-    (busy&&x.mins>0?'<span class="mt tdur" data-mins="'+(+x.mins)+'">'+tmDur(x.mins)+'</span>':'')+
+      (busy&&x.mins?' — منذ '+esc(tmDur(x.mins)):'')+
+      (flrMine(x)?' — من طاولاتك':'')+(u>=3?' — تجاوزت وقتها':'')+'">'+
+    '<span class="flrc-no">'+(+x.no)+'</span>'+
+    '<span class="flrc-st">'+esc(st.ar)+'</span>'+
+    '<span class="flrc-f">'+
+      (busy&&x.mins>0?'<span class="t tdur" data-mins="'+(+x.mins)+'">'+tmDur(x.mins)+'</span>':'<span class="t"></span>')+
+      foot+'</span>'+
   '</button>';
-}
-
-/* الطاولة المتاحة لا تحتاج شيئاً: رقمٌ فقط. عشر بلاطات كاملة لها كانت
-   تُغرق الشاشة بمربّعات متطابقة تُزاحم ما يحتاج حركةً فعلاً. */
-function flrChip(x){
-  var k=tmState(x);
-  return '<button class="flrq-t'+(x.oos?' oos':'')+(+FLR.sel===+x.id?' sel':'')+'" '+
-    'data-ft="'+x.id+'" style="--tc:'+stCol(k)+';--tc-on:'+stOn(k)+'" '+
-    'aria-label="طاولة '+(+x.no)+' — '+esc((TMS[k]||TMS.free).ar)+'">'+(+x.no)+'</button>';
 }
 
 function flrSelPanel(t, ar){
   var k=tmState(t), st=TMS[k]||TMS.free, can=flrCan(t);
   var d=FLR.data||{}, sc=d.scope||'full';
-  var meta=esc(st.ar)+((k!=='free'&&!t.oos&&t.mins)?' · '+esc(tmDur(t.mins)):'')+
-    (t.guests?' · '+(+t.guests)+' ضيفات':'')+(t.owner?' · '+esc(t.owner):'');
   var h='<div class="flr-sel" style="--tc:'+stCol(k)+';--tc-on:'+stOn(k)+'">'+
     '<div class="flr-sel-h"><span class="flr-sel-n">'+(+t.no)+'</span>'+
-    '<span class="flr-sel-t"><b>طاولة '+(+t.no)+'</b><span>'+meta+'</span></span>'+
+    '<span class="flr-sel-t"><b>طاولة '+(+t.no)+'</b><span>'+esc(st.ar)+
+      ((k!=='free'&&!t.oos&&t.mins)?' · '+esc(tmDur(t.mins)):'')+
+      (t.guests?' · '+(+t.guests)+' ضيفات':'')+(t.owner?' · '+esc(t.owner):'')+'</span></span>'+
     '<button class="flr-sel-i" id="flrDetail" data-fid="'+t.id+'" aria-label="سجلّ الطاولة">'+TIC.list+'</button>'+
     '<button class="flr-sel-x" id="flrX" aria-label="إغلاق">×</button></div>';
 
-  /* سببٌ في سطر، لا فقرة. الفقرة تُقرأ مرّةً وتُزاحم كل مرّة بعدها. */
   if(t.oos){
     h+='<p class="flr-why">موقوفة عن الخدمة'+(t.oos_reason?' — '+esc(t.oos_reason):'')+'</p>';
   } else if(!can){
@@ -3079,8 +3004,6 @@ function flrSelPanel(t, ar){
        : (sc==='view' ? 'للعرض فقط — التحديث لمن أُسندت إليها المنطقة'
           : 'المنطقة غير مفتوحة للخدمة بعد'))+'</p>';
   } else {
-    /* المسار الطبيعي أولاً، ثم بديلٌ أو بديلان. ما بعدها يُطوى:
-       ثمانية أزرار متساوية تجعل القرار أبطأ لا أسرع. */
     var next=(t.next||[]).filter(function(s){ return s!==k; });
     var head=next.slice(0,3), rest=next.slice(3);
     var btn=function(s, i){
