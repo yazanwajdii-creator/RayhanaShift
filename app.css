@@ -1362,18 +1362,16 @@ nav.bottom .nav-ptt.speaking{background:linear-gradient(180deg,var(--green-btn-2
 .rmchip.prime{background:var(--green-soft);border-color:var(--brand)}
 .rmchip.prime i{color:var(--green-ink)}
 
-/* ═══════════════ صفحة الصالة — الأرضية كصفحة مستقلّة ═══════════════
-   ما كان: بطاقة «طاولاتي اليوم» وسط تبويب «الآن»، وخمس بلاطات كلّها
-   بلون واحد رمادي (لأن الحالة كانت «متاحة» في كلّها، والرمادي هو لون
-   المتاحة)، ثم خريطة المنطقة داخل ورقة منبثقة. النتيجة: تشويش بصري في
-   منتصف الشاشة، وحالةٌ لا تُقرأ إلا بعد الضغط.
 
-   ما صار: صفحة كاملة. اللون يقول الحالة (١١ حالة بثلاثة أوزان بصرية
-   لا وزنٍ واحد)، والاسم مكتوب على كل بلاطة فلا يُقرأ اللون وحده،
-   والإلحاح حلقةٌ حول البلاطة لا لونٌ ينافس الحالة.
-
-   قيم الحالات مشتقّة في OKLCH ومُتحقَّق منها: نصّ ≥ ٤٫٥:١ على تعبئتها،
-   وكل حالة ذات وزن ≥ ٣:١ عن سطح البطاقة، والساكنة ≤ ١٫٤ فتبقى هادئة. */
+/* ═══════════════════════════════════════════════════════════════════
+   شاشة الخدمة — بنية طرفيّة لوحية
+   المرجع: ما تفعله طرفيّات الخدمة المهنية، لا رسمُ مخطّط المكان:
+   شبكة بطاقات موحّدة بترتيب ثابت برقم الطاولة، ولوحُ إجراءٍ ثابت
+   بجانبها على اللوحي. الموظفة تحفظ موضع الطاولة في الشبكة، والترتيب
+   لا يتبدّل إن حُرّكت طاولة في الصالة أو تغيّر إلحاحها.
+   الألوان مشتقّة سابقاً بقيدَي التباين (≥٤٫٥:١) والمسافة الإدراكية
+   (ΔE ≥ 0.13 بين ذواتِ الوزن)، فتُقرأ الحالة من آخر الصالة.
+   ═══════════════════════════════════════════════════════════════════ */
 :root{
   --st-needs-clean:#A20519; --st-needs-clean-on:#FFFFFF;
   --st-seated:#A85700; --st-seated-on:#FFFFFF;
@@ -1386,19 +1384,9 @@ nav.bottom .nav-ptt.speaking{background:linear-gradient(180deg,var(--green-btn-2
   --st-reserved:#C5BBF7; --st-reserved-on:#19221B;
   --st-cleaning:#EA9797; --st-cleaning-on:#19221B;
   --st-out-of-service:#99A3AD; --st-out-of-service-on:#19221B;
-  /* مراتب التقدّم: سلّم إضاءة واحد بصبغات متباعدة، ينقلب مع السمة */
+  --st-oos-stripe:rgba(255,255,255,.34);
   --tier-0:#6A7669; --tier-1:#A05F33; --tier-2:#6B7480; --tier-3:#9A6B12; --tier-4:#2E6E86;
   --tier-on:#FFFFFF;
-  /* ===== سلّما الخطّ ونصف القطر =====
-     كانا ٣١ مقاس خطّ و٣٢ قيمة نصف قطر — وهو انجرافٌ بأنصاف البكسل لا قرار.
-     طُويت كل درجتين يفرقهما ٠٫٥px (خطّاً) أو ١–٢px (قطراً) إلى درجة واحدة،
-     فصارا ١٧ و١٩. التغيير البصري الأقصى نصف بكسل فلا إزاحة ولا فيض.
-     الجديد يقرأ من هذه الرموز لا من قيمة سطرية. */
-  --fs-micro:9.5px;  --fs-caption:10.5px; --fs-small:11.5px; --fs-body:12.5px;
-  --fs-body-lg:13.5px; --fs-title:14.5px; --fs-h3:15.5px;   --fs-h2:19px;
-  --fs-display:22px; --fs-hero:34px;
-  --r-xs:5px; --r-sm:10px; --r-md:13px; --r-lg:16px; --r-xl:20px; --r-2xl:26px;
-  --r-pill:999px; --r-circle:50%;
 }
 [data-theme="dark"]{
   --st-needs-clean:#FF756F; --st-needs-clean-on:#0B100C;
@@ -1412,257 +1400,144 @@ nav.bottom .nav-ptt.speaking{background:linear-gradient(180deg,var(--green-btn-2
   --st-reserved:#4C4174; --st-reserved-on:#E5EBE6;
   --st-cleaning:#8A4143; --st-cleaning-on:#E5EBE6;
   --st-out-of-service:#535C65; --st-out-of-service-on:#E5EBE6;
+  --st-oos-stripe:rgba(0,0,0,.34);
   --tier-0:#98A199; --tier-1:#D89663; --tier-2:#A3ADBA; --tier-3:#D6A73F; --tier-4:#6FB4CD;
   --tier-on:#0B100C;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-  --st-needs-clean:#FF756F; --st-needs-clean-on:#0B100C;
-  --st-seated:#FFAF1D; --st-seated-on:#0B100C;
-  --st-ready:#1CF5AB; --st-ready-on:#0B100C;
-  --st-bill-requested:#E18EFA; --st-bill-requested-on:#0B100C;
-  --st-preparing:#00BCDB; --st-preparing-on:#0B100C;
-  --st-ordered:#7289F0; --st-ordered-on:#0B100C;
-  --st-free:#212521; --st-free-on:#E5EBE6;
-  --st-served:#34400C; --st-served-on:#E5EBE6;
-  --st-reserved:#4C4174; --st-reserved-on:#E5EBE6;
-  --st-cleaning:#8A4143; --st-cleaning-on:#E5EBE6;
-  --st-out-of-service:#535C65; --st-out-of-service-on:#E5EBE6;
+    --st-needs-clean:#FF756F; --st-needs-clean-on:#0B100C;
+    --st-seated:#FFAF1D; --st-seated-on:#0B100C;
+    --st-ready:#1CF5AB; --st-ready-on:#0B100C;
+    --st-bill-requested:#E18EFA; --st-bill-requested-on:#0B100C;
+    --st-preparing:#00BCDB; --st-preparing-on:#0B100C;
+    --st-ordered:#7289F0; --st-ordered-on:#0B100C;
+    --st-free:#212521; --st-free-on:#E5EBE6;
+    --st-served:#34400C; --st-served-on:#E5EBE6;
+    --st-reserved:#4C4174; --st-reserved-on:#E5EBE6;
+    --st-cleaning:#8A4143; --st-cleaning-on:#E5EBE6;
+    --st-out-of-service:#535C65; --st-out-of-service-on:#E5EBE6;
+    --st-oos-stripe:rgba(0,0,0,.34);
     --tier-0:#98A199; --tier-1:#D89663; --tier-2:#A3ADBA; --tier-3:#D6A73F; --tier-4:#6FB4CD;
     --tier-on:#0B100C;
   }
 }
 
-/* شريط المناطق: كل من على الشفت ترى الصالة كلها، لا منطقتها فقط */
-.flr-areas{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch}
-.flr-areas::-webkit-scrollbar{display:none}
-.flr-a{flex:0 0 auto;min-height:40px;display:flex;flex-direction:column;justify-content:center;
-  gap:1px;padding:6px 13px;border-radius:13px;border:1px solid var(--line);
-  background:var(--surface);color:var(--ink);font:inherit;font-weight:700;font-size:13.5px;cursor:pointer}
-.flr-a span{font-size:10.5px;font-weight:600;color:var(--muted)}
-.flr-a.on{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
-.flr-a.on span{color:var(--on-brand);opacity:.82}
-
-/* عدّادات الحالة: أربع أرقام كبيرة تُقرأ قبل الخريطة */
-.flr-cnt{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:0 0 11px}
-.flr-c{padding:9px 6px 8px;border-radius:13px;border:1px solid var(--line);
-  background:var(--surface);text-align:center;min-height:56px}
-.flr-c b{display:block;font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}
-.flr-c span{display:block;margin-top:2px;font-size:10.5px;font-weight:600;color:var(--muted);line-height:1.25}
-.flr-c.act{border-color:var(--tc);border-width:1.5px}
-.flr-c.act b{color:var(--tc)}
-
-/* الأرضية: مواقع حقيقية لا شبكة اعتباطية */
-.flr-board{position:relative;width:100%;aspect-ratio:1/1.18;border-radius:16px;
-  border:1px solid var(--line);background:var(--surface-2);overflow:hidden;
-  }
-/* بالعرض تأخذ الأرضية نسبة الصالة الحقيقية بدل عمودٍ ضيّق */
-@media (orientation:landscape){ .flr-board{aspect-ratio:16/8.5} }
-.flr-land{position:absolute;border-radius:10px;background:var(--beige);
-  border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;
-  font-size:10.5px;font-weight:700;color:var(--muted);pointer-events:none}
-/* ضلع البلاطة يُحسب من أقرب طاولتين ويُحقن كـ --tsz، فلا تراكب ممكن.
-   كان عرضاً ثابتاً (19% بحدّ أدنى 58px) لا علاقة له بتباعد الطاولات
-   الحقيقي — ولهذا تراكبت ١٣ و١٥ و١٢ وانقطعت نصوصها في الشاشة المُبلَّغة. */
-.flr-t{position:absolute;transform:translate(50%,-50%);
-  width:var(--tsz,60px);height:var(--tsz,60px);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:1px;padding:2px;overflow:hidden;
-  border-radius:13px;border:2px solid transparent;cursor:pointer;font:inherit;
-  background:var(--tc);color:var(--tc-on);box-shadow:var(--sh-1)}
-.flr-t.round{border-radius:50%}
-.flr-t .n{font-size:clamp(13px,calc(var(--tsz,60px) * .30),22px);font-weight:800;line-height:1.16;
-  font-variant-numeric:tabular-nums}
-.flr-t .s{font-size:clamp(8px,calc(var(--tsz,60px) * .155),11px);font-weight:700;line-height:1.15;
-  text-align:center;max-width:94%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.94}
-/* حين يكون المخطّط مزدحماً فعلاً نُخفي الاسم ونُبقي الرقم واللون — ولا
-   نعرض نصّاً مقطوعاً أبداً. والشبكة متاحة بضغطة للقراءة الكاملة. */
-.flr-board[data-tight] .flr-t .s{display:none}
-.flr-board[data-tight] .flr-t .m{display:none}
-.flr-t .m{position:absolute;top:-1px;inset-inline-end:-1px;background:var(--ink);color:var(--paper);
-  border-radius:10px;padding:0 4px;font-size:9.5px;font-weight:800;unicode-bidi:isolate}
-/* الإلحاح قناة ثانية: حلقة، لا لونٌ ينافس لون الحالة */
-.flr-t.late{border-color:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 34%,transparent)}
-.flr-t.soon{border-color:var(--amber)}
-/* الموقوفة: تخطيطٌ مائل فوق اللون فلا تُعرف باللون وحده.
-   والتخطيط يُظلِّل في السمة الفاتحة ويُفتِّح في الداكنة — أي يبتعد عن لون
-   النصّ لا يقترب منه. كان يستخدم لون النصّ نفسه بشفافية، فأنزل تباين
-   «موقوفة» إلى ٣٫٥٧ على بلاطةٍ نسبتها الأصلية ٦٫٥٤. */
-.flr-t.oos{background-image:repeating-linear-gradient(45deg,
-  transparent 0 5px,var(--st-oos-stripe) 5px 10px)}
-/* طاولتي: علامة ملكية لا لون إضافي */
-.flr-t.mine::after{content:'';position:absolute;bottom:4px;inset-inline-start:5px;
-  width:7px;height:7px;border-radius:50%;background:var(--tc-on);opacity:.85}
-.flr-t.sel{outline:3px solid var(--focus);outline-offset:2px}
-.flr-t:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-
-/* مفتاح الحالات: الحالات الموجودة فعلاً على الأرضية فقط */
-.flr-leg{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
-.flr-lb{display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:4px 11px;
-  border-radius:10px;border:1px solid var(--line);background:var(--surface);
-  color:var(--ink);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer}
-.flr-lb .sw{width:13px;height:13px;border-radius:5px;background:var(--tc);
-  border:1px solid color-mix(in srgb,var(--ink) 18%,transparent);flex:0 0 auto}
-.flr-lb .n{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11.5px}
-.flr-lb.on{border-color:var(--brand);background:var(--green-soft)}
-.flr-lb.on .n{color:var(--green-ink)}
-
-/* لوح الطاولة المختارة: يلتصق أسفل الشاشة فوق شريط التنقّل */
-.flr-sel{margin-top:11px;
-  border-radius:16px;border:1px solid var(--line);background:var(--surface);
-  box-shadow:var(--sh-2);padding:11px 12px 12px}
-.flr-sel-h{display:flex;align-items:center;gap:9px;margin-bottom:3px}
-.flr-sel-n{width:38px;height:38px;border-radius:10px;background:var(--tc);color:var(--tc-on);
-  display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex:0 0 auto}
-.flr-sel-t{min-width:0;flex:1}
-.flr-sel-t b{display:block;font-size:14.5px;line-height:1.25}
-.flr-sel-t span{display:block;font-size:11.5px;color:var(--muted);unicode-bidi:isolate}
-.flr-sel-x{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);
-  background:var(--surface-2);color:var(--ink);font:inherit;font-size:16.5px;cursor:pointer;flex:0 0 auto}
-.flr-acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
-.flr-acts .btn{flex:1 1 46%;min-height:46px}
-/* زرّ الإجراء يحمل لون الحالة التي سينتقل إليها، فتُقرأ النتيجة قبل الضغط
-   ولا يتعلّم الطاقم لغتَي لون: واحدة على الخريطة وأخرى على الأزرار. */
-.flr-acts .btn.st{background:var(--ac);color:var(--ac-on);border-color:transparent}
-.flr-acts .btn.st:active{filter:brightness(.94)}
-.flr-note{margin-top:9px;padding:8px 10px;border-radius:10px;background:var(--surface-2);
-  border:1px dashed var(--line);font-size:12.5px;line-height:1.5}
-.flr-note b{color:var(--amber-ink)}
-
-/* ═════════ وضع الصالة الكامل ═════════
-   الطلب: «لماذا لا تكون كامل الشاشة؟» — ومحقّ. الأرضية أداة عمل تُفتح
-   عشرات المرات في الشفت، وكل بكسل فيها يساوي طاولةً تُقرأ من بعيد.
-   في هذا الوضع يختفي رأس التطبيق وشريط التنقّل، وتأخذ الأرضية الشاشة
-   كلّها بشريطها الخاص: المناطق، البحث، وتبديل العرض. */
-body.floormode .top{display:none}
-body.floormode nav.bottom{display:none}
+body.floormode .top,
+body.floormode nav.bottom,
 body.floormode #pttToast{display:none}
 body.floormode{padding-bottom:0}
 body.floormode .wrap{padding:0;max-width:none;margin:0}
 body.floormode #view{padding:0}
 
-.flrx{display:flex;flex-direction:column;min-height:100dvh;background:var(--paper)}
-.flrx-bar{position:sticky;top:0;z-index:6;background:var(--surface);
-  border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top) + 8px) 10px 8px;
-  box-shadow:0 1px 0 color-mix(in srgb,var(--ink) 6%,transparent)}
-.flrx-r1{display:flex;align-items:center;gap:8px}
-.flrx-x{width:42px;height:42px;flex:0 0 auto;border-radius:13px;border:1px solid var(--line);
-  background:var(--surface-2);color:var(--ink);font:inherit;font-size:19px;cursor:pointer}
-.flrx-ttl{flex:1;min-width:0}
-.flrx-ttl b{display:block;font-size:15.5px;line-height:1.2}
-.flrx-ttl span{display:block;font-size:11.5px;color:var(--muted);unicode-bidi:isolate}
-.flrx-v{display:flex;gap:4px;flex:0 0 auto;background:var(--surface-2);border-radius:13px;padding:3px;
-  border:1px solid var(--line)}
-.flrx-v button{min-width:36px;height:36px;border-radius:10px;border:none;background:none;
-  color:var(--muted);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;padding:0 7px}
-.flrx-v button.on{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
-.flrx-srch{display:flex;align-items:center;gap:7px;margin-top:8px;padding:0 11px;height:42px;
-  border-radius:13px;border:1px solid var(--line);background:var(--surface-2)}
-.flrx-srch input{flex:1;min-width:0;border:none;background:none;font:inherit;font-size:13.5px;
-  color:var(--ink);outline:none;height:100%}
-.flrx-srch input::placeholder{color:var(--muted)}
-.flrx-body{flex:1;padding:10px 10px 0}
-.flrx-foot{position:sticky;bottom:0;z-index:6;padding:9px 10px calc(env(safe-area-inset-bottom) + 10px);
-  background:var(--surface);border-top:1px solid var(--line);
-  box-shadow:0 -6px 22px color-mix(in srgb,var(--ink) 9%,transparent)}
+.flrx{display:grid;grid-template-rows:auto 1fr;min-height:100dvh;background:var(--paper)}
 
-/* شبكة الطاولات: بلاطات كبيرة تُقرأ بطرف العين، لا بطاقات بيضاء متشابهة */
-.flrg{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
-.flrg-t{position:relative;min-height:96px;display:flex;flex-direction:column;
-  align-items:flex-start;justify-content:space-between;gap:2px;padding:9px 10px;
+/* ── الشريط: صفٌّ واحد ── */
+.flrx-bar{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:9px;
+  padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
+  background:var(--surface);border-bottom:1px solid var(--line)}
+.flrx-x{width:44px;height:44px;flex:0 0 auto;border-radius:13px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--ink);font:inherit;font-size:20px;cursor:pointer}
+.flrx-ttl{min-width:0}
+.flrx-ttl b{font-size:16.5px}
+.flrx-seg{display:flex;gap:3px;flex:0 1 auto;min-width:0;max-width:100%;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:13px;padding:3px}
+.flrx-seg button{min-width:66px;height:44px;border:none;border-radius:10px;background:none;
+  color:var(--muted);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;padding:0 12px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flrx-seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
+.flrx-f{display:flex;gap:6px;flex:1 1 190px;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;padding-bottom:1px}
+.flrx-f::-webkit-scrollbar{display:none}
+.flrx-f button{flex:0 0 auto;min-height:44px;display:inline-flex;align-items:center;gap:6px;
+  padding:0 12px;border-radius:13px;border:1px solid var(--line);background:var(--surface);
+  color:var(--ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.flrx-f button i{font-style:normal;font-size:12px;font-weight:800;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.flrx-f button.on{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.flrx-f button.on i{color:var(--on-brand);opacity:.85}
+.flrx-live{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 12px;
+  border-radius:13px;background:var(--surface-2);border:1px solid var(--line);
+  font-size:13px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.flrx-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex:0 0 auto}
+
+/* ── الشبكة: بطاقات موحّدة، ترتيب ثابت ── */
+.flrx-grid-wrap{padding:12px;overflow-y:auto}
+.flrx-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(124px,1fr))}
+.flrc{position:relative;display:flex;flex-direction:column;align-items:flex-start;
+  justify-content:space-between;gap:4px;min-height:104px;padding:10px 12px;
   border-radius:16px;border:2px solid transparent;cursor:pointer;font:inherit;text-align:start;
   background:var(--tc);color:var(--tc-on);box-shadow:var(--sh-1)}
-.flrg-t .no{font-size:26px;font-weight:800;line-height:1.16;font-variant-numeric:tabular-nums}
-.flrg-t .st{font-size:12.5px;font-weight:800;line-height:1.2}
-.flrg-t .mt{font-size:11.5px;font-weight:700;opacity:.86;unicode-bidi:isolate}
-.flrg-t .gs{position:absolute;top:8px;inset-inline-end:9px;font-size:11.5px;font-weight:800;
-  border-radius:999px;padding:1px 7px;background:var(--tc-on);color:var(--tc)}
-.flrg-t.late{border-color:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 32%,transparent)}
-.flrg-t.soon{border-color:var(--amber)}
-.flrg-t.oos{background-image:repeating-linear-gradient(45deg,
+.flrc-no{font-size:32px;font-weight:800;line-height:1.08;font-variant-numeric:tabular-nums}
+.flrc-st{font-size:13px;font-weight:800;line-height:1.25}
+.flrc-f{display:flex;align-items:center;gap:6px;width:100%;font-size:12px;font-weight:700;opacity:.92}
+.flrc-f .t{flex:1;unicode-bidi:isolate}
+.flrc-f .g,.flrc-f .o{display:inline-flex;align-items:center;justify-content:center;
+  min-width:22px;height:22px;padding:0 6px;border-radius:999px;font-size:11.5px;font-weight:800;
+  background:var(--tc-on);color:var(--tc)}
+.flrc.late{border-color:var(--red);box-shadow:0 0 0 4px color-mix(in srgb,var(--red) 30%,transparent)}
+.flrc.soon{border-color:var(--amber)}
+.flrc.oos{background-image:repeating-linear-gradient(45deg,
   transparent 0 6px,var(--st-oos-stripe) 6px 12px)}
-.flrg-t.mine::after{content:'';position:absolute;bottom:9px;inset-inline-end:10px;
-  width:8px;height:8px;border-radius:50%;background:var(--tc-on);opacity:.9}
-.flrg-t.sel{outline:3px solid var(--focus);outline-offset:2px}
-.flrg-t:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.flrc.mine::after{content:'';position:absolute;top:10px;inset-inline-end:11px;
+  width:9px;height:9px;border-radius:50%;background:var(--tc-on);opacity:.9}
+.flrc.sel{outline:3px solid var(--focus);outline-offset:2px}
+.flrc:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.flrc:active{transform:scale(.98)}
 
-/* ═══ بالعرض: عمودان كطرفيّات نقاط البيع ═══
-   بالطول يكون لوح الطاولة المختارة شريطاً سفلياً؛ وبالعرض ارتفاع الشاشة
-   ٤١٤px فقط، فالشريط السفلي يبتلع الخريطة كلّها — وهو ما ظهر في أول لقطة.
-   بالعرض تصير الأرضية عموداً واللوح عموداً بجانبه، ولكلٍّ تمريره. */
-@media (orientation:landscape) and (min-width:640px){
-  .flrx{flex-direction:row;flex-wrap:wrap;align-content:flex-start}
-  /* ارتفاع الشاشة بالعرض ٤١٤px فقط، فالشريط العلوي يُصفّ في سطر واحد
-     بدل ثلاثة — وإلا أكل ثلثَي الشاشة وبقي للخريطة ربعها. */
-  .flrx-bar{flex:1 0 100%;position:sticky;top:0;display:flex;flex-wrap:wrap;
-    align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 7px) 10px 7px}
-  .flrx-r1{flex:1 1 300px}
-  .flrx-srch{flex:0 1 180px;margin-top:0}
-  .flrx-bar .flr-areas{flex:0 1 auto;padding:0;margin:0}
-  .flrx-body{max-height:calc(100dvh - 76px)}
-  .flrx-foot{top:76px;max-height:calc(100dvh - 88px)}
-  .flr-board{height:calc(100dvh - 108px)}
-  .flrx-body{flex:1 1 0;min-width:0;overflow-y:auto;max-height:calc(100dvh - 118px);
-    padding:10px 10px 12px}
-  .flrx-foot{flex:0 0 clamp(290px,34%,400px);position:sticky;top:118px;bottom:auto;
-    max-height:calc(100dvh - 130px);overflow-y:auto;
-    border-top:none;border-inline-start:1px solid var(--line);
-    box-shadow:none;padding:10px 11px 14px;background:var(--surface)}
-  .flrx-foot .flr-sel{margin-top:0;border:none;box-shadow:none;padding:0}
-  .flrx-foot .flr-acts .btn{flex:1 1 100%}
-  .flr-board{aspect-ratio:auto;height:calc(100dvh - 150px);min-height:240px}
-}
-
-
-/* ═══ الشريط: سطر واحد ═══ */
-.flrx-seg{display:flex;gap:3px;flex:1 1 132px;min-width:0;background:var(--surface-2);
-  border:1px solid var(--line);border-radius:13px;padding:3px}
-.flrx-seg button{flex:1 1 0;min-width:0;height:36px;border:none;border-radius:10px;
-  background:none;color:var(--muted);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px}
-.flrx-seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
-.flrx-kpi{display:flex;gap:5px;flex:0 0 auto}
-.flrx-kpi b{min-width:32px;height:36px;display:inline-flex;align-items:center;justify-content:center;
-  border-radius:10px;font-size:14.5px;font-variant-numeric:tabular-nums;
-  background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
-.flrx-kpi b.a{background:var(--st-seated);color:var(--st-seated-on);border-color:transparent}
-.flrx-kpi b.l{background:var(--red);color:var(--on-ink);border-color:transparent}
-.flrx-v button .ti svg{width:19px;height:19px}
-.flrx-hint{margin-top:9px;font-size:11.5px;color:var(--muted);line-height:1.5}
-
-/* ═══ الفرق الثلاث ═══ */
-.flrs{margin-bottom:14px}
-.flrs h4{margin:0 0 7px;font-size:11.5px;font-weight:800;color:var(--muted);
-  display:flex;align-items:center;gap:6px;letter-spacing:.2px}
-.flrs h4 i{font-style:normal;font-size:11px;font-weight:800;background:var(--surface-2);
-  border:1px solid var(--line);border-radius:999px;padding:1px 7px;color:var(--ink)}
-.flrs.need h4{color:var(--ink)}
-.flrs.need h4::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--st-seated)}
-.flrg.lg{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-.flrg.lg .flrg-t{min-height:104px}
-.flrg.lg .flrg-t .no{font-size:30px}
-.flrg.lg .flrg-t .st{font-size:13.5px}
-
-/* المتاحة: أرقامٌ لا بلاطات */
-.flrq{display:flex;flex-wrap:wrap;gap:7px}
-.flrq-t{min-width:50px;height:50px;border-radius:13px;border:1px solid var(--line);
-  background:var(--tc);color:var(--tc-on);font:inherit;font-size:16.5px;font-weight:800;
-  font-variant-numeric:tabular-nums;cursor:pointer;padding:0 9px}
-.flrq-t.oos{opacity:.75;background-image:repeating-linear-gradient(45deg,
-  transparent 0 5px,var(--st-oos-stripe) 5px 10px)}
-.flrq-t.sel{outline:3px solid var(--focus);outline-offset:2px}
-.flrq-t:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-
-/* لوح الطاولة: سطرٌ وأزرار */
-.flr-sel-i{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
-  background:var(--surface-2);color:var(--ink);cursor:pointer;flex:0 0 auto;
+/* ── لوح الإجراء ── */
+.flrx-side{padding:0 12px calc(env(safe-area-inset-bottom) + 12px)}
+.flrx-side-e{display:none}
+.flr-sel{border-radius:16px;border:1px solid var(--line);background:var(--surface);
+  box-shadow:var(--sh-2);padding:12px}
+.flr-sel-h{display:flex;align-items:center;gap:10px}
+.flr-sel-n{width:48px;height:48px;border-radius:13px;background:var(--tc);color:var(--tc-on);
+  display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex:0 0 auto;
+  font-variant-numeric:tabular-nums}
+.flr-sel-t{min-width:0;flex:1}
+.flr-sel-t b{display:block;font-size:15.5px;line-height:1.25}
+.flr-sel-t span{display:block;font-size:12.5px;color:var(--muted);unicode-bidi:isolate}
+.flr-sel-i,.flr-sel-x{width:44px;height:44px;border-radius:13px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--ink);font:inherit;font-size:18px;cursor:pointer;flex:0 0 auto;
   display:inline-flex;align-items:center;justify-content:center}
-.flr-sel-i .ti svg{width:18px;height:18px}
-.flr-why{margin:8px 0 0;font-size:12px;line-height:1.45;color:var(--muted)}
-.flrx-foot:empty{display:none}
-
-.flr-more{margin-top:7px}
-.flr-more>summary{list-style:none;cursor:pointer;min-height:40px;display:flex;align-items:center;
+.flr-sel-i .ti svg{width:19px;height:19px}
+.flr-why{margin:10px 0 0;font-size:13px;line-height:1.5;color:var(--muted)}
+.flr-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
+.flr-acts .btn{flex:1 1 46%;min-height:52px;font-size:14.5px}
+.flr-acts .btn.st{background:var(--ac);color:var(--ac-on);border-color:transparent}
+.flr-acts .btn.st:active{filter:brightness(.94)}
+.flr-more{margin-top:8px}
+.flr-more>summary{list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;
   justify-content:center;border-radius:13px;border:1px dashed var(--line);
-  color:var(--muted);font-size:12.5px;font-weight:700}
+  color:var(--muted);font-size:13px;font-weight:700}
 .flr-more>summary::-webkit-details-marker{display:none}
-.flr-more[open]>summary{margin-bottom:7px}
+.flr-more[open]>summary{margin-bottom:8px}
+
+/* ── اللوحي: عمودان دائمان، وبطاقات أكبر ── */
+@media (min-width:820px){
+  .flrx{grid-template-columns:1fr clamp(300px,30%,392px);grid-template-rows:auto 1fr}
+  .flrx-grid-wrap{overflow-y:auto;max-height:calc(100dvh - 62px)}
+  .flrx-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  .flrc{min-height:126px;padding:12px 14px}
+  .flrc-no{font-size:38px}
+  .flrc-st{font-size:14.5px}
+  .flrx-side{padding:12px 12px 12px 0;max-height:calc(100dvh - 62px);overflow-y:auto}
+  .flrx-side .flr-sel{position:sticky;top:0}
+  .flr-acts .btn{flex:1 1 100%;min-height:56px}
+  .flrx-side-e{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:8px;height:100%;min-height:220px;border-radius:16px;border:1px dashed var(--line);
+    background:var(--surface);color:var(--muted);text-align:center;padding:20px}
+  .flrx-side-e svg{width:34px;height:34px;opacity:.55}
+  .flrx-side-e b{font-size:14.5px;color:var(--ink)}
+  .flrx-side-e span{font-size:12.5px;max-width:220px;line-height:1.5}
+}
+@media (min-width:1180px){
+  .flrx-grid{grid-template-columns:repeat(auto-fill,minmax(178px,1fr))}
+  .flrc{min-height:142px}
+  .flrc-no{font-size:42px}
+}
+/* الهاتف: اللوح شريطٌ سفلي لاصق، والشبكة تحته */
+@media (max-width:819px){
+  .flrx.has-sel .flrx-side{position:sticky;bottom:0;z-index:5;padding-top:8px;
+    background:linear-gradient(to top,var(--paper) 72%,transparent)}
+}
