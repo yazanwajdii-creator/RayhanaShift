@@ -2430,6 +2430,11 @@ function heroTaskCard(t){
   var stTxt={open:'لم تبدأ',running:'قيد التنفيذ الآن',paused:'متوقفة مؤقتاً',returned:'مُعادة من الإدارة'}[t.status]||TSTAT[t.status]||'';
   var stCls={open:'',running:'green',paused:'orange',returned:'red'}[t.status]||'';
   if(t.status==='paused'&&t.blocked){ stTxt='متوقفة — يوجد مانع'; stCls='red'; }
+  /* فرقٌ جوهري: توقّفٌ اختارته الموظفة، وتأجيلٌ قرّره المحرّك لأن الصالة
+     مضغوطة. الثاني كان يظهر بنفس صورة الأول مع زرّ «استئناف» بلا سبب —
+     فأيّ موظفة ستضغطه وتُبطل المعنى. الآن يُقرأ السبب قبل أيّ زر. */
+  var deferred = (t.status==='paused' && !t.blocked && !!t.defer_reason);
+  if(deferred){ stTxt='مؤجَّلة — الخدمة أولاً'; stCls='orange'; }
   var range='~'+t.expected+'–'+Math.round(t.expected*1.5)+' د';
   if(workLocked()){
     return '<div class="hero-task">'+
@@ -2441,6 +2446,7 @@ function heroTaskCard(t){
   var prim, sec='';
   if(t.status==='running'){ prim=swipeHtml('swDone'+t.id,'اسحبي: أنجزت وأؤكد النتيجة'); sec='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت</button>'; }
   else if(t.status==='paused'&&t.blocked){ prim='<button class="btn block" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>'; }
+  else if(deferred){ prim='<button class="btn block ghost" data-a="tResume" data-id="'+t.id+'">أستأنفها الآن على أي حال</button>'; }
   else if(t.status==='paused'){ prim='<button class="btn block" data-a="tResume" data-id="'+t.id+'">استئناف</button>'; }
   else { prim='<button class="btn block" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>'; }
   var needs=[]; if(t.needs_photo||t.method==='photo') needs.push('تحتاج صورة'); if(t.needs_two||t.method==='two_person') needs.push('موظفتان'); if(t.method==='checklist') needs.push('قائمة تحقق'); if(t.needs_review||t.method==='review') needs.push('مراجعة إدارة');
@@ -2450,6 +2456,7 @@ function heroTaskCard(t){
     (t.description?'<div class="ht-meta" style="color:var(--ink)">'+esc(t.description)+'</div>':'')+
     (t.reason?'<div class="card soft" style="margin:9px 0 0;padding:9px 11px"><div class="small"><b>لماذا هذه المهمة:</b> '+esc(t.reason)+'</div>'+
       (t.impact?'<div class="muted small" style="margin-top:2px">إن لم تُنفَّذ: '+esc(t.impact)+'</div>':'')+'</div>':'')+
+    (deferred?'<div class="card soft" style="margin:9px 0 0;padding:9px 11px;border:1px dashed var(--line)"><div class="small"><b>أجّلها النظام:</b> '+esc(t.defer_reason)+'</div><div class="muted small" style="margin-top:2px">تعود إلى قائمتك تلقائياً حين تهدأ الصالة — لا حاجة لأي إجراء.</div></div>':'')+
     '<div class="ht-meta">الوقت التقريبي '+range+(needs.length?' · '+needs.join(' · '):'')+'</div>'+
     (t.status==='returned'&&t.admin_note?'<div class="small" style="color:var(--red);margin-top:6px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>':'')+
     '<div class="row" style="justify-content:space-between;margin-top:10px"><span class="chip '+stCls+'">'+stTxt+'</span>'+
@@ -2976,6 +2983,8 @@ function taskCard(t){
     claimed_done:'',accepted:'green',verified:'green',review_required:'orange',reopened:'red',blocked:'red'}[t.status]||'';
   var stLbl = TSTAT[t.status];
   if(t.status==='paused'&&t.blocked){ stChip='red'; stLbl='مانع — موقوفة'; }
+  var deferred = (t.status==='paused' && !t.blocked && !!t.defer_reason);
+  if(deferred){ stChip='orange'; stLbl='مؤجَّلة — الخدمة أولاً'; }
   var running = t.status==='running';
   var CLS={live:{t:'خدمة',c:'amber'},support:{t:'دعم',c:'brand'},maintenance:{t:'صيانة',c:'muted'}};
   var cl=CLS[t.op_class]||CLS.support;
@@ -2985,6 +2994,7 @@ function taskCard(t){
     '<div class="muted small" style="margin-top:3px">متوقعة '+mins(t.expected)+' · صافي <span class="timer" data-net="'+(t.net||0)+'" data-run="'+(running?1:0)+'" data-since="'+Date.now()+'">'+secFmt(t.net)+'</span></div></div>'+
     '<span class="chip '+stChip+'">'+stLbl+'</span></div>'+prog;
   if(t.status==='returned' && t.admin_note) html+='<div class="small" style="color:var(--red);margin-top:4px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>';
+  if(deferred) html+='<div class="small muted" style="margin-top:4px">'+esc(t.defer_reason)+' — تعود تلقائياً حين تهدأ الصالة.</div>';
   if(workLocked()){ html+='<div class="muted small" style="margin-top:8px">انتهى شفتك — العرض فقط</div></div>'; return html; }
   /* قاعدة واحدة في التطبيق كله: ما لا رجعة فيه يُسحب، وما يُعكس يُكبس.
      كان «إنهاء ✔» كبسةً واحدة في قائمة المهام بينما البطاقة الرئيسية تطلب
@@ -2994,6 +3004,7 @@ function taskCard(t){
   if(t.status==='open'||t.status==='returned') html+='<button class="btn sm" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>';
   if(running) html+='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت (خدمة ضيف)</button>';
   if(t.status==='paused'&&t.blocked) html+='<button class="btn sm" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>';
+  else if(deferred) html+='<button class="btn sm ghost" data-a="tResume" data-id="'+t.id+'">أستأنفها الآن على أي حال</button>';
   else if(t.status==='paused') html+='<button class="btn sm ghost" data-a="tResume" data-id="'+t.id+'">استئناف</button>';
   html+='</div>';
   if(running || (t.status==='paused' && !t.blocked))
