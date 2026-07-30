@@ -902,16 +902,21 @@ function startStaff(){
     '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div class="binfo"><h1 id="hiName"></h1><div class="sub" id="hiSub"></div><div class="sub" style="opacity:.6">'+new Date().toLocaleDateString('ar-JO',{weekday:'long',day:'numeric',month:'long'})+'</div></div></div>'+
     '<div class="left"><span class="presdot" id="presDot" title="تأكيد التواجد"></span><span class="dot" id="syncdot"></span><button class="pill icbtn bellbtn" id="bellBtn" aria-label="الإشعارات">'+IC.bell+'<span class="bellcount" id="bellCount"></span></button><button class="pill icbtn" id="rfBtn" aria-label="تحديث">'+IC.refresh+'</button></div></div>'+
     '<div class="wrap" id="view"></div>'+
+    /* زر التخاطب كان طبقةً عائمة فوق المحتوى، فكان يغطّي نصوص البطاقات
+       وأزرارها أثناء التمرير — وهو ما ظهر في الشاشة المُبلَّغة. وُضع الآن
+       داخل شريط التنقّل نفسه: لا طبقة عائمة، فلا احتمال تغطية أصلاً، وهو
+       عند الإبهام حيث اليد أساساً. ومحدّد المستهدَف انتقل إلى ورقة الضغط
+       المطوّل بدل شريحة عائمة ثانية. */
     '<nav class="bottom">'+
       '<button data-t="now"><span class="ic">'+IC.home+'</span>الآن</button>'+
       '<button data-t="tasks"><span class="ic">'+IC.tasks+'</span>المهام</button>'+
+      '<button id="pttBtn" class="nav-ptt" aria-label="اضغطي مع الاستمرار للتحدث">'+
+        '<span class="ic">'+IC.mic+'</span><span class="ptt-l">تحدّثي</span></button>'+
       '<button data-t="shift"><span class="ic">'+IC.shift+'</span>الشفت</button>'+
       '<button data-t="grow"><span class="ic">'+IC.user+'</span>ملفّي</button>'+
       '<button data-t="more"><span class="ic">'+IC.more+'</span>المزيد</button>'+
     '</nav>'+
-    '<div id="pttToast" class="ptt-toast"></div>'+
-    '<div id="pttWrap" class="ptt-wrap"><button id="pttTarget" class="ptt-target">🔊 للكل</button>'+
-    '<button id="pttBtn" class="ptt" aria-label="اضغطي مع الاستمرار للتحدث"><span class="ic">'+IC.mic+'</span><span class="ptt-l">تحدّثي</span></button></div>';
+    '<div id="pttToast" class="ptt-toast"></div>';
   var hh=new Date().getHours();
   $('#hiName').textContent=(hh<12?'صباح الخير ':hh<17?'نهارك سعيد ':'مساء الخير ')+(S.me?S.me.name:'');
   $('#rfBtn').addEventListener('click', function(){
@@ -954,7 +959,7 @@ function pttInit(){
   btn.onpointercancel=up;
   // احتياط: أي إفلات في أي مكان يُنهي التسجيل (لو خرج الإصبع عن الزر)
   if(!PTT.upbound){ PTT.upbound=true; window.addEventListener('pointerup', function(){ if(PTT.recording) pttStop(); }, true); }
-  var tg=$('#pttTarget'); if(tg) tg.onclick=pttPickTarget;
+  var tg=$('#pttTarget'); if(tg) tg.onclick=pttPickTarget;   /* صار داخل ورقة الاستهداف */
   pttUpdateTarget();
   // فتح قفل الصوت عند أول لمسة في أي مكان — ليسمع الفريق النداءات الواردة تلقائياً
   if(!PTT.gbound){ PTT.gbound=true; document.addEventListener('pointerdown', pttUnlock, true); document.addEventListener('touchstart', pttUnlock, true); }
@@ -2271,12 +2276,21 @@ function dashBreak(){
   if(!(inT && !outT)) return '';
   var done=(st.breaks||[]).filter(function(b){return b.end;}).length;
   var openBr=(st.breaks||[]).filter(function(b){return !b.end;})[0];
+  var alloc=+sh.break_minutes||0, noAlloc=alloc<=0;
+  /* الشفت المخصص بلا نوع ⇒ استراحة مخصصة صفر. كانت البطاقة تعرض «المخصص: 0 د»
+     بجانب «جارية 00:41» وتدعو لبدء استراحة — ثلاث رسائل متناقضة في بطاقة
+     واحدة. الآن السبب مكتوب، ولا تُعرض دعوةٌ لما لا رصيد له، لكن إنهاء
+     استراحة جارية يبقى متاحاً دائماً حتى لا تُحتجز الموظفة فيها. */
   return '<div class="card"><h3>الاستراحة'+(st.break_open&&openBr?' <span class="chip orange">جارية <b class="timer" data-brk="'+esc(openBr.start)+'">00:00</b></span>':'')+'</h3>'+
-    '<div class="muted small">الحد الأقصى 30 دقيقة (تُغلق تلقائياً عند تجاوزها) · المأخوذ اليوم: '+done+' من '+(sh.break_parts||1)+' · المخصص: '+mins(sh.break_minutes)+'</div>'+
+    (noAlloc
+      ? '<div class="muted small">هذا الشفت بلا استراحة مخصّصة'+
+        (st.break_open?' — الاستراحة الجارية تُحسب وقتاً غير مدفوع. أنهيها حين ترجعين.':'. إن احتجتِ استراحة فراسلي الإدارة.')+'</div>'
+      : '<div class="muted small">الحد الأقصى 30 دقيقة (تُغلق تلقائياً عند تجاوزها) · المأخوذ اليوم: '+done+' من '+(sh.break_parts||1)+' · المخصص: '+mins(alloc)+'</div>')+
     '<div class="btnrow">'+
     (st.break_open
       ? '<button class="btn block" data-a="brEnd">أنهيت الاستراحة — رجعت</button>'
-      : '<button class="btn ghost" data-a="brStart">بدء استراحة</button><button class="btn ghost" data-a="brPost">تأجيل بسبب الضغط</button>')+
+      : (noAlloc ? ''
+        : '<button class="btn ghost" data-a="brStart">بدء استراحة</button><button class="btn ghost" data-a="brPost">تأجيل بسبب الضغط</button>'))+
     '</div></div>';
 }
 function dashOps(mode){
@@ -2318,12 +2332,17 @@ function dashOps(mode){
       : '<div class="muted small">أُنجزت اليوم: '+rt.done+' مرة · نصيبك: '+rt.mine+'</div>';
     var recent = (rt.recent&&rt.recent.length)?'<div class="small muted" style="margin-top:6px">آخر من نفّذها: '+rt.recent.map(function(x){return esc(x.who)+' ('+fmtT(x.ts)+')';}).join('، ')+'</div>':'';
     var btns;
-    if(full) btns='<div class="btnrow"><button class="btn sm block" disabled>اكتمل المطلوب ✔</button></div>';
+    /* «أنجزتُها» فعل لا رجعة فيه سهل: كان كبسةً واحدة، بينما المهمة العادية
+       تطلب سحباً للتأكيد. توحيد القواعد: كل إعلان إنجاز يُسحب لا يُكبس،
+       والبدء والتراجع يبقيان كبسة لأنهما قابلان للعكس. */
+    if(full) btns='<div class="btnrow"><button class="btn sm block" disabled>اكتمل المطلوب</button></div>';
     else if(claimedByOther) btns='<div class="chip orange" style="display:block;text-align:center;padding:9px;margin-top:8px"><b>'+esc(claim.who)+'</b> تقوم بها الآن</div>';
-    else if(claimedByMe) btns='<div class="btnrow"><button class="btn sm block" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'">تم، أنجزتها ✔</button>'+
-        '<button class="btn sm ghost" data-a="recRelease" data-id="'+rt.template_id+'">تراجع</button></div>';
-    else btns='<div class="btnrow"><button class="btn sm block" data-a="recClaim" data-id="'+rt.template_id+'">أنا بعملها الآن</button>'+
-        '<button class="btn sm ghost" data-a="recDone" data-id="'+rt.template_id+'" data-photo="'+(rt.needs_photo?1:0)+'" data-name="'+esc(rt.name)+'">تم مباشرة ✔</button></div>';
+    else if(claimedByMe) btns='<div style="margin-top:9px">'+
+        swipeHtml('swRec'+rt.template_id,'اسحبي: أنجزتها')+
+        '<div class="btnrow" style="margin-top:7px"><button class="btn sm ghost block" data-a="recRelease" data-id="'+rt.template_id+'">تراجع عن الحجز</button></div></div>';
+    else btns='<div style="margin-top:9px">'+
+        '<div class="btnrow"><button class="btn sm block" data-a="recClaim" data-id="'+rt.template_id+'">أنا بعملها الآن</button></div>'+
+        '<div style="margin-top:7px">'+swipeHtml('swRec'+rt.template_id,'اسحبي: أنجزتها مباشرة')+'</div></div>';
     var steer='';
     if(directed && !full && !claimedByOther){
       steer='<div class="chip orange" style="display:block;text-align:center;padding:8px;margin-top:8px">الأهم الآن: '+esc(directed.name)+'</div>';
@@ -2414,6 +2433,25 @@ function dayPhaseStrip(day){
     (declared?'<span class="dps-b">من الإدارة</span>':'')+
   '</div>';
 }
+/* تحويل آمن لأي وقت قادم من الخادم: null و'' و undefined كلها «لا وقت»،
+   لا صفر. كل حساب زمني في الواجهة يمرّ من هنا. */
+function tsOrNull(v){
+  if(v===null || v===undefined || v==='') return null;
+  var t=new Date(v).getTime();
+  return isFinite(t) ? t : null;
+}
+/* رأس الشفت المفتوح: يحلّ محل حلقة التقدّم. لا نسبة ولا وقت متبقٍّ، لأن
+   النسبة بلا نهاية معروفة رقمٌ مُختلق — عدّاد تصاعدي وسببٌ مكتوب. */
+function openShiftHeader(inT){
+  var mins_ = inT ? Math.max(0, Math.round((Date.now()-new Date(inT).getTime())/60000)) : 0;
+  return '<div class="ossh"><div class="ossh-h">'+
+      '<span class="ossh-dot" aria-hidden="true"></span><b>شفت مفتوح</b>'+
+      '<span class="ossh-tag">بلا وقت انتهاء محدّد</span></div>'+
+    (inT ? '<div class="ossh-t"><b class="tdur" data-since="'+esc(inT)+'">'+hm(mins_)+'</b>'+
+           '<span>منذ الحضور '+fmtT(inT)+'</span></div>' : '')+
+    '<div class="ossh-n">حضور غير مجدول: لا نهاية مخطّطة، فلا نسبة إنجاز ولا وضع إغلاق. '+
+      'أنهي يومك بالانصراف حين تنتهين.</div></div>';
+}
 function viewNow(){
   /* شاشة «الآن» — سياقية: قبل الحضور / أثناء الشفت / قرب الإغلاق / بعد الانصراف */
   var st=S.state, sh=st.shift, att=st.attendance, out=[];
@@ -2448,13 +2486,24 @@ function viewNow(){
       '<button class="btn ghost block" data-a="goMore">مراسلة الإدارة / طلب إجازة</button></div></div>');
     return '<section class="today">'+out.join('')+'</section>';
   }
-  var now=Date.now(), s0=new Date(sh.start).getTime(), e0=new Date(sh.end).getTime();
+  var now=Date.now(), s0=new Date(sh.start).getTime(), e0=tsOrNull(sh.end);
+  /* الشفت المخصص (حضور غير مجدول) لا نوع له، فالخادم يعيد end = null.
+     و new Date(null) في جافاسكربت ليس NaN بل ١٩٧٠ — أي صفر. فكانت النتيجة
+     أن كل حساب ينهار بصمت: pct=100% و«انتهى الشفت» و«وضع الإغلاق» على
+     شفت بدأ قبل دقيقتين. هذا ما رأته هبه الساعة ٤:٠٦ فجراً.
+     الشفت المفتوح الآن حالة أولى معلنة: عدّاد تصاعدي بلا حلقة ولا نسبة،
+     لأن النسبة بلا نهاية معروفة رقمٌ مُختلق. */
+  var openEnded = (e0===null);
+  /* نهاية صوريّة بعيدة تُبقي مساراً واحداً للكود: لا «انتهى» ولا «قرب الإغلاق»
+     ولا قسمة على نطاق مجهول. الرأس نفسه يُستبدل أدناه. */
+  if(openEnded) e0 = now + 24*3600000;
   var total=Math.max(1,e0-s0), pct=Math.min(1,Math.max(0,(now-s0)/total)), left;
   if(now<s0) left='يبدأ '+fmtT(sh.start);
   else if(now>=e0) left='انتهى الشفت';
   else { var lm=Math.round((e0-now)/60000); left='باقٍ '+(lm>=60?Math.floor(lm/60)+' س '+(lm%60)+' د':lm+' د'); }
   var pctN=Math.round(pct*100), dashA=(97.4*pct).toFixed(1);
-  var shiftBar='<div class="shift"><div class="shift-ring-row">'+
+  var shiftBar = openEnded ? openShiftHeader(inT) :
+    '<div class="shift"><div class="shift-ring-row">'+
     '<svg class="shift-ring" width="66" height="66" viewBox="0 0 36 36">'+
       '<circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,.20)" stroke-width="3.4"/>'+
       '<circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--amber)" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="'+dashA+' 200" transform="rotate(-90 18 18)"/>'+
@@ -2535,19 +2584,29 @@ function prepRemain(exp){ var ms=new Date(exp).getTime()-Date.now(); if(ms<=0) r
    هذا الشريط يعطيها ضغطة واحدة لما تراه عينها ولا تراه الطاولة: دفعة وصلت
    على الباب، نقص تحضير، منطقتها تحتاج مساندة.
    لماذا لا تُحسب على أحد: الإشارة عن مكان لا عن شخص، وتنتهي بمهلتها ذاتياً. */
+/* ثمانية أنواع كانت معروضة، وأربعة منها الخادم يعرفها أصلاً من حالة الطاولة:
+   «بانتظار الطلب» = ordered، «بانتظار التقديم» = ready، «بانتظار الحساب» =
+   bill_requested، «طاولة تحتاج ترتيب» = needs_clean. طلبُها يدوياً أنشأ
+   حقيقتين للشيء نفسه، ولم يكن للإشارة رقم طاولة — فصار السؤال المحقّ:
+   «طاولة تحتاج ترتيب… أي طاولة؟». الجواب أنها لا تُدخل من هنا إطلاقاً:
+   تُغيَّر حالة الطاولة على الخريطة، ويستنتج الخادم الضغط منها.
+   بقي ما لا تراه الطاولة ولا المحرّك — أربع إشارات عن المكان لا عن طاولة،
+   فلا يحتاج أيٌّ منها رقماً. */
 var SIGT=[
-  ['customer_arrived','ضيفات وصلن','على الباب'],
-  ['waiting_to_order','بانتظار الطلب','جالسات بلا طلب'],
-  ['waiting_delivery','بانتظار التقديم','الطلب جاهز ولم يُقدَّم'],
-  ['waiting_payment','بانتظار الحساب','طلبن الفاتورة'],
-  ['table_to_reset','طاولة تحتاج ترتيب','فارغة وغير مرتبة'],
-  ['sudden_rush','دفعة مفاجئة','ضغط غير معتاد الآن'],
-  ['prep_level','نقص تحضير','مادة أو شاف على وشك النفاد'],
-  ['zone_needs_support','منطقتي تحتاج مساندة','لا أكفي وحدي']
+  ['customer_arrived','ضيفات على الباب','وصلن ولم يُجلسن بعد','door'],
+  ['sudden_rush','دفعة مفاجئة','ضغط غير معتاد الآن','rush'],
+  ['prep_level','نقص تحضير','مادة أو شاف على وشك النفاد','prep'],
+  ['zone_needs_support','أحتاج مساندة','لا أكفي وحدي في منطقتي','support']
 ];
 /* التراكمية تُجمع (خمس ضيفات = خمس إشارات)، وغيرها تُستبدل بالأحدث */
-var SIGCUM={customer_arrived:1, waiting_to_order:1, waiting_delivery:1,
-            waiting_payment:1, table_to_reset:1};
+var SIGCUM={customer_arrived:1};
+/* أيقونة لكل إشارة: المعنى يُقرأ قبل النص في الذروة */
+var SIGIC={
+  door:'<path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16"/><path d="M3 21h13"/><circle cx="11.5" cy="12.5" r="1"/><path d="M18 21v-6l3-2v8"/>',
+  rush:'<path d="M3 17c2.5 0 3.5-2 6-2s3.5 2 6 2 3.5-2 6-2"/><path d="M3 12c2.5 0 3.5-2 6-2s3.5 2 6 2 3.5-2 6-2"/><path d="M3 7c2.5 0 3.5-2 6-2s3.5 2 6 2 3.5-2 6-2"/>',
+  prep:'<path d="M7 3v7a3 3 0 0 0 6 0V3"/><path d="M10 13v8"/><path d="M17 3c1.5 2 2 4 2 6s-.5 3-2 3-2-1-2-3 .5-4 2-6Z"/><path d="M17 12v9"/>',
+  support:'<circle cx="9" cy="8" r="3"/><path d="M3 20c.9-3.4 3.2-5 6-5s5.1 1.6 6 5"/><path d="M17 8h5M19.5 5.5v5"/>'
+};
 function sigName(t){ var n=t; SIGT.forEach(function(x){ if(x[0]===t) n=x[1]; }); return n; }
 function loadSignalsCard(){
   var w=$('#sigWrap'); if(!w) return;
@@ -2556,12 +2615,15 @@ function loadSignalsCard(){
     if(!r || !r.ok){ w.innerHTML=''; return; }
     var live=r.live||[];
     w.innerHTML='<div class="card"><h3>إشارات الأرضية</h3>'+
-      '<div class="muted small" style="margin-bottom:9px">ما تراه عينكِ ولا تراه الطاولة. '+
-        'الإشارة عن مكان لا عن شخص، وتنتهي وحدها بعد مهلتها — لا تُحسب على أحد.</div>'+
+      '<div class="muted small" style="margin-bottom:9px">أربع إشارات عن <b>المكان</b> لا عن طاولة ولا عن شخص، '+
+        'وتنتهي وحدها بعد مهلتها. ما يتعلّق بطاولة بعينها لا يُدخل من هنا — '+
+        'غيّري حالتها على خريطة الطاولات ويقرأها النظام منها.</div>'+
       '<div class="sigb">'+SIGT.map(function(s){
         var cur=null; live.forEach(function(l){ if(l.type===s[0]) cur=l; });
-        return '<button class="sigb-b'+(cur?' on':'')+'" data-sig="'+s[0]+'">'+
-          '<b>'+esc(s[1])+'</b><span>'+esc(s[2])+'</span>'+
+        return '<button class="sigb-b'+(cur?' on':'')+'" data-sig="'+s[0]+'" '+
+          'aria-label="'+esc(s[1]+' — '+s[2])+'">'+
+          '<span class="sigb-i" aria-hidden="true">'+svgi(SIGIC[s[3]]||'')+'</span>'+
+          '<span class="sigb-x"><b>'+esc(s[1])+'</b><span>'+esc(s[2])+'</span></span>'+
           (cur?'<i class="sigb-n">'+(+cur.count||1)+'</i>':'')+'</button>';
       }).join('')+'</div>'+
       (live.length
@@ -2614,14 +2676,27 @@ function loadTablesCard(){
           'اللون هو حالتها الآن — اضغطي المنطقة أدناه لتحديثها.</div>'+
         Object.keys(byA).map(function(aid){
           return '<div class="mydt-a">'+esc(anames[aid] || 'منطقة')+'</div>'+
+            /* كانت span للعرض فقط، فلم تستطع الموظفة تحديث الحالة من هنا —
+               وهي أقرب مكان تراه فيه طاولتها. الآن زرّ يفتح لوحة الطاولة
+               نفسها بحُرّاسها الخادمية كما تُفتح من الخريطة. */
             '<div class="mydt">'+byA[aid].map(function(t){
               var st = TMS[t.state] || TMS.free;
-              return '<span class="mydt-t" style="--tcol:'+st.solid+'" '+
-                'title="'+esc(st.ar)+'"><b>'+(+t.no)+'</b><span>'+esc(st.sh || st.ar)+'</span></span>';
+              return '<button class="mydt-t" style="--tcol:'+st.solid+'" '+
+                'data-mydt="'+(+t.id)+'" aria-label="طاولة '+(+t.no)+' — '+esc(st.ar)+' — للتحديث">'+
+                '<b>'+(+t.no)+'</b><span>'+esc(st.sh || st.ar)+'</span></button>';
             }).join('')+'</div>';
         }).join('')+'</div>';
     }
-    if(!mine.length){ w.innerHTML = mineHtml; return; }
+    function bindDuty(){
+      $$('[data-mydt]', w).forEach(function(b){
+        b.addEventListener('click', function(){
+          var id=+b.getAttribute('data-mydt');
+          if(!id){ toast('تعذّر فتح الطاولة — حدّثي الصفحة', true); return; }
+          TM.admin=false; tmDetail(id);
+        });
+      });
+    }
+    if(!mine.length){ w.innerHTML = mineHtml; bindDuty(); return; }
     w.innerHTML = mineHtml + '<div class="card"><h3>خريطة الطاولات</h3>'+
       '<div class="muted small" style="margin-bottom:8px">حدّثي حالة الطاولة بضغطة — يقرأ النظام منها ضغط منطقتك.</div>'+
       mine.map(function(a){
@@ -2629,6 +2704,7 @@ function loadTablesCard(){
         return '<button class="btn'+(open?'':' ghost')+' block" data-tbla="'+a.id+'" data-nm="'+esc(a.name)+'" style="margin-bottom:6px">'+
                esc(a.name)+(open ? '' : ' — تفتح '+esc((a.open||{}).from||''))+'</button>';
       }).join('')+'</div>';
+    bindDuty();
     $$('[data-tbla]', w).forEach(function(b){
       b.addEventListener('click', function(){ tmOpen(+b.getAttribute('data-tbla'), b.getAttribute('data-nm'), false); });
     });
@@ -2852,6 +2928,21 @@ function updateTimers(){
   });
 }
 function findTask(id){ var f=null; (S.state.tasks||[]).forEach(function(t){ if(t.id===id) f=t; }); return f; }
+/* مسار إنجاز المهمة الدوّارة: كان محصوراً داخل معالج الكبسة، فاستُخرج كما هو
+   ليستدعيه السحب أيضاً. لا تغيير في الحمولة ولا في التوثيق بالصورة. */
+function recurringDone(tid, needPhoto, nm){
+  function send(extra){
+    var rp={template_id:tid}; for(var rk in (extra||{})) rp[rk]=extra[rk];
+    sAct('recurring_done', rp, false).then(function(res){
+      if(res && res.ok){ toast(res.msg||'سُجّلت'); refresh(); }
+      else toast((res&&res.error)||'خطأ', true);
+    });
+  }
+  if(needPhoto) cameraSheet({facing:'environment', title:'توثيق: '+nm, watermark:(S.me?S.me.name:'')+' · '+nm},
+    function(d){ mediaPut('img', d, 'recurring:'+tid).then(
+      function(k){ send({photo_key:k}); }, function(){ send({photo:d}); }); });
+  else send(null);
+}
 
 /* ---------- السحب للتأكيد ---------- */
 function swipeHtml(id, label){
@@ -3415,6 +3506,14 @@ function wireTab(v){
     }
     swipeBind(el, function(){ var t=findTask(tid); if(t) completeFlow(t); }, why);
   });
+  /* سحب إنجاز المهمة الدوّارة — نفس قواعد السحب، ومسار recurring_done نفسه
+     الذي كان خلف الكبسة، بلا تغيير في المنطق ولا في الحمولة. */
+  $$('.swipe[id^="swRec"]', v).forEach(function(el){
+    var tid=+el.id.replace('swRec','');
+    var rt=null; (S.state.recurring||[]).forEach(function(x){ if(+x.template_id===tid) rt=x; });
+    if(!rt) return;
+    swipeBind(el, function(){ recurringDone(tid, !!rt.needs_photo, rt.name); });
+  });
   /* السؤال التشغيلي العابر */
   $$('[data-obs]', v).forEach(function(b){
     b.addEventListener('click', function(){
@@ -3526,18 +3625,7 @@ function wireTab(v){
         }).join('')||'<div class="empty">لا بلاغات</div>');
       });
       else if(a==='recDone'){
-        var needPhoto=b.getAttribute('data-photo')==='1', nm=b.getAttribute('data-name');
-        function send(extra){
-          var rp={template_id:id}; for(var rk in (extra||{})) rp[rk]=extra[rk];
-          sAct('recurring_done', rp, false).then(function(res){
-            if(res.ok){ toast(res.msg||'سُجّلت ✔'); refresh(); }
-            else toast(res.error||'خطأ', true);
-          });
-        }
-        if(needPhoto) cameraSheet({facing:'environment', title:'توثيق: '+nm, watermark:(S.me?S.me.name:'')+' · '+nm},
-          function(d){ mediaPut('img', d, 'recurring:'+id).then(
-            function(k){ send({photo_key:k}); }, function(){ send({photo:d}); }); });
-        else send(null);
+        recurringDone(id, b.getAttribute('data-photo')==='1', b.getAttribute('data-name'));
       }
       else if(a==='recClaim'){ sAct('recur_claim',{template_id:id},false).then(function(res){ if(res.ok) refresh(); else toast(res.error||'خطأ',true); }); }
       else if(a==='recRelease'){ sAct('recur_release',{template_id:id},false).then(function(){ refresh(); }); }

@@ -94,35 +94,28 @@
    ============================================================ */
 :root{
   color-scheme: light dark;
-  --ink:#17201A; --paper:#F1F4EC; --surface:#FCFDFA; --surface-2:#EDF1E7;
-  --brand:#245A43; --green:#2C7A55; --green-2:#3C8A63; --green-soft:#E2EEE7; --beige:#EAEEE2;
-  --amber:#D98A2B; --amber-2:#E7A24A; --amber-soft:#F6E7CF; --orange:#D98A2B;
-  /* أسطح الأزرار يعلوها نص أبيض. المعايرة على أفتح نقطة في التدرّج:
-     كهرماني 4.56/5.12 · أخضر 4.79/5.31 · أحمر 5.06/5.62 */
-  --amber-btn:#9E5F18; --amber-btn-2:#A9661B;
-  --green-btn:#2C7A55; --green-btn-2:#35805A;
-  --red-btn:#A8462F; --red-btn-2:#B4503A;
-  /* نص كهرماني على amber-soft: 4.86 بدل 2.26 */
-  --amber-ink:#8A5A12;
-  /* النص الثانوي يظهر على خمس أرضيات، وأدكنها green-soft — وهي القيد الحاكم
-     لا paper. المعايرة عليها: 4.58 على green-soft و4.63 على beige و4.76 على
-     surface-2 و4.91 على paper و5.34 على surface. خمستها فوق حد AA.
-     (كان #7A857C يعطي 3.76، ثم #656F67 يعطي 4.38 على green-soft: راسب) */
-  --red:#CF5540; --line:#E1E7DB; --muted:#626C64;
-  /* نص أحمر على خلفية .chip.red — وهي rgba(192,90,60,.14) مركّبة فوق السطح،
-     أي #F4E6DF فعلياً لا لوناً معتماً. --red عليها يعطي 3.43 (راسب)؛ هذا 4.90.
-     ٢٥ موضعاً في الواجهة يستخدم .chip red، فالإصلاح على الرمز لا على الموضع. */
-  --red-ink:#B23A22;
-  /* أرقام وعناوين ملوّنة على أسطح فاتحة. مستقلة عن *-btn لأن تلك أسطح
-     يعلوها أبيض، وقلبها في السمة الداكنة معاكس تماماً. */
-  --amber-num:#A9661B; --green-ink:#26694A;
-  /* لون النص فوق سطحي --ink و--brand. لا يجوز تثبيته على #fff: الرمزان
-     ينقلبان في السمة الداكنة (--ink يصير فاتحاً) فيصير أبيض على أبيض
-     بتباين 1.18 — وهو ما قاسه الفحص فعلاً على شرائح التبويب. */
-  --on-ink:#FFFFFF; --on-brand:#FFFFFF;
-  /* حلقة التركيز: لون داكن جداً يظهر على أي خلفية، وهالة بيضاء تفصله عن
-     الأزرار الملوّنة نفسها — لأن الكهرماني وحده يعطي 2.48 مقابل الورقة. */
+
+  /* ===== لوحة السمة الفاتحة — مشتقّة لا مختارة =====
+     التشخيص المقيس للنسخة السابقة: كل الأسطح كانت بإضاءة 92–99 وصبغة تنحرف
+     122°→129°، فأصغر فرق إضاءة بين البطاقة والأرضية 1.1 فقط — أي أن العين
+     كانت تبحث عن حدود البطاقات في حقل ساطع واحد، وهذا مصدر «التعب».
+     الآن: صبغة واحدة (150°) لكل الأسطح بلا انحراف، والأرضية أُنزلت والبطاقة
+     أُصعدت فصار تباينهما 1.17 والحدّ/البطاقة 1.34 — فصلٌ يُرى بلا خطوط زائدة.
+     وسُقّف إشباع الكهرماني 0.141→0.115 لأنه كان أعلى إشباع على أسطع حقل. */
+  --ink:#19221B; --paper:#E8ECE8; --surface:#FCFDFC; --surface-2:#F0F4F1;
+  --beige:#EBF1EC; --line:#D8DED9; --muted:#5F6760;
+  --brand:#26593E; --green:#2E734F; --green-2:#2E734F; --green-soft:#E1F0E7;
+  --amber:#BD8638; --amber-2:#BD8638; --amber-soft:#F8E7D3; --orange:#BD8638;
+  --red:#B6513D;
+  --amber-btn:#94631A; --amber-btn-2:#9D6C26;
+  --green-btn:#3D7757; --green-btn-2:#468060;
+  --red-btn:#AA5544; --red-btn-2:#B45E4C;
+  --amber-ink:#89622E; --green-ink:#3E7355; --red-ink:#924A3B;
+  --amber-num:#A77737; --on-ink:#FFFFFF; --on-brand:#FFFFFF;
   --focus:#12301F; --focus-halo:#FFFFFF;
+  /* ظلال محيّدة: الظلّ يُظهر الارتفاع لا يلوّن. الملوّن كان هالةً حول الأزرار. */
+  --sh-btn:0 2px 6px rgba(20,28,22,.14), 0 1px 2px rgba(20,28,22,.10);
+  --sh-nav:0 6px 22px rgba(20,28,22,.13);
   --radius:18px;
   --shadow:0 1px 2px rgba(24,38,28,.05), 0 8px 24px rgba(24,38,28,.08);
   --shadow-lg:0 16px 40px rgba(24,38,28,.14);
@@ -131,16 +124,26 @@
   --font:'Tajawal','IBM Plex Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif;
 }
 :root[data-theme="dark"]{
-  --ink:#E9EEE6; --paper:#0E1310; --surface:#171E18; --surface-2:#212820;
-  --brand:#5E9E80; --green:#7FB99C; --green-2:#6FB085; --green-soft:#17281F; --beige:#212820;
-  --amber:#E7A85A; --amber-2:#EFB56C; --amber-soft:#2E2415; --orange:#E7A85A;
-  --amber-btn:#8A5512; --amber-btn-2:#A16A1E; --amber-ink:#F0C489;
-  --green-btn:#1F5B40; --green-btn-2:#276B4B;
-  --red-btn:#8E3A26; --red-btn-2:#9C432E;
-  --red-ink:#EC8C7B; --amber-num:#E7A85A; --green-ink:#7FB99C;
-  --on-ink:#0E1310; --on-brand:#0B1610;
-  --red:#E07360; --line:#28322A; --muted:#8A958B;
-  --focus:#F5E8D0; --focus-halo:#0B0F0C;
+  /* ===== لوحة السمة الداكنة — مشتقّة لا مختارة =====
+     التشخيص المقيس: صبغة الأسطح كانت تتنقّل 159°→149°→142°→151° (تشتّت 17°
+     وغير مطّرد) وهو بعينه ما يُقرأ «ألوان غير متناسقة»؛ وإشباع الكهرماني
+     0.12 عند إضاءة 77 فوق سطح إضاءته 22 — وهج صارخ زادته ظلال ملوّنة.
+     الآن: صبغة واحدة 150° لكل الأسطح، سلّم إضاءة بخطوات ≥5، وإشباع
+     الكهرماني 0.092. الأخضر الدلالي عند 158° أي على مسافة 8° من الأسطح
+     (انسجام)، والكهرماني 72° والأحمر 33° كمسافتين متعمّدتين للدلالة. */
+  --ink:#E5EBE6; --paper:#0B100C; --surface:#191F1A; --surface-2:#252C26;
+  --beige:#252C26; --line:#353D36; --muted:#929B94;
+  --brand:#6DA082; --green:#88B89B; --green-2:#88B89B; --green-soft:#1B2B21;
+  --amber:#D6A86E; --amber-2:#D6A86E; --amber-soft:#322514; --orange:#D6A86E;
+  --red:#D17F6E;
+  --amber-btn:#94631A; --amber-btn-2:#9D6C26;
+  --green-btn:#3D7757; --green-btn-2:#468060;
+  --red-btn:#AA5544; --red-btn-2:#B45E4C;
+  --amber-ink:#B38A56; --green-ink:#659C7C; --red-ink:#D58776;
+  --amber-num:#9D6E2D; --on-ink:#0B100C; --on-brand:#070A07;
+  --focus:#F5E8D0; --focus-halo:#0B100C;
+  --sh-btn:0 2px 6px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.35);
+  --sh-nav:0 6px 22px rgba(0,0,0,.5);
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.42);
   --shadow-lg:0 18px 42px rgba(0,0,0,.55);
   --hero:linear-gradient(158deg,#132019,#17281F 60%,#1D3327);
@@ -153,16 +156,28 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --ink:#E9EEE6; --paper:#0E1310; --surface:#171E18; --surface-2:#212820;
-    --brand:#5E9E80; --green:#7FB99C; --green-2:#6FB085; --green-soft:#17281F; --beige:#212820;
-    --amber:#E7A85A; --amber-2:#EFB56C; --amber-soft:#2E2415; --orange:#E7A85A;
-  --amber-btn:#8A5512; --amber-btn-2:#A16A1E; --amber-ink:#F0C489;
-    --green-btn:#1F5B40; --green-btn-2:#276B4B;
-    --red-btn:#8E3A26; --red-btn-2:#9C432E;
-    --red-ink:#EC8C7B; --amber-num:#E7A85A; --green-ink:#7FB99C;
-    --on-ink:#0E1310; --on-brand:#0B1610;
-  --on-ink:#0E1310; --on-brand:#0B1610;
-    --red:#E07360; --line:#28322A; --muted:#8A958B;
+    /* ===== لوحة السمة الداكنة — مشتقّة لا مختارة =====
+       التشخيص المقيس: صبغة الأسطح كانت تتنقّل 159°→149°→142°→151° (تشتّت 17°
+       وغير مطّرد) وهو بعينه ما يُقرأ «ألوان غير متناسقة»؛ وإشباع الكهرماني
+       0.12 عند إضاءة 77 فوق سطح إضاءته 22 — وهج صارخ زادته ظلال ملوّنة.
+       الآن: صبغة واحدة 150° لكل الأسطح، سلّم إضاءة بخطوات ≥5، وإشباع
+       الكهرماني 0.092. الأخضر الدلالي عند 158° أي على مسافة 8° من الأسطح
+       (انسجام)، والكهرماني 72° والأحمر 33° كمسافتين متعمّدتين للدلالة. */
+    --ink:#E5EBE6; --paper:#0B100C; --surface:#191F1A; --surface-2:#252C26;
+    --beige:#252C26; --line:#353D36; --muted:#929B94;
+    --brand:#6DA082; --green:#88B89B; --green-2:#88B89B; --green-soft:#1B2B21;
+    --amber:#D6A86E; --amber-2:#D6A86E; --amber-soft:#322514; --orange:#D6A86E;
+    --red:#D17F6E;
+    --amber-btn:#94631A; --amber-btn-2:#9D6C26;
+    --green-btn:#3D7757; --green-btn-2:#468060;
+    --red-btn:#AA5544; --red-btn-2:#B45E4C;
+    --amber-ink:#B38A56; --green-ink:#659C7C; --red-ink:#D58776;
+    --amber-num:#9D6E2D; --on-ink:#0B100C; --on-brand:#070A07;
+    --focus:#F5E8D0; --focus-halo:#0B100C;
+    --sh-btn:0 2px 6px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.35);
+    --sh-nav:0 6px 22px rgba(0,0,0,.5);
+  --sh-btn:0 2px 6px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.35);
+  --sh-nav:0 6px 22px rgba(0,0,0,.5);
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.42);
     --shadow-lg:0 18px 42px rgba(0,0,0,.55);
     --hero:linear-gradient(158deg,#132019,#17281F 60%,#1D3327);
@@ -178,8 +193,25 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+/* ===== ارتفاع الطبقات الثابتة =====
+   شريط التنقّل وزر التخاطب الصوتي كلاهما position:fixed. كان الحشو السفلي
+   ٩٦px محسوباً على شريط التنقّل وحده، بينما عمود التخاطب (زر ٥٢px + هدفه
+   + الفجوة) يمتد إلى ١٧١px من الأسفل. النتيجة أن آخر ٧٥px من كل شاشة كانت
+   مغطّاة: أزرار «أُنجزت» و«+ مساهمة إضافية» تحت الزر العائم بلا وصول.
+   الآن الرقم مشتق من الرموز نفسها، فأي تغيير في حجم الطبقات ينعكس تلقائياً. */
+:root{
+  --nav-h:62px;          /* ارتفاع شريط التنقّل الفعلي */
+  --nav-gap:10px;        /* بعده عن الحافة */
+  --ptt-h:52px;          /* قطر زر التخاطب */
+  --ptt-target-h:26px;   /* شريحة «للكل» فوقه */
+  --ptt-gap:7px;
+  /* أعلى نقطة تشغلها الطبقات الثابتة، مقيسة من أسفل الشاشة */
+  /* بعد إدخال زر التخاطب داخل الشريط لم تبق طبقة عائمة ثانية،
+     فالارتفاع المحجوز = الشريط وحده. */
+  --fixed-bottom:calc(var(--nav-gap) + var(--nav-h));
+}
 body{font-family:var(--font);background:var(--paper);color:var(--ink);font-size:15.5px;line-height:1.55;
-  padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  padding-bottom:calc(var(--fixed-bottom) + 14px + env(safe-area-inset-bottom))}
 body.no-nav{padding-bottom:0}
 h1,h2,h3{margin:0 0 .4em;line-height:1.3;letter-spacing:-.1px}
 h3{font-weight:700}
@@ -272,7 +304,7 @@ a{color:var(--green)}
   font-size:19px;color:var(--green-2);will-change:transform}
 .swipe.off .swipe-knob{color:var(--muted)}
 /* شريط التراجع */
-.undobar{position:fixed;inset-inline:14px;bottom:78px;z-index:9000;background:var(--ink);color:var(--on-ink);
+.undobar{position:fixed;inset-inline:14px;bottom:calc(var(--fixed-bottom) + 8px + env(safe-area-inset-bottom));z-index:9000;background:var(--ink);color:var(--on-ink);
   border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .undobar .ub-txt{flex:1;font-size:13.5px}
 .undobar .ub-btn{background:color-mix(in srgb,var(--on-ink) 20%,transparent);color:var(--on-ink);border:none;border-radius:10px;padding:7px 13px;font:inherit;font-weight:700;cursor:pointer}
@@ -733,9 +765,9 @@ hr.sep{border:0;border-top:1px dashed var(--line);margin:12px 0}
    نفسها فوق 4.5 — لا متوسّطه. القياس قبل الإصلاح: الأخضر 4.19 والأحمر 4.15
    والكهرماني 2.17، وكلها كانت راسبة لأن المعايرة جرت على اللون الأساسي
    لا على سطح الزر. الآن 4.79 و5.06 و4.56. */
-.btn.green{background:linear-gradient(180deg,var(--green-btn-2),var(--green-btn));box-shadow:0 3px 10px rgba(62,107,76,.28)}
-.btn.orange{background:linear-gradient(180deg,var(--amber-btn-2),var(--amber-btn));box-shadow:0 3px 10px rgba(200,130,30,.32)}
-.btn.red{background:linear-gradient(180deg,var(--red-btn-2),var(--red-btn));box-shadow:0 2px 8px rgba(180,83,58,.3)}
+.btn.green{background:linear-gradient(180deg,var(--green-btn-2),var(--green-btn));box-shadow:var(--sh-btn)}
+.btn.orange{background:linear-gradient(180deg,var(--amber-btn-2),var(--amber-btn));box-shadow:var(--sh-btn)}
+.btn.red{background:linear-gradient(180deg,var(--red-btn-2),var(--red-btn));box-shadow:var(--sh-btn)}
 .btn.ghost{background:transparent;color:var(--brand);border:1.5px solid var(--line);box-shadow:none;font-weight:600}
 .btn.ghost.red{color:var(--red-ink);border-color:var(--red)}
 .btn.sm{padding:7px 12px;min-height:36px;font-size:13.5px;border-radius:10px}
@@ -766,8 +798,8 @@ textarea.f{min-height:70px;resize:vertical}
 .tile:active{transform:scale(.97)}
 
 /* ===== تبويبات سفلية ===== */
-nav.bottom{position:fixed;bottom:10px;right:12px;left:12px;background:var(--surface);border:1px solid var(--line);
-  border-radius:22px;display:flex;z-index:50;box-shadow:0 10px 30px rgba(20,15,8,.18);
+nav.bottom{position:fixed;bottom:var(--nav-gap);right:12px;left:12px;background:var(--surface);border:1px solid var(--line);
+  border-radius:22px;display:flex;z-index:50;box-shadow:var(--sh-nav);
   padding:5px 4px;margin-bottom:env(safe-area-inset-bottom)}
 nav.bottom button{flex:1;background:none;border:none;padding:7px 2px 6px;color:var(--muted);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;border-radius:16px;transition:background .15s,color .15s}
 nav.bottom button .ic{line-height:1;display:flex}
@@ -963,11 +995,11 @@ nav.bottom button.on{position:relative}
 .login-hero .logo,.top .brand{position:relative;z-index:1}
 
 /* ===== زر التخاطب الصوتي (Push-to-Talk) ===== */
-.ptt-wrap{position:fixed;left:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;display:flex;flex-direction:column;align-items:center;gap:7px}
+.ptt-wrap{position:fixed;left:14px;bottom:calc(var(--nav-gap) + var(--nav-h) + var(--ptt-gap) + env(safe-area-inset-bottom));z-index:60;display:flex;flex-direction:column;align-items:center;gap:7px}
 .ptt-target{border:none;background:rgba(38,51,43,.92);color:#F4EFE4;border-radius:16px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.28);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ptt-target:active{transform:scale(.95)}
 .ptt{width:52px;height:52px;border-radius:50%;border:none;
-  background:linear-gradient(180deg,var(--amber-2),var(--amber));color:#fff;box-shadow:0 6px 18px rgba(200,130,30,.45);
+  background:linear-gradient(180deg,var(--amber-2),var(--amber));color:#fff;box-shadow:var(--sh-2);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .12s,box-shadow .18s}
 .ptt .ic svg{width:24px;height:24px}
 .ptt .ptt-l{font-size:9.5px;font-weight:800;letter-spacing:.2px}
@@ -975,7 +1007,7 @@ nav.bottom button.on{position:relative}
 .ptt.rec{background:linear-gradient(180deg,#E4573C,#C0392B);transform:scale(1.6);box-shadow:0 0 0 10px rgba(224,87,60,.22),0 10px 26px rgba(192,57,43,.55);animation:pttpulse 1s infinite}
 @keyframes pttpulse{50%{box-shadow:0 0 0 18px rgba(224,87,60,.05),0 10px 26px rgba(192,57,43,.55)}}
 .ptt.speaking{background:linear-gradient(180deg,var(--green-2),var(--green));box-shadow:0 0 0 7px rgba(62,107,76,.2),0 8px 22px rgba(62,107,76,.45)}
-.ptt-toast{position:fixed;left:14px;bottom:calc(154px + env(safe-area-inset-bottom));z-index:60;background:#26332B;color:#F4EFE4;border-radius:12px;
+.ptt-toast{position:fixed;left:14px;bottom:calc(var(--fixed-bottom) + 8px + env(safe-area-inset-bottom));z-index:60;background:#26332B;color:#F4EFE4;border-radius:12px;
   padding:8px 13px;font-size:12.5px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.32);display:none;max-width:62vw}
 .ptt-toast.show{display:block;animation:tin .2s}
 .btn.rec{background:linear-gradient(180deg,#E4573C,#C0392B)!important;box-shadow:0 0 0 4px rgba(224,87,60,.18)!important}
@@ -1089,11 +1121,11 @@ details.qa .qa-body{padding:0 16px 14px}
    طبقة «الهدوء المُتحكِّم» — تحديث بصري احترافي (تُطبَّق أخيراً)
    ============================================================ */
 .card{border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--line);transition:transform .2s var(--ease),box-shadow .24s var(--ease)}
-.btn{border-radius:14px;letter-spacing:-.01em;box-shadow:0 6px 16px rgba(217,138,43,.22);transition:transform .12s var(--ease),box-shadow .2s var(--ease),filter .15s}
+.btn{border-radius:14px;letter-spacing:-.01em;box-shadow:var(--sh-btn);transition:transform .12s var(--ease),box-shadow .2s var(--ease),filter .15s}
 .btn:active{transform:scale(.975)}
 /* هذه القاعدة اللاحقة كانت تُعيد --green-2 الفاتح فتُلغي معايرة التباين
    أعلاه. تحفظ اتجاه التدرّج ٱ١٦٥ وتستخدم أسطح الأزرار المعايَرة. */
-.btn.green{background:linear-gradient(165deg,var(--green-btn-2),var(--green-btn));box-shadow:0 8px 20px rgba(36,90,67,.26)}
+.btn.green{background:linear-gradient(165deg,var(--green-btn-2),var(--green-btn));box-shadow:var(--sh-btn)}
 .btn.ghost{background:var(--surface-2);border:1px solid var(--line);box-shadow:none}
 .btn.sm{border-radius:12px;box-shadow:none}
 .chip{border-radius:999px;padding:5px 11px;font-weight:600;letter-spacing:-.01em}
@@ -1345,3 +1377,57 @@ nav.bottom :focus-visible{
    بشفافية فوق السطح، فتتبع السمة تلقائياً في الوضعين. */
 .card.danger-card{background:color-mix(in srgb,var(--red) 8%,var(--surface));
   border:1.5px solid color-mix(in srgb,var(--red) 34%,var(--line))}
+
+/* ===== رأس الشفت المفتوح =====
+   يحلّ محل حلقة النسبة حين لا نهاية معروفة. لا رقم مُختلق: عدّاد ونصّ سبب. */
+.ossh{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:13px 14px;margin:0 0 12px;box-shadow:var(--sh-1,none)}
+.ossh-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ossh-h b{font-size:14.5px;font-weight:800}
+.ossh-dot{width:9px;height:9px;border-radius:50%;background:var(--green);flex:0 0 auto;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 22%,transparent)}
+.ossh-tag{font-size:10.5px;font-weight:700;color:var(--muted);background:var(--surface-2);
+  border-radius:20px;padding:2px 9px;margin-inline-start:auto}
+.ossh-t{display:flex;align-items:baseline;gap:9px;margin:9px 0 2px}
+.ossh-t b{font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+  line-height:1;color:var(--ink);unicode-bidi:isolate;direction:rtl}
+.ossh-t span{font-size:12px;color:var(--muted)}
+.ossh-n{font-size:11.5px;color:var(--muted);line-height:1.65;margin-top:7px}
+
+/* إشارات الأرضية: أيقونة + نصّان. الأيقونة تُقرأ أولاً في الذروة. */
+.sigb-b{display:flex;align-items:flex-start;gap:9px}
+.sigb-i{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:inline-flex;
+  align-items:center;justify-content:center;background:var(--surface-2);color:var(--brand)}
+.sigb-i svg{width:18px;height:18px}
+.sigb-x{min-width:0}
+.sigb-b.on .sigb-i{background:color-mix(in srgb,var(--amber) 22%,transparent);color:var(--amber-ink)}
+
+/* بلاطة «طاولاتي» صارت زرّاً: هدف لمس كامل وحالة ضغط */
+.mydt-t{font:inherit;cursor:pointer;transition:transform .12s var(--ease,ease),border-color .15s}
+.mydt-t:active{transform:scale(.95)}
+@media(hover:hover) and (pointer:fine){ .mydt-t:hover{border-color:var(--ink)} }
+
+
+/* ===== زر التخاطب داخل شريط التنقّل =====
+   بديل الزر العائم: خانة مميّزة وسط الشريط. يُقرأ أنه فعل لا تبويب، لأنه
+   دائرة ملوّنة بين أيقونات مسطّحة — تمييز بالشكل لا بالحجم وحده. */
+nav.bottom .nav-ptt{flex:0 0 auto;width:52px;height:52px;margin:0 4px;align-self:center;
+  border:none;border-radius:50%;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;
+  background:linear-gradient(180deg,var(--amber-btn-2),var(--amber-btn));color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+  box-shadow:var(--sh-btn);transition:transform .12s var(--ease,ease),box-shadow .18s}
+nav.bottom .nav-ptt .ic svg{width:22px;height:22px}
+nav.bottom .nav-ptt .ptt-l{font-size:8.5px;font-weight:800;letter-spacing:.2px}
+nav.bottom .nav-ptt:active{transform:scale(.94)}
+nav.bottom .nav-ptt.rec{background:linear-gradient(180deg,var(--red-btn-2),var(--red-btn));
+  transform:scale(1.12);box-shadow:0 0 0 6px color-mix(in srgb,var(--red) 22%,transparent),var(--sh-2)}
+nav.bottom .nav-ptt.speaking{background:linear-gradient(180deg,var(--green-btn-2),var(--green-btn));
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--green) 20%,transparent),var(--sh-btn)}
+@media (prefers-reduced-motion: reduce){ nav.bottom .nav-ptt.rec{transform:none} }
+/* لم تبق طبقة عائمة: نُخفي بقايا التنسيق القديم إن وُجدت */
+.ptt-wrap{display:none}
+
+/* عزل ثنائي الاتجاه لكل قيمة زمنية أو رقمية داخل نص عربي: بلا هذا تُقلب
+   اللاحقة فتُقرأ «د35» بدل «35د»، وهو خلل ظهر في رأس الشفت المفتوح. */
+.tdur,.timer,.ossh-t b,.sigl-c,.sigl-m,.mydt-t b,.cbv b,.tt-min b,.stat .v,.stat b{
+  unicode-bidi:isolate}
