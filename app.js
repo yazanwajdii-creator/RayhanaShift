@@ -2852,7 +2852,33 @@ function loadOpsCard(){
     if(!r || !r.ready){ w.innerHTML=''; return; }
     var now=new Date(r.now).getTime(), endT=new Date(r.end).getTime();
     var open=r.opening||[], close=r.closing||[], temps=r.temps||[], html='';
-    if(open.length) html+=opsChecklistHtml('جاهزية الافتتاح', IC.ready, open, false);
+    /* ===== لمن تظهر قوائم الجاهزية =====
+       كانت جاهزية الافتتاح تظهر لكل موظفة بلا أي شرط، وجاهزية الإغلاق لكل
+       من قاربت نهاية شفتها هي — فموظفة شفتها المسائي ترى «جاهزية الافتتاح»
+       بعد أن فُتح المقهى منذ ساعات، وموظفة تنتهي ٨ مساءً ترى «توثيق الإغلاق»
+       والمقهى يُغلق ١١:٣٠. شرطان معاً:
+         • المرحلة: الافتتاح في مراحل ما قبل الفتح، والإغلاق في مراحل الإقفال.
+         • الشفت: صاحبة الافتتاح من يبدأ شفتها مع فتح الخدمة، وصاحبة الإغلاق
+           من ينتهي شفتها مع إقفالها — لا كل من قاربت نهايتها هي.
+       من ليست معنيّة لا ترى القائمة إطلاقاً، فلا تزدحم شاشتها بما ليس دورها. */
+    var day=(S.state||{}).day||{}, svc=day.service||{};
+    var ph=day.phase||'';
+    function svcMs(hhmm){
+      if(!hhmm) return null;
+      var p2=String(hhmm).split(':'); if(p2.length<2) return null;
+      var d0=new Date(r.now); d0.setHours(+p2[0], +p2[1], 0, 0);
+      return d0.getTime();
+    }
+    var openMs=svcMs(svc.open), closeMs=svcMs(svc.close);
+    var myStart=(S.state.shift&&S.state.shift.start)?new Date(S.state.shift.start).getTime():null;
+    var GRACE=75*60000;
+    var isOpener = (openMs!=null && myStart!=null) ? Math.abs(myStart-openMs) <= GRACE : true;
+    var isCloser = (closeMs!=null && isFinite(endT)) ? (endT >= closeMs - GRACE) : true;
+    var openPhase  = ['closed','pre_open','opening','ready_for_first_guest'].indexOf(ph) >= 0;
+    var closePhase = ['closing_prep','service_closed','closing','finalized'].indexOf(ph) >= 0;
+
+    if(open.length && isOpener && (openPhase || !ph))
+      html+=opsChecklistHtml('جاهزية الافتتاح', IC.ready, open, false);
     if(temps.length){
       html+='<div class="card ops"><div class="ops-h">'+IC.temp+'<span>سلامة الغذاء — الحرارة</span></div>'+
         '<div class="muted small" style="margin:2px 0 7px">سجّلي قراءة كل جهاز في وقتها. أي قراءة خارج النطاق تُرفع للإدارة وتعني فحص المواد فوراً.</div>';
@@ -2868,7 +2894,8 @@ function loadOpsCard(){
       });
       html+='</div>';
     }
-    if(close.length && now > endT - 90*60000) html+=opsChecklistHtml('توثيق الإغلاق', IC.lock, close, true);
+    if(close.length && isCloser && (closePhase || now > endT - 90*60000))
+      html+=opsChecklistHtml('توثيق الإغلاق', IC.lock, close, true);
     w.innerHTML=html;
     $$('[data-rdy]',w).forEach(function(b){ b.addEventListener('click', function(){
       var id=+b.getAttribute('data-rdy'), s=b.getAttribute('data-s');
@@ -2959,14 +2986,19 @@ function taskCard(t){
     '<span class="chip '+stChip+'">'+stLbl+'</span></div>'+prog;
   if(t.status==='returned' && t.admin_note) html+='<div class="small" style="color:var(--red);margin-top:4px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>';
   if(workLocked()){ html+='<div class="muted small" style="margin-top:8px">انتهى شفتك — العرض فقط</div></div>'; return html; }
+  /* قاعدة واحدة في التطبيق كله: ما لا رجعة فيه يُسحب، وما يُعكس يُكبس.
+     كان «إنهاء ✔» كبسةً واحدة في قائمة المهام بينما البطاقة الرئيسية تطلب
+     سحباً لنفس الفعل — فاختلفت القاعدة بين شاشتين، وضغطةٌ بالخطأ تُعلن
+     إنجازاً. الآن الإنهاء سحبٌ في كل مكان. */
   html+='<div class="btnrow">';
   if(t.status==='open'||t.status==='returned') html+='<button class="btn sm" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>';
-  if(running) html+='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت (خدمة ضيف)</button>'+
-                    '<button class="btn sm" data-a="tDone" data-id="'+t.id+'">إنهاء ✔</button>';
+  if(running) html+='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت (خدمة ضيف)</button>';
   if(t.status==='paused'&&t.blocked) html+='<button class="btn sm" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>';
-  else if(t.status==='paused') html+='<button class="btn sm" data-a="tResume" data-id="'+t.id+'">استئناف</button>'+
-                    '<button class="btn sm ghost" data-a="tDone" data-id="'+t.id+'">إنهاء ✔</button>';
-  html+='</div></div>';
+  else if(t.status==='paused') html+='<button class="btn sm ghost" data-a="tResume" data-id="'+t.id+'">استئناف</button>';
+  html+='</div>';
+  if(running || (t.status==='paused' && !t.blocked))
+    html+='<div style="margin-top:8px">'+swipeHtml('swT'+t.id,'اسحبي: أنهيت المهمة')+'</div>';
+  html+='</div>';
   return html;
 }
 function updateTimers(){
@@ -3559,6 +3591,13 @@ function wireTab(v){
       why='أنجزي «'+g.priority_block.name+'» أولاً — الأهم';
     }
     swipeBind(el, function(){ var t=findTask(tid); if(t) completeFlow(t); }, why);
+  });
+  /* سحب إنهاء المهمة في قائمة المهام — نفس مسار completeFlow الذي كان
+     خلف زر «إنهاء ✔»، بلا تغيير في المنطق. */
+  $$('.swipe[id^="swT"]', v).forEach(function(el){
+    var tid=+el.id.replace('swT','');
+    if(!tid) return;
+    swipeBind(el, function(){ var t=findTask(tid); if(t) completeFlow(t); });
   });
   /* سحب إنجاز المهمة الدوّارة — نفس قواعد السحب، ومسار recurring_done نفسه
      الذي كان خلف الكبسة، بلا تغيير في المنطق ولا في الحمولة. */
