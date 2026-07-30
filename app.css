@@ -114,6 +114,10 @@
   --amber-num:#A77737; --on-ink:#FFFFFF; --on-brand:#FFFFFF;
   --focus:#12301F; --focus-halo:#FFFFFF;
   /* ظلال محيّدة: الظلّ يُظهر الارتفاع لا يلوّن. الملوّن كان هالةً حول الأزرار. */
+  /* درجات إلحاح الطاولة — من رموز التطبيق لا من لوحة أجنبية.
+     المتاحة والموقوفة محيّدتان: لا تحذير بلا سبب. */
+  --tm-calm:#5B7A66; --tm-soon:#9D6C26; --tm-late:#AA5544;
+  --tm-free:#8C9A90; --tm-oos:#9AA39C;
   --sh-btn:0 2px 6px rgba(20,28,22,.14), 0 1px 2px rgba(20,28,22,.10);
   --sh-nav:0 6px 22px rgba(20,28,22,.13);
   --radius:18px;
@@ -142,6 +146,8 @@
   --amber-ink:#B38A56; --green-ink:#659C7C; --red-ink:#D58776;
   --amber-num:#9D6E2D; --on-ink:#0B100C; --on-brand:#070A07;
   --focus:#F5E8D0; --focus-halo:#0B100C;
+  --tm-calm:#7FA88E; --tm-soon:#C79A5C; --tm-late:#CE8271;
+  --tm-free:#6E7C72; --tm-oos:#5E6A62;
   --sh-btn:0 2px 6px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.35);
   --sh-nav:0 6px 22px rgba(0,0,0,.5);
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.42);
@@ -174,8 +180,12 @@
     --amber-ink:#B38A56; --green-ink:#659C7C; --red-ink:#D58776;
     --amber-num:#9D6E2D; --on-ink:#0B100C; --on-brand:#070A07;
     --focus:#F5E8D0; --focus-halo:#0B100C;
-    --sh-btn:0 2px 6px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.35);
+    --tm-calm:#7FA88E; --tm-soon:#C79A5C; --tm-late:#CE8271;
+  --tm-free:#6E7C72; --tm-oos:#5E6A62;
+  --sh-btn:0 2px 6px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.35);
     --sh-nav:0 6px 22px rgba(0,0,0,.5);
+  --tm-calm:#7FA88E; --tm-soon:#C79A5C; --tm-late:#CE8271;
+  --tm-free:#6E7C72; --tm-oos:#5E6A62;
   --sh-btn:0 2px 6px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.35);
   --sh-nav:0 6px 22px rgba(0,0,0,.5);
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.42);
@@ -1313,31 +1323,13 @@ nav.bottom :focus-visible{
 .mydt{display:flex;flex-wrap:wrap;gap:7px}
 .mydt-t{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
   min-width:52px;min-height:48px;padding:5px 8px;border-radius:12px;
-  border:1.5px solid var(--tcol);background:color-mix(in srgb,var(--tcol) 12%,var(--surface))}
+  border:2px solid var(--tcol);background:color-mix(in srgb,var(--tcol) 10%,var(--surface))}
 .mydt-t b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--ink)}
-.mydt-t span{font-size:9.5px;font-weight:700;color:var(--tcol);margin-top:2px;white-space:nowrap}
+/* اسم الحالة كان بلون الإلحاح، ورموز الإلحاح معايَرة كحشوات وحدود (3:1)
+   لا كنصّ (4.5:1) — فسقط إلى 2.47 في السمة الداكنة. اللون يبقى على الحدّ
+   والحشوة (وهما ما يجيب «مَن يحتاجني»)، والنصّ يأخذ --muted المعايَر. */
+.mydt-t span{font-size:9.5px;font-weight:700;color:var(--muted);margin-top:2px;white-space:nowrap}
 
-/* ===== إشارات الأرضية (شاشة الموظفة) =====
-   شبكة أزرار كبيرة: تُضغط بيد واحدة والأخرى تحمل صينية. العنوان أولاً
-   والشرح تحته لأن العين تقرأ العنوان وحده في الذروة. */
-.sigb{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.sigb-b{position:relative;text-align:start;background:var(--surface);
-  border:1.5px solid var(--line);border-radius:14px;padding:10px 11px;
-  min-height:60px;font:inherit;color:var(--ink);cursor:pointer;
-  transition:border-color .15s,background .15s,transform .1s}
-.sigb-b:active{transform:scale(.97)}
-.sigb-b b{display:block;font-size:13px;font-weight:800;letter-spacing:-.01em}
-.sigb-b span{display:block;font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.45}
-.sigb-b.on{border-color:var(--amber);background:var(--amber-soft)}
-.sigb-b.on b{color:var(--amber-ink)}
-.sigb-b.on span{color:var(--amber-ink);opacity:.85}
-.sigb-b:disabled{opacity:.55;cursor:default}
-/* العدّاد: رقم الإشارات القائمة من هذا النوع */
-.sigb-n{position:absolute;inset-block-start:8px;inset-inline-end:8px;
-  min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;
-  background:var(--amber-btn);color:#fff;border-radius:11px;
-  font-size:11.5px;font-weight:800;font-style:normal;font-variant-numeric:tabular-nums}
-@media(hover:hover) and (pointer:fine){ .sigb-b:hover{border-color:var(--amber-soft)} }
 
 .sigl{margin-top:11px;border-top:1px dashed var(--line);padding-top:9px}
 .sigl-h{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px}
@@ -1394,13 +1386,6 @@ nav.bottom :focus-visible{
 .ossh-t span{font-size:12px;color:var(--muted)}
 .ossh-n{font-size:11.5px;color:var(--muted);line-height:1.65;margin-top:7px}
 
-/* إشارات الأرضية: أيقونة + نصّان. الأيقونة تُقرأ أولاً في الذروة. */
-.sigb-b{display:flex;align-items:flex-start;gap:9px}
-.sigb-i{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:inline-flex;
-  align-items:center;justify-content:center;background:var(--surface-2);color:var(--brand)}
-.sigb-i svg{width:18px;height:18px}
-.sigb-x{min-width:0}
-.sigb-b.on .sigb-i{background:color-mix(in srgb,var(--amber) 22%,transparent);color:var(--amber-ink)}
 
 /* بلاطة «طاولاتي» صارت زرّاً: هدف لمس كامل وحالة ضغط */
 .mydt-t{font:inherit;cursor:pointer;transition:transform .12s var(--ease,ease),border-color .15s}
@@ -1431,3 +1416,30 @@ nav.bottom .nav-ptt.speaking{background:linear-gradient(180deg,var(--green-btn-2
    اللاحقة فتُقرأ «د35» بدل «35د»، وهو خلل ظهر في رأس الشفت المفتوح. */
 .tdur,.timer,.ossh-t b,.sigl-c,.sigl-m,.mydt-t b,.cbv b,.tt-min b,.stat .v,.stat b{
   unicode-bidi:isolate}
+
+/* ===== طابور الباب =====
+   رقم واحد كبير هو كل الرسالة، وزمن الانتظار تحته لأنه ما يحوّل الرقم إلى
+   قرار. يقلب لونه عند خمس دقائق: ليس تزييناً بل حدّ خدمة. */
+.dq{display:flex;align-items:center;gap:14px;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.dq.hot{background:var(--amber-soft);border-color:var(--amber)}
+.dq-n{display:flex;align-items:baseline;gap:7px;min-width:0}
+.dq-n b{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;color:var(--ink);unicode-bidi:isolate}
+.dq-n span{font-size:12px;color:var(--muted)}
+.dq.hot .dq-n b{color:var(--amber-ink)}
+.dq-w{margin-inline-start:auto;font-size:11.5px;font-weight:700;color:var(--muted);
+  text-align:end;line-height:1.45}
+.dq-w.hot{color:var(--amber-ink)}
+/* دليل التوجيه: يعلّم الموظفة أين تُسجَّل كل حقيقة بدل أن يجمعها كلها هنا */
+.dqr{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.dqr-h{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:7px}
+.dqr-i{display:block;width:100%;text-align:start;background:none;border:none;
+  border-radius:11px;padding:8px 9px;margin:0 0 3px;cursor:pointer;font:inherit;
+  min-height:44px;transition:background .15s}
+.dqr-i b{display:block;font-size:12.5px;font-weight:700;color:var(--ink)}
+.dqr-i span{display:block;font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:1px}
+.dqr-i:active{background:var(--surface-2)}
+@media(hover:hover) and (pointer:fine){ .dqr-i:hover{background:var(--surface-2)} }
+/* خيارات سؤال التحقق: بلا تلوين بلون الحالة — الاسم والأيقونة يكفيان */
+.tm-vf-opt{border-color:var(--line);color:var(--ink)}

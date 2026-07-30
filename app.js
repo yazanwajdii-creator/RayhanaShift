@@ -166,8 +166,26 @@ function toast(msg, err, dur){
   t.className = err ? 'err show' : 'show';
   clearTimeout(toast._t); toast._t = setTimeout(function(){ t.className=''; }, dur||(err?3800:2400));
 }
-function fmtT(ts){ if(!ts) return '—'; var d=new Date(ts); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
-function fmtHM(t){ if(!t) return '—'; return String(t).slice(0,5); }
+/* ===== الوقت: نظام ١٢ ساعة بصيغة ص/م في كل التطبيق =====
+   كان في المشروع تنسيقان: fmtT بنظام ٢٤ ساعة في كل الشاشات، و tmClock
+   بنظام ١٢ ساعة في وحدة الطاولات وحدها — فكانت الموظفة ترى «16:30» هنا
+   و«4:30 م» هناك لنفس اللحظة. صار التنسيق واحداً من دالة واحدة.
+   العزل ثنائي الاتجاه لازم: بلا مُحدِّد يقلب المتصفح موضع «ص/م» داخل
+   الجملة العربية فتُقرأ «ص 4:06». */
+var _AP = ['ص','م'];
+function _t12(h, m){
+  var ap = _AP[h < 12 ? 0 : 1];
+  h = h % 12; if(!h) h = 12;
+  return '\u2066' + h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap + '\u2069';
+}
+function fmtT(ts){ if(!ts) return '—'; var d=new Date(ts);
+  if(!isFinite(d.getTime())) return '—';
+  return _t12(d.getHours(), d.getMinutes()); }
+/* وقت الجدولة يأتي من القاعدة نصاً «HH:MM:SS» بلا تاريخ، فلا يُبنى منه Date */
+function fmtHM(t){ if(!t) return '—';
+  var p=String(t).split(':'); if(p.length<2) return '—';
+  var h=+p[0], m=+p[1]; if(!isFinite(h)||!isFinite(m)) return '—';
+  return _t12(h, m); }
 function fmtD(ts){ if(!ts) return '—'; var d=new Date(ts); return d.toLocaleDateString('ar-JO',{weekday:'short',day:'numeric',month:'numeric'}); }
 function today(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
 function dlFile(name, content, type){ var blob=new Blob([content],{type:(type||'text/plain')+';charset=utf-8'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500); }
@@ -1460,19 +1478,44 @@ var TIC = (function(){
    أخضر متاحة · أصفر داكن جلسوا · برتقالي أُخذ الطلب · تركوازي تجهيز ·
    أزرق جاهز · أحمر مشغولة · بنفسجي الحساب · سماوي دوران الطاولة.
    solid = التعبئة الصلبة، bg = خلفية فاتحة للبطاقة، c = نص على الفاتح. */
+/* ===== مفردات الطاولة =====
+   كانت إحدى عشرة حالة بإحدى عشرة صبغة من لوحة أجنبية عن هوية التطبيق
+   (بنفسجي وأزرق وفيروزي)، وكان الأسوأ منطقياً: served («مشغولة») بالأحمر
+   وfree بالأخضر — فمقهى ممتلئ يظهر كحالة طوارئ، ومقهى فارغ كإنجاز.
+   والحالتان needs_clean وcleaning شبه مترادفتين بلونين متقاربين.
+   القاعدة الجديدة: قناة بصرية واحدة لكل سؤال.
+     • اللون يجيب «مَن يحتاجني الآن؟» — ثلاث درجات إلحاح من رموز التطبيق.
+     • الأيقونة والاسم يجيبان «ما حالتها؟» — أحد عشر اسماً تبقى كما هي.
+   فلا يُطلب من أحد حفظ إحدى عشرة دلالة لونية. */
 var TMS = {
-  free:           {ar:'متاحة',          sh:'متاحة',   ic:'free',      solid:'#15803D', bg:'#ECFDF3', c:'#14532D'},
-  reserved:       {ar:'محجوزة',         sh:'محجوزة',  ic:'reserved',  solid:'#475569', bg:'#F1F5F9', c:'#1E293B'},
-  seated:         {ar:'جلسوا — الطلب؟', sh:'الطلب؟',  ic:'seated',    solid:'#A16207', bg:'#FEFCE8', c:'#713F12'},
-  ordered:        {ar:'تم أخذ الطلب',   sh:'أُخذ الطلب', ic:'ordered', solid:'#C2410C', bg:'#FFF7ED', c:'#7C2D12'},
-  preparing:      {ar:'قيد التجهيز',    sh:'تجهيز',   ic:'preparing', solid:'#0F766E', bg:'#F0FDFA', c:'#134E4A'},
-  ready:          {ar:'جاهز للتقديم',   sh:'جاهز',    ic:'ready',     solid:'#1D4ED8', bg:'#EFF6FF', c:'#1E3A8A'},
-  served:         {ar:'مشغولة',         sh:'مشغولة',  ic:'served',    solid:'#B91C1C', bg:'#FEF2F2', c:'#7F1D1D'},
-  bill_requested: {ar:'طلبت الحساب',    sh:'الحساب',  ic:'bill',      solid:'#7E22CE', bg:'#FAF5FF', c:'#581C87'},
-  needs_clean:    {ar:'غادروا — تنظيف', sh:'تنظيف',   ic:'clean',     solid:'#0369A1', bg:'#F0F9FF', c:'#075985'},
-  cleaning:       {ar:'يجري التجهيز',   sh:'يُجهَّز',  ic:'cleaning',  solid:'#0E7490', bg:'#ECFEFF', c:'#164E63'},
-  out_of_service: {ar:'خارج الخدمة',    sh:'موقوفة',  ic:'oos',       solid:'#334155', bg:'#F1F5F9', c:'#1E293B'}
+  free:           {ar:'متاحة',          sh:'متاحة',   ic:'free'},
+  reserved:       {ar:'محجوزة',         sh:'محجوزة',  ic:'reserved'},
+  seated:         {ar:'جلسوا — الطلب؟', sh:'الطلب؟',  ic:'seated'},
+  ordered:        {ar:'تم أخذ الطلب',   sh:'أُخذ الطلب', ic:'ordered'},
+  preparing:      {ar:'قيد التجهيز',    sh:'تجهيز',   ic:'preparing'},
+  ready:          {ar:'جاهز للتقديم',   sh:'جاهز',    ic:'ready'},
+  served:         {ar:'يتناولون',       sh:'يتناولون',ic:'served'},
+  bill_requested: {ar:'طلبت الحساب',    sh:'الحساب',  ic:'bill'},
+  needs_clean:    {ar:'غادروا — تنظيف', sh:'تنظيف',   ic:'clean'},
+  cleaning:       {ar:'يجري التنظيف',   sh:'يُنظَّف',  ic:'cleaning'},
+  out_of_service: {ar:'خارج الخدمة',    sh:'موقوفة',  ic:'oos'}
 };
+/* درجات الإلحاح الثلاث + الموقوفة. القيم رموز CSS فتتبع السمة تلقائياً،
+   بخلاف الست عشرية الثابتة التي كانت لا تنقلب في الوضع الداكن. */
+var TMU = [
+  {k:'calm', ar:'على ما يرام',   solid:'var(--tm-calm)'},
+  {k:'soon', ar:'اقترب وقتها',   solid:'var(--tm-soon)'},
+  {k:'due',  ar:'تحتاج انتباهاً',solid:'var(--tm-soon)'},
+  {k:'late', ar:'تجاوزت وقتها',  solid:'var(--tm-late)'}
+];
+/* الطاولة المتاحة ليست «إلحاحاً صفر» بل حالة محيّدة: تُميَّز بلا لون تحذير */
+function tmTint(x){
+  if(x.oos) return 'var(--tm-oos)';
+  if(x.state==='free') return 'var(--tm-free)';
+  if(x.state==='reserved') return 'var(--tm-oos)';
+  return TMU[tmUrg(x)].solid;
+}
+function tmUrgName(x){ return x.oos?'موقوفة':(x.state==='free'?'متاحة':TMU[tmUrg(x)].ar); }
 /* الإجراء كما تقوله الموظفة، لا اسم الحالة */
 var TMACT = {
   seated:         {t:'جلس الضيفات',          s:'تبدأ مدة الطاولة الآن'},
@@ -1501,12 +1544,9 @@ function tmInitials(n){
 }
 /* وقت الخادم هو المرجع — لا نثق بساعة الجهاز */
 function tmNow(){ return Date.now() - TM.skew; }
-function tmClock(ts){
-  if(!ts) return '—';
-  var d = new Date(ts), h = d.getHours(), m = d.getMinutes();
-  var ap = h < 12 ? 'ص' : 'م'; h = h % 12; if(!h) h = 12;
-  return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
-}
+/* أُبقي الاسم لأن وحدة الطاولات تستدعيه في مواضع كثيرة، لكنه صار غلافاً
+   على fmtT فلا يبقى تنفيذان للوقت يفترقان مع الوقت. */
+function tmClock(ts){ return fmtT(ts); }
 function tmDur(mins){
   mins = Math.max(0, Math.round(+mins || 0));
   if(mins < 60) return mins + ' د';
@@ -1557,6 +1597,7 @@ function tmCommandBar(all, meta){
 /* ---------- بطاقة الطاولة: أماكن المعلومات ثابتة في كل بطاقة ---------- */
 function tmCard(x){
   var k = tmState(x), st = TMS[k] || TMS.free, u = tmUrg(x);
+  var tint = tmTint(x);
   var flags = '';
   if(u >= 3)        flags += '<span class="tf bad" title="تجاوزت وقتها الطبيعي">'+tmIc('alert')+'</span>';
   else if(u === 2)  flags += '<span class="tf warn" title="بلا متابعة">'+tmIc('clock')+'</span>';
@@ -1600,6 +1641,7 @@ function tmCard(x){
    والدقائق والمسؤولة والتنبيه شارات على الحواف فلا تزاحم الرقم. */
 function tmTile(x){
   var k = tmState(x), st = TMS[k] || TMS.free, u = tmUrg(x);
+  var tint = tmTint(x);
   var fl = '';
   if(u >= 3)           fl = '<span class="tt-fl bad" title="تجاوزت وقتها">'+tmIc('alert')+'</span>';
   else if(u === 2)     fl = '<span class="tt-fl warn" title="بلا متابعة">'+tmIc('clock')+'</span>';
@@ -1612,7 +1654,7 @@ function tmTile(x){
           : st.sh;
   return '<button class="tt '+esc(x.type || '')+(u >= 3 ? ' urg' : '')+(x.oos ? ' oos' : '')+
       (x.group_id ? ' grouped' : '')+(TM.merge && TM.pick[x.id] ? ' sel' : '')+
-      '" data-t="'+x.id+'" style="--tcol:'+st.solid+'" '+
+      '" data-t="'+x.id+'" style="--tcol:'+tint+'" '+
       'aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+(x.owner ? ' — '+esc(x.owner) : '')+
       (busy && x.mins ? ' — '+tmDur(x.mins) : '')+'">'+
     fl+
@@ -1623,23 +1665,36 @@ function tmTile(x){
     (x.owner ? '<span class="tt-own" title="'+esc(x.owner)+'">'+esc(tmInitials(x.owner))+'</span>' : '')+
     '</button>';
 }
-/* مفتاح الألوان: يشرح كل لون ويعمل مرشّحاً — الحالات الغائبة لا تُعرض */
+/* مفتاح الإلحاح: ثلاث درجات لا إحدى عشرة حالة. يعمل مرشّحاً أيضاً.
+   الحالة نفسها تُقرأ من الأيقونة والاسم على البلاطة، فلا حاجة لتلوينها. */
 function tmLegend(all){
-  var cnt = {};
-  all.forEach(function(x){ var k = tmState(x); cnt[k] = (cnt[k] || 0) + 1; });
-  var order = ['free','seated','ordered','preparing','ready','served','bill_requested',
-               'needs_clean','cleaning','reserved','out_of_service'];
-  var btns = order.filter(function(k){ return cnt[k]; }).map(function(k){
-    var st = TMS[k];
-    return '<button class="tleg-b'+(TM.st === k ? ' on' : '')+'" data-st="'+k+'" '+
-      'style="--tcol:'+st.solid+'"><span class="sw"></span>'+esc(st.ar)+
-      '<span class="n">'+cnt[k]+'</span></button>';
+  var groups=[
+    {k:'late', ar:'تجاوزت وقتها',  col:'var(--tm-late)', f:function(x){ return !x.oos && x.state!=='free' && tmUrg(x)>=3; }},
+    {k:'soon', ar:'تحتاج انتباهاً',col:'var(--tm-soon)', f:function(x){ return !x.oos && x.state!=='free' && tmUrg(x)>0 && tmUrg(x)<3; }},
+    {k:'busy', ar:'تسير طبيعياً',  col:'var(--tm-calm)', f:function(x){ return !x.oos && x.state!=='free' && tmUrg(x)===0; }},
+    {k:'free', ar:'متاحة',         col:'var(--tm-free)', f:function(x){ return !x.oos && x.state==='free'; }},
+    {k:'oos',  ar:'موقوفة',        col:'var(--tm-oos)',  f:function(x){ return !!x.oos; }}
+  ];
+  var btns=groups.map(function(g){
+    var n=all.filter(g.f).length; if(!n) return '';
+    return '<button class="tleg-b'+(TM.st===g.k?' on':'')+'" data-st="'+g.k+'" '+
+      'style="--tcol:'+g.col+'"><span class="sw"></span>'+esc(g.ar)+
+      '<span class="n">'+n+'</span></button>';
   }).join('');
   return btns ? '<div class="tleg">'+
-    '<button class="tleg-b'+(TM.st ? '' : ' on')+'" data-st="" style="--tcol:var(--muted)">'+
+    '<button class="tleg-b'+(TM.st?'':' on')+'" data-st="" style="--tcol:var(--muted)">'+
     '<span class="sw"></span>الكل<span class="n">'+all.length+'</span></button>'+btns+'</div>' : '';
 }
-
+/* المرشّح صار على درجة الإلحاح، فتغيّر معنى TM.st */
+function tmMatchGroup(x, k){
+  if(!k) return true;
+  if(k==='oos')  return !!x.oos;
+  if(k==='free') return !x.oos && x.state==='free';
+  if(k==='busy') return !x.oos && x.state!=='free' && tmUrg(x)===0;
+  if(k==='soon') return !x.oos && x.state!=='free' && tmUrg(x)>0 && tmUrg(x)<3;
+  if(k==='late') return !x.oos && x.state!=='free' && tmUrg(x)>=3;
+  return true;
+}
 /* ---------- المخطط: نفس البيانات بترتيب مكاني ---------- */
 function tmLandmarks(areaId){
   if(areaId === 2){
@@ -1670,6 +1725,7 @@ function tmPlan(tables, areaId){
   return '<div class="tm-board">'+tmLandmarks(areaId)+
     tables.map(function(x){
       var k = tmState(x), st = TMS[k] || TMS.free, u = tmUrg(x);
+  var tint = tmTint(x);
       return '<button class="tm-t '+esc(x.type)+' s-'+esc(k)+(u >= 3 ? ' urg' : '')+
         (x.group_id ? ' grouped' : '')+'" data-t="'+x.id+'" style="left:'+(+x.x)+'%;top:'+(+x.y)+'%" '+
         'aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+'">'+
@@ -1696,7 +1752,7 @@ function tmRender(){
   else if(TM.filter === 'busy') view = view.filter(function(x){ return x.state !== 'free' && !x.oos; });
   else if(TM.filter === 'free') view = view.filter(function(x){ return x.state === 'free' && !x.oos; });
   if(TM.emp) view = view.filter(function(x){ return String(x.owner_id) === String(TM.emp); });
-  if(TM.st)  view = view.filter(function(x){ return tmState(x) === TM.st; });
+  if(TM.st)  view = view.filter(function(x){ return tmMatchGroup(x, TM.st); });
 
   var h = '';
   h += tmCommandBar(all, {
@@ -2095,7 +2151,7 @@ function loadVerifyCard(){
       '<div class="tm-vf-opts">'+
       (c.options || []).map(function(o){
         var st = TMS[o.state] || TMS.free;
-        return '<button class="tm-vf-opt" data-vs="'+esc(o.state)+'" style="border-color:'+st.solid+';color:'+st.c+'">'+
+        return '<button class="tm-vf-opt" data-vs="'+esc(o.state)+'">'+
                tmIc(st.ic)+esc(st.ar)+'</button>';
       }).join('')+'</div></div>';
     $$('[data-vs]', w).forEach(function(b){
@@ -2592,70 +2648,68 @@ function prepRemain(exp){ var ms=new Date(exp).getTime()-Date.now(); if(ms<=0) r
    تُغيَّر حالة الطاولة على الخريطة، ويستنتج الخادم الضغط منها.
    بقي ما لا تراه الطاولة ولا المحرّك — أربع إشارات عن المكان لا عن طاولة،
    فلا يحتاج أيٌّ منها رقماً. */
-var SIGT=[
-  ['customer_arrived','ضيفات على الباب','وصلن ولم يُجلسن بعد','door'],
-  ['sudden_rush','دفعة مفاجئة','ضغط غير معتاد الآن','rush'],
-  ['prep_level','نقص تحضير','مادة أو شاف على وشك النفاد','prep'],
-  ['zone_needs_support','أحتاج مساندة','لا أكفي وحدي في منطقتي','support']
-];
-/* التراكمية تُجمع (خمس ضيفات = خمس إشارات)، وغيرها تُستبدل بالأحدث */
-var SIGCUM={customer_arrived:1};
-/* أيقونة لكل إشارة: المعنى يُقرأ قبل النص في الذروة */
-var SIGIC={
-  door:'<path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16"/><path d="M3 21h13"/><circle cx="11.5" cy="12.5" r="1"/><path d="M18 21v-6l3-2v8"/>',
-  rush:'<path d="M3 17c2.5 0 3.5-2 6-2s3.5 2 6 2 3.5-2 6-2"/><path d="M3 12c2.5 0 3.5-2 6-2s3.5 2 6 2 3.5-2 6-2"/><path d="M3 7c2.5 0 3.5-2 6-2s3.5 2 6 2 3.5-2 6-2"/>',
-  prep:'<path d="M7 3v7a3 3 0 0 0 6 0V3"/><path d="M10 13v8"/><path d="M17 3c1.5 2 2 4 2 6s-.5 3-2 3-2-1-2-3 .5-4 2-6Z"/><path d="M17 12v9"/>',
-  support:'<circle cx="9" cy="8" r="3"/><path d="M3 20c.9-3.4 3.2-5 6-5s5.1 1.6 6 5"/><path d="M17 8h5M19.5 5.5v5"/>'
-};
-function sigName(t){ var n=t; SIGT.forEach(function(x){ if(x[0]===t) n=x[1]; }); return n; }
+/* ===== طابور الباب =====
+   كانت البطاقة ثماني «إشارات» مجرّدة، فبقيت غير مفهومة حتى بعد تقليصها إلى
+   أربع. السبب أن ستّاً منها لها بيت آخر في النظام أصلاً، فكانت تسأل الموظفة
+   أن تُدخل الحقيقة مرتين:
+     • بانتظار الطلب/التقديم/الحساب وتحتاج ترتيب ← حالة الطاولة على الخريطة.
+     • نقص مادة ← محطة التحضير، وهي تعرف الصنف والصلاحية.
+     • أحتاج مساندة ← «نداء المساعدة» الموجود بزملاء يستجيبون وإغلاق للنداء.
+     • دفعة مفاجئة ← حكم ذاتي، وطابور الباب قياسه الموضوعي.
+   بقيت حقيقة واحدة لا يراها النظام من أي مصدر آخر: كم ضيفة واقفة تنتظر
+   إجلاساً. فصارت البطاقة عدّاداً واحداً لها، مع أثرٍ مكتوب، ومسارٍ صريح
+   لكل حقيقة أخرى إلى بيتها. حقيقة واحدة في مكان واحد. */
 function loadSignalsCard(){
   var w=$('#sigWrap'); if(!w) return;
   var zone=((S.state||{}).my_zone||{}).area_id || ((S.state||{}).shift||{}).area_id || null;
   sAct('board_live', zone?{zone_id:zone}:{}).then(function(r){
     if(!r || !r.ok){ w.innerHTML=''; return; }
-    var live=r.live||[];
-    w.innerHTML='<div class="card"><h3>إشارات الأرضية</h3>'+
-      '<div class="muted small" style="margin-bottom:9px">أربع إشارات عن <b>المكان</b> لا عن طاولة ولا عن شخص، '+
-        'وتنتهي وحدها بعد مهلتها. ما يتعلّق بطاولة بعينها لا يُدخل من هنا — '+
-        'غيّري حالتها على خريطة الطاولات ويقرأها النظام منها.</div>'+
-      '<div class="sigb">'+SIGT.map(function(s){
-        var cur=null; live.forEach(function(l){ if(l.type===s[0]) cur=l; });
-        return '<button class="sigb-b'+(cur?' on':'')+'" data-sig="'+s[0]+'" '+
-          'aria-label="'+esc(s[1]+' — '+s[2])+'">'+
-          '<span class="sigb-i" aria-hidden="true">'+svgi(SIGIC[s[3]]||'')+'</span>'+
-          '<span class="sigb-x"><b>'+esc(s[1])+'</b><span>'+esc(s[2])+'</span></span>'+
-          (cur?'<i class="sigb-n">'+(+cur.count||1)+'</i>':'')+'</button>';
-      }).join('')+'</div>'+
-      (live.length
-        ? '<div class="sigl"><div class="sigl-h">قائمة الآن</div>'+live.map(function(l){
-            var old=(+l.oldest_min||0)>=10;
-            return '<div class="sigl-r"><b>'+esc(sigName(l.type))+'</b>'+
-              '<span class="sigl-c">'+(+l.count||1)+'</span>'+
-              '<span class="sigl-m'+(old?' old':'')+'">'+(+l.oldest_min||0)+' د</span>'+
-              '<button class="btn sm ghost" data-sigx="'+esc(l.type)+'">أُنجزت</button></div>';
-          }).join('')+'</div>'
-        : '<div class="muted small">لا إشارة قائمة الآن.</div>')+
-    '</div>';
-    function send(type, op){
-      return sAct('board_signal', {type:type, zone_id:zone, op:op||'add',
-        /* مفتاح لا-تكرار للإشارات غير التراكمية: ضغطتان متتاليتان بالخطأ
-           لا تُنتجان إشارتين. التراكمية تُعدّ فعلاً فلا مفتاح لها. */
-        idem: SIGCUM[type] ? null : (type+'|'+(zone||0)+'|'+Math.floor(Date.now()/20000))
-      }, true).then(function(x){
-        if(x && x.ok){ if(op==='close') toast('أُغلقت الإشارة ✔'); loadSignalsCard(); }
-        else toast((x && x.error)||'تعذّر الإرسال', true);
-      });
+    var q=null; (r.live||[]).forEach(function(l){ if(l.type==='customer_arrived') q=l; });
+    var n=q?(+q.count||0):0, waited=q?(+q.oldest_min||0):0;
+    var hot = n>0 && waited>=5;
+    w.innerHTML='<div class="card"><h3>طابور الباب</h3>'+
+      '<div class="muted small" style="margin-bottom:10px">كم ضيفة تنتظر إجلاساً الآن. '+
+        'هذا الرقم وحده لا يعرفه النظام من مكان آخر، ومنه يقرأ ضغط منطقتك.</div>'+
+      '<div class="dq'+(hot?' hot':'')+'">'+
+        '<div class="dq-n"><b>'+n+'</b><span>'+(n===1?'ضيفة تنتظر':'ضيفات تنتظرن')+'</span></div>'+
+        (n>0?'<div class="dq-w'+(hot?' hot':'')+'">أطولهنّ انتظاراً '+waited+' د</div>':
+             '<div class="dq-w">لا أحد ينتظر</div>')+
+      '</div>'+
+      '<div class="btnrow" style="margin-top:10px">'+
+        '<button class="btn grow" id="dqAdd">وصلت ضيفة +</button>'+
+        (n>0?'<button class="btn ghost grow" id="dqClear">أُجلسن — أخلِ الطابور</button>':'')+
+      '</div>'+
+      '<div class="muted small" style="margin-top:8px">الأثر: يرفع ضغط منطقتك فوراً فتُعاد ترتيب '+
+        'أولويات مهامك، ويهبط وحده بعد المهلة إن لم يُخلَ.</div>'+
+      '<div class="dqr"><div class="dqr-h">وأين تُسجَّل بقية الأمور؟</div>'+
+        '<button class="dqr-i" data-dqr="tables"><b>طاولة تحتاج شيئاً</b><span>غيّري حالتها على خريطة الطاولات — النظام يقرأ الضغط منها</span></button>'+
+        '<button class="dqr-i" data-dqr="prep"><b>نقص مادة أو شاف</b><span>محطة التحضير — تعرف الصنف والصلاحية</span></button>'+
+        '<button class="dqr-i" data-dqr="help"><b>تحتاجين مساندة</b><span>نداء المساعدة — يصل زميلاتك والإدارة ويُغلق حين يُلبّى</span></button>'+
+      '</div></div>';
+    function send(op){
+      return sAct('board_signal', {type:'customer_arrived', zone_id:zone, op:op||'add'}, true)
+        .then(function(x){
+          if(x && x.ok){ if(op==='close') toast('أُخلي الطابور'); loadSignalsCard(); }
+          else toast((x && x.error)||'تعذّر الإرسال', true);
+        });
     }
-    $$('[data-sig]',w).forEach(function(b){ b.addEventListener('click', function(){
-      b.disabled=true; send(b.getAttribute('data-sig')).catch(function(){ b.disabled=false; });
-    });});
-    $$('[data-sigx]',w).forEach(function(b){ b.addEventListener('click', function(){
-      b.disabled=true; send(b.getAttribute('data-sigx'),'close').catch(function(){ b.disabled=false; });
+    var ab=$('#dqAdd',w);
+    if(ab) ab.addEventListener('click', function(){ ab.disabled=true; send('add').catch(function(){ ab.disabled=false; }); });
+    var cb=$('#dqClear',w);
+    if(cb) cb.addEventListener('click', function(){ cb.disabled=true; send('close').catch(function(){ cb.disabled=false; }); });
+    $$('[data-dqr]',w).forEach(function(b){ b.addEventListener('click', function(){
+      var k=b.getAttribute('data-dqr');
+      if(k==='tables'){ var t=$('#tblWrap button[data-tbla]'); if(t) t.click();
+        else toast('لا منطقة طاولات مُسندة إليكِ الآن', true); }
+      else if(k==='prep'){ var p2=$('#prepWrap'); if(p2) p2.scrollIntoView({block:'center'});
+        else toast('محطة التحضير غير مفعّلة لشفتك', true); }
+      else { sAct('help_request',{},true).then(function(res){
+        if(res && res.ok){ toast('أُرسل النداء لزميلاتك والإدارة'); refresh(); }
+        else toast((res&&res.error)||'خطأ', true); }); }
     });});
   }).catch(function(){ w.innerHTML=''; });
 }
 
-/* بطاقة الطاولات تظهر فقط للموظفة المكلفة بمنطقة طاولات — لا خيار دائم للجميع */
 function loadTablesCard(){
   var w = $('#tblWrap'); if(!w) return;
   /* «طاولاتي» أولاً ثم المنطقة: الموظفة تحتاج أن تعرف ما هو مسؤوليتها هي
@@ -2681,8 +2735,8 @@ function loadTablesCard(){
                نفسها بحُرّاسها الخادمية كما تُفتح من الخريطة. */
             '<div class="mydt">'+byA[aid].map(function(t){
               var st = TMS[t.state] || TMS.free;
-              return '<button class="mydt-t" style="--tcol:'+st.solid+'" '+
-                'data-mydt="'+(+t.id)+'" aria-label="طاولة '+(+t.no)+' — '+esc(st.ar)+' — للتحديث">'+
+              return '<button class="mydt-t" style="--tcol:'+tmTint(t)+'" '+
+                'data-mydt="'+(+t.id)+'" aria-label="طاولة '+(+t.no)+' — '+esc(st.ar)+' — '+esc(tmUrgName(t))+' — للتحديث">'+
                 '<b>'+(+t.no)+'</b><span>'+esc(st.sh || st.ar)+'</span></button>';
             }).join('')+'</div>';
         }).join('')+'</div>';
