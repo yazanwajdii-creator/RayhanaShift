@@ -534,11 +534,11 @@ function pushGateDraw(){
   var el=document.createElement('div');
   el.className='pushgate'; el.id='pushGate';
   el.innerHTML='<div class="pushgate-card">'+
-    '<div class="pg-ic">🔔</div>'+
+    '<div class="pg-ic">'+IC.bell+'</div>'+
     '<h2>فعّلي إشعارات هاتفكِ</h2>'+
     '<p>لن تتمكني من متابعة العمل قبل تفعيل الإشعارات، لتصلكِ تنبيهات المهام وقرارات طلباتكِ على هاتفكِ حتى والتطبيق مغلق.</p>'+
     (denied
-      ? '<div class="pg-warn">الإشعارات محظورة من إعدادات المتصفح. افتحي إعدادات الموقع (🔒 بجانب العنوان) ← الإشعارات ← «السماح»، ثم أعيدي التحميل.</div>'+
+      ? '<div class="pg-warn">الإشعارات محظورة من إعدادات المتصفح. افتحي إعدادات الموقع (رمز القفل بجانب العنوان) ← الإشعارات ← «السماح»، ثم أعيدي التحميل.</div>'+
         '<button class="btn block" id="pgReload">أعيدي التحميل بعد السماح</button>'
       : '<button class="btn block" id="pgGo">تفعيل الإشعارات ✔</button>');
   el.innerHTML+='</div>';
@@ -2386,7 +2386,7 @@ function dashOps(mode){
       (full?' <span class="chip green">اكتمل</span>':overdue?' <span class="chip orange">حان وقتها</span>':'')+'</h3>';
     var turnLine='';
     if(!full && !claim){
-      if(mineTurn) turnLine='<div class="chip green" style="margin:3px 0">دورك الآن ✋</div>';
+      if(mineTurn) turnLine='<div class="chip green" style="margin:3px 0">دورك الآن</div>';
       else if(rt.turn) turnLine='<div class="muted small" style="margin:3px 0">الدور التالي: <b>'+esc(rt.turn.name)+'</b> — وأي زميلة فاضية تقدر تسبقها</div>';
     }
     var counters = rt.target>0
@@ -2545,7 +2545,7 @@ function viewNow(){
       '<button class="btn btn--primary btn--block btn--lg" data-a="enablePush">تفعيل الإشعارات ✔</button></div>');
   }
   if(st.my_zone){ var mz=st.my_zone, wk=mz.works||[];
-    out.push('<div class="card" style="background:var(--hero);color:#F4EFE4;border:none;padding:12px 14px"><b>منطقتكِ: '+esc(mz.area)+'</b>'+(mz.until?' <span class="small" style="color:rgba(255,255,255,.78)">حتى '+fmtT(mz.until)+'</span>':'')+
+    out.push('<div class="card" style="background:var(--hero);color:var(--on-hero);border:none;padding:12px 14px"><b>منطقتكِ: '+esc(mz.area)+'</b>'+(mz.until?' <span class="small" style="color:rgba(255,255,255,.78)">حتى '+fmtT(mz.until)+'</span>':'')+
       (wk.length?'<div class="small" style="margin-top:4px;opacity:.95">'+wk.map(esc).join(' · ')+'</div>':'')+'</div>');
   }
   if(!sh){
@@ -3494,7 +3494,14 @@ function coopSheet(){
 }
 
 /* ---------- تبويب: تطوري ---------- */
-function tierOf(pts){ pts=pts||0; if(pts>=600) return ['بلاتينية','#5FA8C7']; if(pts>=300) return ['ذهبية','#E0A32E']; if(pts>=120) return ['فضية','#9AA0A6']; if(pts>=40) return ['برونزية','#C77B3B']; return ['بداية الطريق','#8A8172']; }
+/* ألوان المراتب كانت خمس قيم سُدسية سطرية لا تنقلب مع السمة. صارت رموزاً
+   في ورقة الأنماط، فتتبع السمة كبقية النظام. */
+function tierOf(pts){ pts=pts||0;
+  if(pts>=600) return ['بلاتينية','var(--tier-4)'];
+  if(pts>=300) return ['ذهبية','var(--tier-3)'];
+  if(pts>=120) return ['فضية','var(--tier-2)'];
+  if(pts>=40)  return ['برونزية','var(--tier-1)'];
+  return ['بداية الطريق','var(--tier-0)']; }
 function loadGrow(v){
   Promise.all([sAct('my_progress',{}), sAct('my_month',{}).catch(function(){return {};}),
                sAct('my_engage',{}).catch(function(){return {};}),
@@ -3532,10 +3539,10 @@ function loadGrow(v){
     // ===== إنجازاتي: نقاط ريحانة + السلسلة =====
     if(eg.ok){
       var tier=tierOf(eg.points), tc=eg.team_core||{}, done=tc.done||0, tot=tc.total||0, pct=tot>0?Math.round(100*done/tot):0;
-      out.push('<div class="card" style="background:var(--hero);color:#F4EFE4;border:none">'+
+      out.push('<div class="card" style="background:var(--hero);color:var(--on-hero);border:none">'+
         '<div class="row" style="justify-content:space-between;align-items:center"><div><div style="font-size:13px;opacity:.85">نقاط ريحانة</div>'+
         '<div style="font-size:34px;font-weight:800;line-height:1">'+(eg.points||0)+'</div></div>'+
-        '<div style="text-align:center"><div style="width:54px;height:54px;border-radius:50%;background:'+tier[1]+';display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;margin:0 auto">'+(eg.points>=40?'★':'٭')+'</div>'+
+        '<div style="text-align:center"><div style="width:54px;height:54px;border-radius:50%;background:'+tier[1]+';color:var(--tier-on);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;margin:0 auto">'+(eg.points>=40?'★':'٭')+'</div>'+
         '<div style="font-size:11.5px;margin-top:4px;opacity:.9">'+tier[0]+'</div></div></div>'+
         '<div class="row" style="gap:8px;margin-top:12px">'+
         '<div style="flex:1;background:rgba(255,255,255,.12);border-radius:12px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:800">'+(eg.shift_streak||0)+'</div><div style="font-size:11px;opacity:.85">شفت متتالٍ بلا غياب</div></div>'+
@@ -4034,7 +4041,7 @@ function drawAdmin(){
   clearInterval(dashT);
   if(!S.adminSec){
     // خمس مجموعات مطوية بدل شبكة أزرار ضخمة — الأولى مفتوحة افتراضياً
-    var menuHtml='<h3 style="margin:16px 2px 8px;font-size:14px;color:#6E7A6F">الأقسام</h3>'+AGROUPS.map(function(g,gi){
+    var menuHtml='<h3 style="margin:16px 2px 8px;font-size:14px;color:var(--muted)">الأقسام</h3>'+AGROUPS.map(function(g,gi){
       return '<details class="acc"'+(gi===0?' open':'')+'><summary>'+g[0]+'<span class="chev">‹</span></summary><div class="acc-body">'+
         g[2].map(function(k){
           var s=null; SECS.forEach(function(x){ if(x[0]===k) s=x; });
@@ -4437,7 +4444,7 @@ function loadDash(v){
       }).join('') : '<div class="row"><div class="row__body muted small">لا أحداث بعد اليوم</div></div>';
     }).catch(function(){});
     aAct('briefing',{}).then(function(bf){ var w=$('#briefWrap'); if(!w||!bf.ok) return;
-      w.innerHTML='<div class="card" style="background:var(--hero);color:#F4EFE4;border:none"><h3 style="color:#F4EFE4;display:flex;gap:8px;align-items:center">'+brandMark(26)+' موجز اليوم</h3>'+
+      w.innerHTML='<div class="card" style="background:var(--hero);color:var(--on-hero);border:none"><h3 style="color:var(--on-hero);display:flex;gap:8px;align-items:center">'+brandMark(26)+' موجز اليوم</h3>'+
         (bf.lines||[]).map(function(l){ return '<div style="padding:3px 0;font-size:14px;opacity:.95">• '+esc(l)+'</div>'; }).join('')+'</div>';
     }).catch(function(){});
     // شارات العدادات على أزرار الأقسام
@@ -4555,7 +4562,7 @@ ADMIN.employees=function(v){
     v.innerHTML='<div class="btnrow" style="margin-bottom:10px"><button class="btn sm" id="empNew">+ موظفة جديدة</button></div>'+
       A.emps.map(function(e){
         return '<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between">'+
-        '<div><span class="avatar" style="display:inline-flex;width:30px;height:30px;font-size:14px;border-radius:50%;background:'+esc(e.color||'#3E6B4C')+';color:#fff;align-items:center;justify-content:center">'+esc(e.name.charAt(0))+'</span> <b>'+esc(e.name)+'</b> <span class="chip" style="direction:ltr">'+esc(e.username||'')+'</span> '+
+        '<div><span class="avatar" style="display:inline-flex;width:30px;height:30px;font-size:14px;border-radius:50%;background:'+esc(e.color||'var(--brand)')+';color:var(--on-brand);align-items:center;justify-content:center">'+esc(e.name.charAt(0))+'</span> <b>'+esc(e.name)+'</b> <span class="chip" style="direction:ltr">'+esc(e.username||'')+'</span> '+
         (e.role==='admin'?'<span class="chip ink">إدارة</span>':'')+(e.flexible?'<span class="chip orange">جوكر</span>':'')+(!e.active?'<span class="chip red">موقوفة</span>':'')+'</div>'+
         '<div class="btnrow" style="margin:0"><button class="btn sm ghost" data-edit="'+e.id+'">تعديل</button><button class="btn sm ghost" data-pw="'+e.id+'">كلمة السر</button></div></div></div>';
       }).join('');
@@ -6809,11 +6816,11 @@ ADMIN.live=function(v){
         function px(la,ln){ return [cx+((ln-g.lng)*mLng)/span*(W/2), cy-((la-g.lat)*mLat)/span*(H/2)]; }
         var rpx=(rad/span)*(W/2);
         var pts=prows.map(function(r){ var p=px(r.last.lat,r.last.lng); var inside=Math.hypot(p[0]-cx,p[1]-cy)<=rpx;
-          return '<g><circle cx="'+p[0].toFixed(0)+'" cy="'+p[1].toFixed(0)+'" r="6" fill="'+(inside?'#4F9E6A':'#C05A3C')+'" opacity="0.85"/><text x="'+p[0].toFixed(0)+'" y="'+(p[1]-9).toFixed(0)+'" font-size="9" text-anchor="middle" fill="var(--ink)">'+esc(r.employee)+'</text></g>'; }).join('');
+          return '<g><circle cx="'+p[0].toFixed(0)+'" cy="'+p[1].toFixed(0)+'" r="6" fill="'+(inside?'var(--green)':'var(--red)')+'" opacity="0.85"/><text x="'+p[0].toFixed(0)+'" y="'+(p[1]-9).toFixed(0)+'" font-size="9" text-anchor="middle" fill="var(--ink)">'+esc(r.employee)+'</text></g>'; }).join('');
         w.innerHTML='<div class="card"><h3>خريطة المواقع أثناء الشفت</h3>'+
           '<div class="muted small" style="margin-bottom:6px">مواقع تقريبية (GPS داخلي محدود الدقة) — أثناء الدوام فقط. الأخضر داخل النطاق، الأحمر خارجه.</div>'+
           '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;background:var(--surface-2);border-radius:12px">'+
-          '<circle cx="'+cx+'" cy="'+cy+'" r="'+rpx.toFixed(0)+'" fill="rgba(79,158,106,.12)" stroke="#4F9E6A" stroke-dasharray="4 4"/>'+
+          '<circle cx="'+cx+'" cy="'+cy+'" r="'+rpx.toFixed(0)+'" fill="color-mix(in srgb,var(--green) 14%,transparent)" stroke="var(--green)" stroke-dasharray="4 4"/>'+
           '<circle cx="'+cx+'" cy="'+cy+'" r="3" fill="var(--muted)"/><text x="'+cx+'" y="'+(cy+16)+'" font-size="9" text-anchor="middle" fill="var(--muted)">الكافيه</text>'+
           pts+'</svg></div>';
       }).catch(function(){});
