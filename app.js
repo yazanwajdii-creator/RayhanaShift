@@ -930,8 +930,11 @@ function startStaff(){
       '<button data-t="tasks"><span class="ic">'+IC.tasks+'</span>المهام</button>'+
       '<button id="pttBtn" class="nav-ptt" aria-label="اضغطي مع الاستمرار للتحدث">'+
         '<span class="ic">'+IC.mic+'</span><span class="ptt-l">تحدّثي</span></button>'+
+      /* «الصالة» أخذت مكان «ملفّي» في الشريط لا لأن ملفّي غير مهم، بل لأن
+         الأرضية تُفتح كل بضع دقائق وملفّي مرةً في الشفت. الترتيب يتبع
+         التكرار الفعلي، وملفّي انتقل إلى «المزيد» في أعلى القائمة. */
+      '<button data-t="floor"><span class="ic">'+TIC.map+'</span>الصالة</button>'+
       '<button data-t="shift"><span class="ic">'+IC.shift+'</span>الشفت</button>'+
-      '<button data-t="grow"><span class="ic">'+IC.user+'</span>ملفّي</button>'+
       '<button data-t="more"><span class="ic">'+IC.more+'</span>المزيد</button>'+
     '</nav>'+
     '<div id="pttToast" class="ptt-toast"></div>';
@@ -955,7 +958,7 @@ function startStaff(){
   // أثناء أول تحميل بلا كاش: هيكل تحميل (.sk) بدل شاشة فاضية
   if(!S.state){ var _sv=$('#view'); if(_sv) _sv.innerHTML='<section class="today"><div class="sk sk--block"></div><div class="sk sk--block"></div><div class="sk sk--block"></div></section>'; }
   refresh();
-  clearInterval(tickT); tickT=setInterval(function(){ if(S.role==='staff' && (S.tab==='tasks'||S.tab==='now'||S.tab==='shift')) updateTimers(); }, 1000);
+  clearInterval(tickT); tickT=setInterval(function(){ if(S.role==='staff' && (S.tab==='tasks'||S.tab==='now'||S.tab==='shift'||S.tab==='floor')) updateTimers(); }, 1000);
   startPresence();
   pttInit();
   qSync();
@@ -1370,11 +1373,14 @@ function drawTab(){
   }
   if(S.tab==='now') v.innerHTML=viewNow();
   else if(S.tab==='tasks') v.innerHTML=viewTasks();
+  else if(S.tab==='floor') v.innerHTML=viewFloor();
   else if(S.tab==='shift') v.innerHTML=viewShift();
   else if(S.tab==='grow'){ v.innerHTML=skel(3); loadGrow(v); }
   else v.innerHTML=viewMore();
   wireTab(v); animIn(v);
   if(S.tab==='now'){ loadPrepCard(); loadOpsCard(); loadTablesCard(); loadVerifyCard(); loadContribCard(); loadSignalsCard(); }
+  if(S.tab==='floor') loadFloor();
+  else { clearInterval(FLR.timer); clearInterval(FLR.tick); }
   if($('#vn_nt',v)) voiceWire(v,'nt');
   if($('#vn_is',v)) voiceWire(v,'is');
 }
@@ -2430,6 +2436,11 @@ function heroTaskCard(t){
   var stTxt={open:'لم تبدأ',running:'قيد التنفيذ الآن',paused:'متوقفة مؤقتاً',returned:'مُعادة من الإدارة'}[t.status]||TSTAT[t.status]||'';
   var stCls={open:'',running:'green',paused:'orange',returned:'red'}[t.status]||'';
   if(t.status==='paused'&&t.blocked){ stTxt='متوقفة — يوجد مانع'; stCls='red'; }
+  /* فرقٌ جوهري: توقّفٌ اختارته الموظفة، وتأجيلٌ قرّره المحرّك لأن الصالة
+     مضغوطة. الثاني كان يظهر بنفس صورة الأول مع زرّ «استئناف» بلا سبب —
+     فأيّ موظفة ستضغطه وتُبطل المعنى. الآن يُقرأ السبب قبل أيّ زر. */
+  var deferred = (t.status==='paused' && !t.blocked && !!t.defer_reason);
+  if(deferred){ stTxt='مؤجَّلة — الخدمة أولاً'; stCls='orange'; }
   var range='~'+t.expected+'–'+Math.round(t.expected*1.5)+' د';
   if(workLocked()){
     return '<div class="hero-task">'+
@@ -2441,6 +2452,7 @@ function heroTaskCard(t){
   var prim, sec='';
   if(t.status==='running'){ prim=swipeHtml('swDone'+t.id,'اسحبي: أنجزت وأؤكد النتيجة'); sec='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت</button>'; }
   else if(t.status==='paused'&&t.blocked){ prim='<button class="btn block" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>'; }
+  else if(deferred){ prim='<button class="btn block ghost" data-a="tResume" data-id="'+t.id+'">أستأنفها الآن على أي حال</button>'; }
   else if(t.status==='paused'){ prim='<button class="btn block" data-a="tResume" data-id="'+t.id+'">استئناف</button>'; }
   else { prim='<button class="btn block" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>'; }
   var needs=[]; if(t.needs_photo||t.method==='photo') needs.push('تحتاج صورة'); if(t.needs_two||t.method==='two_person') needs.push('موظفتان'); if(t.method==='checklist') needs.push('قائمة تحقق'); if(t.needs_review||t.method==='review') needs.push('مراجعة إدارة');
@@ -2450,6 +2462,7 @@ function heroTaskCard(t){
     (t.description?'<div class="ht-meta" style="color:var(--ink)">'+esc(t.description)+'</div>':'')+
     (t.reason?'<div class="card soft" style="margin:9px 0 0;padding:9px 11px"><div class="small"><b>لماذا هذه المهمة:</b> '+esc(t.reason)+'</div>'+
       (t.impact?'<div class="muted small" style="margin-top:2px">إن لم تُنفَّذ: '+esc(t.impact)+'</div>':'')+'</div>':'')+
+    (deferred?'<div class="card soft" style="margin:9px 0 0;padding:9px 11px;border:1px dashed var(--line)"><div class="small"><b>أجّلها النظام:</b> '+esc(t.defer_reason)+'</div><div class="muted small" style="margin-top:2px">تعود إلى قائمتك تلقائياً حين تهدأ الصالة — لا حاجة لأي إجراء.</div></div>':'')+
     '<div class="ht-meta">الوقت التقريبي '+range+(needs.length?' · '+needs.join(' · '):'')+'</div>'+
     (t.status==='returned'&&t.admin_note?'<div class="small" style="color:var(--red);margin-top:6px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>':'')+
     '<div class="row" style="justify-content:space-between;margin-top:10px"><span class="chip '+stCls+'">'+stTxt+'</span>'+
@@ -2699,8 +2712,7 @@ function loadSignalsCard(){
     if(cb) cb.addEventListener('click', function(){ cb.disabled=true; send('close').catch(function(){ cb.disabled=false; }); });
     $$('[data-dqr]',w).forEach(function(b){ b.addEventListener('click', function(){
       var k=b.getAttribute('data-dqr');
-      if(k==='tables'){ var t=$('#tblWrap button[data-tbla]'); if(t) t.click();
-        else toast('لا منطقة طاولات مُسندة إليكِ الآن', true); }
+      if(k==='tables'){ S.tab='floor'; paintTabs(); drawTab(); }
       else if(k==='prep'){ var p2=$('#prepWrap'); if(p2) p2.scrollIntoView({block:'center'});
         else toast('محطة التحضير غير مفعّلة لشفتك', true); }
       else { sAct('help_request',{},true).then(function(res){
@@ -2712,58 +2724,271 @@ function loadSignalsCard(){
 
 function loadTablesCard(){
   var w = $('#tblWrap'); if(!w) return;
-  /* «طاولاتي» أولاً ثم المنطقة: الموظفة تحتاج أن تعرف ما هو مسؤوليتها هي
-     قبل خريطة المنطقة كلها. الإسناد يأتي من مسؤولية الطاولات التي تحدّدها
-     الإدارة، فلا اجتهاد في الواجهة. */
+  /* كانت هنا شبكة بلاطات «طاولاتي اليوم» وقائمة أزرار المناطق — وهي التي
+     أنتجت التشويش في منتصف «الآن»، وبلاطاتٍ بلون واحد لأن الحالة كانت
+     «متاحة» في كلّها. الأرضية صارت صفحةً مستقلّة، فما يبقى هنا سطرٌ واحد
+     يقول ما يحتاج حركةً الآن ويأخذها إلى هناك. */
   Promise.all([sAct('tbl_areas', {}), sAct('tbl_my_duty', {})]).then(function(rr){
+    if(!$('#tblWrap')) return;
     var r = rr[0] || {}, duty = ((rr[1] || {}).tables) || [];
-    var mine = ((r && r.areas) || []).filter(function(a){ return a.allowed; });
-    if(!mine.length && !duty.length){ w.innerHTML = ''; return; }
-    var anames = {};
-    ((r && r.areas) || []).forEach(function(a){ anames[a.id] = a.name; });
-    var mineHtml = '';
-    if(duty.length){
-      var byA = {};
-      duty.forEach(function(t){ (byA[t.area_id] = byA[t.area_id] || []).push(t); });
-      mineHtml = '<div class="card"><h3>طاولاتي اليوم <span class="chip">'+duty.length+'</span></h3>'+
-        '<div class="muted small" style="margin-bottom:9px">الطاولات المسندة إليكِ من الإدارة. '+
-          'اللون هو حالتها الآن — اضغطي المنطقة أدناه لتحديثها.</div>'+
-        Object.keys(byA).map(function(aid){
-          return '<div class="mydt-a">'+esc(anames[aid] || 'منطقة')+'</div>'+
-            /* كانت span للعرض فقط، فلم تستطع الموظفة تحديث الحالة من هنا —
-               وهي أقرب مكان تراه فيه طاولتها. الآن زرّ يفتح لوحة الطاولة
-               نفسها بحُرّاسها الخادمية كما تُفتح من الخريطة. */
-            '<div class="mydt">'+byA[aid].map(function(t){
-              var st = TMS[t.state] || TMS.free;
-              return '<button class="mydt-t" style="--tcol:'+tmTint(t)+'" '+
-                'data-mydt="'+(+t.id)+'" aria-label="طاولة '+(+t.no)+' — '+esc(st.ar)+' — '+esc(tmUrgName(t))+' — للتحديث">'+
-                '<b>'+(+t.no)+'</b><span>'+esc(st.sh || st.ar)+'</span></button>';
-            }).join('')+'</div>';
-        }).join('')+'</div>';
-    }
-    function bindDuty(){
-      $$('[data-mydt]', w).forEach(function(b){
-        b.addEventListener('click', function(){
-          var id=+b.getAttribute('data-mydt');
-          if(!id){ toast('تعذّر فتح الطاولة — حدّثي الصفحة', true); return; }
-          TM.admin=false; tmDetail(id);
-        });
-      });
-    }
-    if(!mine.length){ w.innerHTML = mineHtml; bindDuty(); return; }
-    w.innerHTML = mineHtml + '<div class="card"><h3>خريطة الطاولات</h3>'+
-      '<div class="muted small" style="margin-bottom:8px">حدّثي حالة الطاولة بضغطة — يقرأ النظام منها ضغط منطقتك.</div>'+
-      mine.map(function(a){
-        var open = a.open && a.open.open;
-        return '<button class="btn'+(open?'':' ghost')+' block" data-tbla="'+a.id+'" data-nm="'+esc(a.name)+'" style="margin-bottom:6px">'+
-               esc(a.name)+(open ? '' : ' — تفتح '+esc((a.open||{}).from||''))+'</button>';
-      }).join('')+'</div>';
-    bindDuty();
-    $$('[data-tbla]', w).forEach(function(b){
-      b.addEventListener('click', function(){ tmOpen(+b.getAttribute('data-tbla'), b.getAttribute('data-nm'), false); });
-    });
+    var areas = ((r && r.areas) || []).filter(function(a){ return a.allowed; });
+    if(!areas.length){ w.innerHTML = ''; return; }
+    var busy = areas.reduce(function(s,a){ return s + (+a.busy||0); }, 0);
+    var tot  = areas.reduce(function(s,a){ return s + (+a.total||0); }, 0);
+    var need = duty.filter(function(t){ return ST_ACT.indexOf(t.state) >= 0; }).length;
+    w.innerHTML = '<div class="card"><h3>الصالة الآن</h3>'+
+      '<div class="muted small" style="margin-bottom:9px">'+
+        busy+' مشغولة من '+tot+' طاولة'+
+        (duty.length ? ' · مُسندة إليكِ '+duty.length : '')+
+        (need ? ' · '+need+' منها تحتاج حركة' : '')+'</div>'+
+      '<button class="btn block" data-a="goFloor">فتح صفحة الصالة</button></div>';
   }).catch(function(){});
 }
+/* ═══════════════════ صفحة الصالة ═══════════════════
+   ثلاث شكاوى مُبلَّغة كانت كلّها من مصدرٍ واحد: الأرضية لم تكن صفحة.
+   ١) «الطاولات تظهر بمنتصف الشاشة بتشويش» — كانت بطاقةً بين بطاقات «الآن».
+   ٢) «لونهم بدون ضغط رمادي، تتغيّر الحالة بعد أن نضغط» — البلاطة كانت
+      تُصبغ بلون الإلحاح، و«متاحة» إلحاحها صفر فلونها رمادي محيَّد. وأكثر
+      طاولات الموظفة متاحة، فرأت صفّاً رمادياً لا يقول شيئاً.
+   ٣) «الطاولات يجب أن تظهر لأي موظفة بالصالة» — كانت الرؤية محكومةً بنفس
+      بوابة التعديل، فمن ليست منطقتها لا ترى الأرضية أصلاً.
+
+   الآن: صفحة كاملة، واللون يقول الحالة لا الإلحاح، والإلحاح حلقةٌ حول
+   البلاطة. والرؤية للجميع، والتعديل بحسب النطاق الذي يعلنه الخادم. */
+var FLR = {area:null, areas:null, data:null, sel:null, st:null, timer:null, tick:null,
+           busy:false, skew:0, synced:0};
+
+/* لون الحالة رمزُ CSS لا سُدسي ثابت، فينقلب مع السمة تلقائياً */
+var STC = {
+  free:'--st-free', reserved:'--st-reserved', seated:'--st-seated', ordered:'--st-ordered',
+  preparing:'--st-preparing', ready:'--st-ready', served:'--st-served',
+  bill_requested:'--st-bill-requested', needs_clean:'--st-needs-clean',
+  cleaning:'--st-cleaning', out_of_service:'--st-out-of-service'
+};
+function stCol(k){ return 'var('+(STC[k]||STC.free)+')'; }
+function stOn(k){ return 'var('+(STC[k]||STC.free)+'-on)'; }
+/* الحالات التي تطلب فعلاً الآن — تُعدّ في العدّادات وتُرتَّب أولاً */
+var ST_ACT = ['seated','ready','bill_requested','needs_clean'];
+
+function viewFloor(){ return '<div id="flrHost">'+skel(3)+'</div>'; }
+
+function loadFloor(){
+  var w=$('#flrHost'); if(!w) return;
+  sAct('tbl_areas',{}).then(function(r){
+    if(!$('#flrHost')) return;
+    var areas=((r&&r.areas)||[]).filter(function(a){ return a.allowed; });
+    FLR.areas=areas;
+    if(!areas.length){
+      w.innerHTML='<div class="empty">لا توجد مناطق جلوس مفتوحة الآن.<br>'+
+        'تظهر الأرضية بعد تسجيل حضورك وفتح المنطقة للخدمة.</div>';
+      return;
+    }
+    if(!FLR.area || !areas.some(function(a){ return +a.id===+FLR.area; })) FLR.area=+areas[0].id;
+    flrBoard(false);
+    clearInterval(FLR.timer); clearInterval(FLR.tick);
+    /* عدّاد محلي كل ٣٠ ثانية، ومزامنة كل ٢٠ — والنبضة تعطي الفورية */
+    FLR.tick=setInterval(function(){
+      if(!$('#flrHost')){ clearInterval(FLR.tick); return; }
+      updateTimers();
+    },30000);
+    FLR.timer=setInterval(function(){
+      if(!$('#flrHost')){ clearInterval(FLR.timer); return; }
+      flrBoard(true);
+    },20000);
+    rtConnect();
+    rtOn('table_state', function(row){
+      if(+row.area_id!==+FLR.area) return;
+      if(!$('#flrHost')) return;
+      clearTimeout(FLR.rt);
+      FLR.rt=setTimeout(function(){ flrBoard(true); },400);
+    });
+  }).catch(function(){
+    if($('#flrHost')) $('#flrHost').innerHTML='<div class="empty">تعذّر الاتصال — سيُعاد المحاولة</div>';
+  });
+}
+
+function flrBoard(quiet){
+  var w=$('#flrHost'); if(!w) return;
+  if(!quiet) w.innerHTML=skel(3);
+  sAct('tbl_board',{area_id:FLR.area}).then(function(res){
+    if(!$('#flrHost')) return;
+    if(!res||!res.ok){
+      $('#flrHost').innerHTML='<div class="empty">'+esc((res&&res.error)||'تعذّر تحميل الأرضية')+'</div>';
+      return;
+    }
+    if(res.server_now) FLR.skew=Date.now()-new Date(res.server_now).getTime();
+    FLR.synced=Date.now()-FLR.skew;
+    FLR.data=res;
+    flrPaint();
+  }).catch(function(){
+    if(!FLR.data && $('#flrHost')) $('#flrHost').innerHTML='<div class="empty">تعذّر الاتصال</div>';
+  });
+}
+
+/* هل أستطيع تعديل هذه الطاولة؟ الخادم يعلن النطاق، والواجهة تُطيعه —
+   فلا تُعرض ضغطةٌ سيرفضها الخادم بعدها. */
+function flrCan(t){
+  var d=FLR.data||{}, sc=d.scope||'full';
+  if(!d.can_edit) return false;
+  if(t.oos) return false;
+  if(sc==='view') return false;
+  if(sc==='duty_tables') return (d.duty_tables||[]).map(Number).indexOf(+t.id)>=0;
+  return true;
+}
+function flrMine(t){
+  var d=FLR.data||{};
+  return (d.duty_tables||[]).map(Number).indexOf(+t.id)>=0;
+}
+
+function flrPaint(){
+  var w=$('#flrHost'); if(!w||!FLR.data) return;
+  var res=FLR.data, all=res.tables||[], ar=res.area||{};
+  var byState={}; all.forEach(function(x){ var k=tmState(x); byState[k]=(byState[k]||0)+1; });
+  var freeN=all.filter(function(x){ return !x.oos && x.state==='free'; }).length;
+  var busyN=all.filter(function(x){ return !x.oos && x.state!=='free'; }).length;
+  var actN =all.filter(function(x){ return !x.oos && ST_ACT.indexOf(x.state)>=0; }).length;
+  var lateN=all.filter(function(x){ return !x.oos && x.state!=='free' && tmUrg(x)>=3; }).length;
+
+  var h='';
+  /* شريط المناطق: الصالة كلها لا منطقتي فقط */
+  h+='<div class="flr-areas">'+(FLR.areas||[]).map(function(a){
+    var vw=(a.scope==='view');
+    return '<button class="flr-a'+(+a.id===+FLR.area?' on':'')+'" data-fa="'+(+a.id)+'">'+
+      esc(a.name)+'<span>'+(+a.busy||0)+' من '+(+a.total||0)+' مشغولة'+(vw?' · للعرض':'')+'</span></button>';
+  }).join('')+'</div>';
+
+  /* أربعة أرقام تُقرأ قبل الخريطة */
+  h+='<div class="flr-cnt">'+
+    '<div class="flr-c"><b>'+freeN+'</b><span>متاحة</span></div>'+
+    '<div class="flr-c"><b>'+busyN+'</b><span>مشغولة</span></div>'+
+    '<div class="flr-c'+(actN?' act':'')+'" style="--tc:var(--st-seated)"><b>'+actN+'</b><span>تحتاج حركة</span></div>'+
+    '<div class="flr-c'+(lateN?' act':'')+'" style="--tc:var(--red)"><b>'+lateN+'</b><span>تجاوزت وقتها</span></div>'+
+  '</div>';
+
+  /* الأرضية بمواقعها الحقيقية */
+  var view=all.filter(function(x){ return !FLR.st || tmState(x)===FLR.st; });
+  h+='<div class="flr-board">'+flrLandmarks(+ar.id)+view.map(flrTile).join('')+'</div>';
+
+  /* لوح الطاولة المختارة يأتي تحت الأرضية مباشرة — حيث العين بعد الضغط،
+     ولا يلتصق أسفل الشاشة كي لا يغطّي مفتاح الحالات كما كان يفعل. */
+  var sel=null; all.forEach(function(x){ if(+x.id===+FLR.sel) sel=x; });
+  if(sel) h+=flrSelPanel(sel, ar);
+  else h+='<div class="flr-note">اضغطي أي طاولة لترى تفاصيلها وتحدّثي حالتها.'+
+    ((res.scope==='duty_tables')?' الطاولات المُسندة إليكِ عليها نقطة صغيرة.':'')+'</div>';
+
+  /* مفتاح الحالات الموجودة فعلاً — يعمل مرشّحاً أيضاً */
+  var order=['seated','ready','bill_requested','needs_clean','cleaning','ordered',
+             'preparing','served','reserved','free','out_of_service'];
+  var legs=order.filter(function(k){ return byState[k]; }).map(function(k){
+    var st=TMS[k]||TMS.free;
+    return '<button class="flr-lb'+(FLR.st===k?' on':'')+'" data-fst="'+k+'" style="--tc:'+stCol(k)+'">'+
+      '<span class="sw"></span>'+esc(st.ar)+'<span class="n">'+byState[k]+'</span></button>';
+  }).join('');
+  h+='<div class="flr-leg">'+
+    '<button class="flr-lb'+(FLR.st?'':' on')+'" data-fst="" style="--tc:var(--muted)">'+
+    '<span class="sw"></span>الكل<span class="n">'+all.length+'</span></button>'+legs+'</div>';
+
+  w.innerHTML=h;
+
+  $$('[data-fa]',w).forEach(function(b){ b.addEventListener('click', function(){
+    FLR.area=+b.getAttribute('data-fa'); FLR.sel=null; FLR.st=null; flrBoard(false); }); });
+  $$('[data-fst]',w).forEach(function(b){ b.addEventListener('click', function(){
+    FLR.st=b.getAttribute('data-fst')||null; flrPaint(); }); });
+  $$('[data-ft]',w).forEach(function(b){ b.addEventListener('click', function(){
+    var id=+b.getAttribute('data-ft');
+    FLR.sel=(FLR.sel===id)?null:id; flrPaint();
+    var p=$('.flr-sel',$('#flrHost')); if(p) p.scrollIntoView({block:'nearest'}); }); });
+  var xb=$('#flrX',w); if(xb) xb.addEventListener('click', function(){ FLR.sel=null; flrPaint(); });
+  $$('[data-fgo]',w).forEach(function(b){ b.addEventListener('click', function(){
+    flrSet(+b.getAttribute('data-fid'), b.getAttribute('data-fgo'), +b.getAttribute('data-fv'), b); }); });
+  var dt=$('#flrDetail',w);
+  if(dt) dt.addEventListener('click', function(){ TM.admin=false; tmDetail(+dt.getAttribute('data-fid')); });
+  updateTimers();
+}
+
+/* معالم الأرضية: المسبح والمدخل والواجهة — ليست بيانات بل ثوابت مكانية
+   تساعد الموظفة على إسقاط الخريطة على الصالة الحقيقية بلمحة. */
+function flrLandmarks(areaId){
+  if(areaId === 2){
+    return '<div class="flr-land" style="inset-inline-start:6%;top:44%;width:54%;height:34%">المسبح</div>'+
+           '<div class="flr-land" style="inset-inline-start:66%;top:92%;width:26%;height:6%">المدخل</div>';
+  }
+  return '<div class="flr-land" style="inset-inline-start:38%;top:12%;width:38%;height:46%"></div>'+
+         '<div class="flr-land" style="inset-inline-start:4%;top:92%;width:22%;height:6%">المدخل</div>';
+}
+function flrTile(x){
+  var k=tmState(x), st=TMS[k]||TMS.free, u=tmUrg(x);
+  var busy=(k!=='free' && !x.oos);
+  var cls='flr-t'+(x.type==='curved'?' round':'')+(x.oos?' oos':'')+
+          (u>=3?' late':(u>0?' soon':''))+(flrMine(x)?' mine':'')+(+FLR.sel===+x.id?' sel':'');
+  return '<button class="'+cls+'" data-ft="'+x.id+'" '+
+    'style="--tc:'+stCol(k)+';--tc-on:'+stOn(k)+';inset-inline-start:'+(+x.x)+'%;top:'+(+x.y)+'%" '+
+    'aria-label="طاولة '+(+x.no)+' — '+esc(st.ar)+
+      (busy&&x.mins?' — منذ '+esc(tmDur(x.mins)):'')+
+      (flrMine(x)?' — من طاولاتك':'')+(u>=3?' — تجاوزت وقتها':'')+'">'+
+    (busy&&x.mins>0?'<span class="m tdur" data-mins="'+(+x.mins)+'">'+tmDur(x.mins)+'</span>':'')+
+    '<span class="n">'+(+x.no)+'</span>'+
+    '<span class="s">'+esc(st.sh||st.ar)+'</span>'+
+  '</button>';
+}
+
+function flrSelPanel(t, ar){
+  var k=tmState(t), st=TMS[k]||TMS.free, can=flrCan(t);
+  var d=FLR.data||{}, sc=d.scope||'full';
+  var line=esc((ar&&ar.name)||'')+' · '+esc(st.ar)+
+    ((k!=='free'&&!t.oos&&t.mins)?' · منذ '+esc(tmDur(t.mins)):'')+
+    (t.guests?' · '+(+t.guests)+' ضيفات':'')+
+    (t.owner?' · '+esc(t.owner):'');
+  var h='<div class="flr-sel" style="--tc:'+stCol(k)+';--tc-on:'+stOn(k)+'">'+
+    '<div class="flr-sel-h"><span class="flr-sel-n">'+(+t.no)+'</span>'+
+    '<span class="flr-sel-t"><b>طاولة '+(+t.no)+'</b><span>'+line+'</span></span>'+
+    '<button class="flr-sel-x" id="flrX" aria-label="إغلاق">×</button></div>';
+
+  if(t.oos){
+    h+='<div class="flr-note">هذه الطاولة موقوفة عن الخدمة'+
+      (t.oos_reason?': '+esc(t.oos_reason):'')+'. الإدارة تُعيدها للخدمة.</div>';
+  } else if(!can){
+    h+='<div class="flr-note"><b>للعرض فقط.</b> '+
+      (sc==='duty_tables'
+        ? 'هذه ليست من طاولاتك المُسندة اليوم — نادي زميلتك المسؤولة عنها.'
+        : (sc==='view'
+           ? 'ترين الصالة كلها لتعرفي أين تحتاجين، والتحديث لمن أُسندت إليها المنطقة.'
+           : 'المنطقة غير مفتوحة للخدمة بعد.'))+'</div>';
+  } else {
+    var next=(t.next||[]).filter(function(s){ return s!==k; });
+    h+='<div class="flr-acts">'+next.map(function(s, i){
+      var a2=TMACT[s]||{t:(TMS[s]||{}).ar||s,s:''};
+      /* الأول هو المسار الطبيعي للحالة الحالية، فيأخذ لون الحالة التي
+         سينتقل إليها؛ والبقية ثانوية بلا لون كي لا تتساوى الأهمية. */
+      return '<button class="btn'+(i===0?' st':' ghost')+'" data-fgo="'+s+'" data-fid="'+t.id+'" '+
+        'data-fv="'+(+t.version)+'" style="--ac:'+stCol(s)+';--ac-on:'+stOn(s)+'">'+
+        esc(a2.t)+'</button>';
+    }).join('')+'</div>';
+  }
+  h+='<div class="btnrow" style="margin-top:7px"><button class="btn ghost block" '+
+     'id="flrDetail" data-fid="'+t.id+'">سجلّ الطاولة وتفاصيلها</button></div>';
+  return h+'</div>';
+}
+
+function flrSet(id, to, ver, btn){
+  if(FLR.busy) return;
+  FLR.busy=true; if(btn) btn.disabled=true;
+  sAct('tbl_set',{table_id:id, to:to, version:ver, client_event_id:uid()}).then(function(r){
+    FLR.busy=false;
+    if(r&&r.ok){
+      toast((TMACT[to]||{}).t||'حُدّثت الطاولة');
+      flrBoard(true);
+    } else {
+      if(btn) btn.disabled=false;
+      toast((r&&r.error)||'تعذّر التحديث', true);
+      if(r&&r.code==='conflict') flrBoard(true);
+    }
+  }).catch(function(){
+    FLR.busy=false; if(btn) btn.disabled=false;
+    toast('تعذّر الاتصال — لم يُحدَّث شيء', true);
+  });
+}
+
 function loadPrepCard(){
   var w=$('#prepWrap'); if(!w) return;
   sAct('prep_list',{}).then(function(r){
@@ -2976,6 +3201,8 @@ function taskCard(t){
     claimed_done:'',accepted:'green',verified:'green',review_required:'orange',reopened:'red',blocked:'red'}[t.status]||'';
   var stLbl = TSTAT[t.status];
   if(t.status==='paused'&&t.blocked){ stChip='red'; stLbl='مانع — موقوفة'; }
+  var deferred = (t.status==='paused' && !t.blocked && !!t.defer_reason);
+  if(deferred){ stChip='orange'; stLbl='مؤجَّلة — الخدمة أولاً'; }
   var running = t.status==='running';
   var CLS={live:{t:'خدمة',c:'amber'},support:{t:'دعم',c:'brand'},maintenance:{t:'صيانة',c:'muted'}};
   var cl=CLS[t.op_class]||CLS.support;
@@ -2985,6 +3212,7 @@ function taskCard(t){
     '<div class="muted small" style="margin-top:3px">متوقعة '+mins(t.expected)+' · صافي <span class="timer" data-net="'+(t.net||0)+'" data-run="'+(running?1:0)+'" data-since="'+Date.now()+'">'+secFmt(t.net)+'</span></div></div>'+
     '<span class="chip '+stChip+'">'+stLbl+'</span></div>'+prog;
   if(t.status==='returned' && t.admin_note) html+='<div class="small" style="color:var(--red);margin-top:4px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>';
+  if(deferred) html+='<div class="small muted" style="margin-top:4px">'+esc(t.defer_reason)+' — تعود تلقائياً حين تهدأ الصالة.</div>';
   if(workLocked()){ html+='<div class="muted small" style="margin-top:8px">انتهى شفتك — العرض فقط</div></div>'; return html; }
   /* قاعدة واحدة في التطبيق كله: ما لا رجعة فيه يُسحب، وما يُعكس يُكبس.
      كان «إنهاء ✔» كبسةً واحدة في قائمة المهام بينما البطاقة الرئيسية تطلب
@@ -2994,6 +3222,7 @@ function taskCard(t){
   if(t.status==='open'||t.status==='returned') html+='<button class="btn sm" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>';
   if(running) html+='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت (خدمة ضيف)</button>';
   if(t.status==='paused'&&t.blocked) html+='<button class="btn sm" data-a="tUnblock" data-id="'+t.id+'">أُزيل المانع واستأنف</button>';
+  else if(deferred) html+='<button class="btn sm ghost" data-a="tResume" data-id="'+t.id+'">أستأنفها الآن على أي حال</button>';
   else if(t.status==='paused') html+='<button class="btn sm ghost" data-a="tResume" data-id="'+t.id+'">استئناف</button>';
   html+='</div>';
   if(running || (t.status==='paused' && !t.blocked))
@@ -3454,7 +3683,12 @@ var MORE_SECS=[
 function viewMore(){
   var st=S.state;
   if(!S.moreSec){
-    return '<div class="navlist">'+MORE_SECS.map(function(s){
+    /* «ملفّي» أخلى مكانه في شريط التنقّل لـ«الصالة»، فصار أول بند هنا —
+       لا مخفياً: يُفتح بضغطة واحدة كما كان. */
+    return '<div class="navlist">'+
+      '<button data-a="goGrow"><span class="ic">'+IC.user+'</span><span>ملفّي'+
+      '<span class="nl-sub">ساعاتك وتقدّمك ومهاراتك</span></span><span class="chev">‹</span></button>'+
+      MORE_SECS.map(function(s){
       return '<button data-a="moreOpen" data-sec="'+s[0]+'"><span class="ic">'+s[3]+'</span><span>'+s[1]+'<span class="nl-sub">'+s[2]+'</span></span><span class="chev">‹</span></button>';
     }).join('')+'</div>'+
     '<div class="navlist" style="margin-top:12px"><button class="danger" data-a="logout"><span class="ic">'+IC.shift+'</span><span>تسجيل الخروج</span></button></div>';
@@ -3625,6 +3859,8 @@ function wireTab(v){
       else if(a==='checkout') doAttendance('out');
       else if(a==='goMore'){ S.tab='more'; S.moreSec=null; paintTabs(); drawTab(); }
       else if(a==='goTasks'){ S.tab='tasks'; paintTabs(); drawTab(); }
+      else if(a==='goFloor'){ S.tab='floor'; paintTabs(); drawTab(); }
+      else if(a==='goGrow'){ S.tab='grow'; paintTabs(); drawTab(); }
       else if(a==='moreOpen'){ S.moreSec=b.getAttribute('data-sec'); drawTab(); }
       else if(a==='moreBack'){ S.moreSec=null; drawTab(); }
       else if(a==='themeToggle'){ toggleTheme(); }

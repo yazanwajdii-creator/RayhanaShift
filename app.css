@@ -1454,3 +1454,147 @@ nav.bottom .nav-ptt.speaking{background:linear-gradient(180deg,var(--green-btn-2
 .rmchip i{font-style:normal;font-size:9.5px;font-weight:700;color:var(--muted)}
 .rmchip.prime{background:var(--green-soft);border-color:var(--brand)}
 .rmchip.prime i{color:var(--green-ink)}
+
+/* ═══════════════ صفحة الصالة — الأرضية كصفحة مستقلّة ═══════════════
+   ما كان: بطاقة «طاولاتي اليوم» وسط تبويب «الآن»، وخمس بلاطات كلّها
+   بلون واحد رمادي (لأن الحالة كانت «متاحة» في كلّها، والرمادي هو لون
+   المتاحة)، ثم خريطة المنطقة داخل ورقة منبثقة. النتيجة: تشويش بصري في
+   منتصف الشاشة، وحالةٌ لا تُقرأ إلا بعد الضغط.
+
+   ما صار: صفحة كاملة. اللون يقول الحالة (١١ حالة بثلاثة أوزان بصرية
+   لا وزنٍ واحد)، والاسم مكتوب على كل بلاطة فلا يُقرأ اللون وحده،
+   والإلحاح حلقةٌ حول البلاطة لا لونٌ ينافس الحالة.
+
+   قيم الحالات مشتقّة في OKLCH ومُتحقَّق منها: نصّ ≥ ٤٫٥:١ على تعبئتها،
+   وكل حالة ذات وزن ≥ ٣:١ عن سطح البطاقة، والساكنة ≤ ١٫٤ فتبقى هادئة. */
+:root{
+  --st-free:#E7F0E8; --st-free-on:#19221B;
+  --st-reserved:#E4E1F9; --st-reserved-on:#19221B;
+  --st-served:#557A55; --st-served-on:#FFFFFF;
+  --st-seated:#9C5500; --st-seated-on:#FFFFFF;
+  --st-ordered:#265B8D; --st-ordered-on:#FFFFFF;
+  --st-preparing:#006F83; --st-preparing-on:#FFFFFF;
+  --st-ready:#00683F; --st-ready-on:#FFFFFF;
+  --st-bill-requested:#884992; --st-bill-requested-on:#FFFFFF;
+  --st-needs-clean:#99231D; --st-needs-clean-on:#FFFFFF;
+  --st-cleaning:#9C6141; --st-cleaning-on:#FFFFFF;
+  --st-out-of-service:#5C5E5C; --st-out-of-service-on:#FFFFFF;
+  --st-oos-stripe:rgba(0,0,0,.20);
+}
+[data-theme="dark"]{
+  --st-free:#29302A; --st-free-on:#E5EBE6;
+  --st-reserved:#333042; --st-reserved-on:#E5EBE6;
+  --st-served:#89B18A; --st-served-on:#0B100C;
+  --st-seated:#F2A635; --st-seated-on:#0B100C;
+  --st-ordered:#79B0E8; --st-ordered-on:#0B100C;
+  --st-preparing:#61C1D7; --st-preparing-on:#0B100C;
+  --st-ready:#2BDFAC; --st-ready-on:#0B100C;
+  --st-bill-requested:#D491DF; --st-bill-requested-on:#0B100C;
+  --st-needs-clean:#FA7D6F; --st-needs-clean-on:#0B100C;
+  --st-cleaning:#EBA988; --st-cleaning-on:#0B100C;
+  --st-out-of-service:#A3A5A3; --st-out-of-service-on:#0B100C;
+  --st-oos-stripe:rgba(255,255,255,.28);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --st-free:#29302A; --st-free-on:#E5EBE6;
+    --st-reserved:#333042; --st-reserved-on:#E5EBE6;
+    --st-served:#89B18A; --st-served-on:#0B100C;
+    --st-seated:#F2A635; --st-seated-on:#0B100C;
+    --st-ordered:#79B0E8; --st-ordered-on:#0B100C;
+    --st-preparing:#61C1D7; --st-preparing-on:#0B100C;
+    --st-ready:#2BDFAC; --st-ready-on:#0B100C;
+    --st-bill-requested:#D491DF; --st-bill-requested-on:#0B100C;
+    --st-needs-clean:#FA7D6F; --st-needs-clean-on:#0B100C;
+    --st-cleaning:#EBA988; --st-cleaning-on:#0B100C;
+    --st-out-of-service:#A3A5A3; --st-out-of-service-on:#0B100C;
+    --st-oos-stripe:rgba(255,255,255,.28);
+  }
+}
+
+/* شريط المناطق: كل من على الشفت ترى الصالة كلها، لا منطقتها فقط */
+.flr-areas{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch}
+.flr-areas::-webkit-scrollbar{display:none}
+.flr-a{flex:0 0 auto;min-height:40px;display:flex;flex-direction:column;justify-content:center;
+  gap:1px;padding:6px 13px;border-radius:12px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);font:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.flr-a span{font-size:10.5px;font-weight:600;color:var(--muted)}
+.flr-a.on{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.flr-a.on span{color:var(--on-brand);opacity:.82}
+
+/* عدّادات الحالة: أربع أرقام كبيرة تُقرأ قبل الخريطة */
+.flr-cnt{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:0 0 11px}
+.flr-c{padding:9px 6px 8px;border-radius:13px;border:1px solid var(--line);
+  background:var(--surface);text-align:center;min-height:56px}
+.flr-c b{display:block;font-size:21px;line-height:1.1;font-variant-numeric:tabular-nums}
+.flr-c span{display:block;margin-top:2px;font-size:10.5px;font-weight:600;color:var(--muted);line-height:1.25}
+.flr-c.act{border-color:var(--tc);border-width:1.5px}
+.flr-c.act b{color:var(--tc)}
+
+/* الأرضية: مواقع حقيقية لا شبكة اعتباطية */
+.flr-board{position:relative;width:100%;aspect-ratio:1/1.18;border-radius:16px;
+  border:1px solid var(--line);background:var(--surface-2);overflow:hidden;
+  background-image:linear-gradient(var(--line) .5px,transparent .5px),
+    linear-gradient(90deg,var(--line) .5px,transparent .5px);
+  background-size:26px 26px;background-position:-1px -1px}
+.flr-land{position:absolute;border-radius:10px;background:var(--beige);
+  border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:var(--muted);pointer-events:none}
+.flr-t{position:absolute;transform:translate(50%,-50%);min-width:58px;min-height:58px;
+  width:19%;max-width:74px;aspect-ratio:1/1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px;padding:2px;
+  border-radius:14px;border:2px solid transparent;cursor:pointer;font:inherit;
+  background:var(--tc);color:var(--tc-on);box-shadow:var(--sh-1)}
+.flr-t.round{border-radius:50%}
+.flr-t .n{font-size:19px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.flr-t .s{font-size:9.5px;font-weight:700;line-height:1.15;text-align:center;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.94}
+.flr-t .m{position:absolute;top:-1px;inset-inline-end:-1px;background:var(--ink);color:var(--paper);
+  border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;unicode-bidi:isolate}
+/* الإلحاح قناة ثانية: حلقة، لا لونٌ ينافس لون الحالة */
+.flr-t.late{border-color:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 34%,transparent)}
+.flr-t.soon{border-color:var(--amber)}
+/* الموقوفة: تخطيطٌ مائل فوق اللون فلا تُعرف باللون وحده.
+   والتخطيط يُظلِّل في السمة الفاتحة ويُفتِّح في الداكنة — أي يبتعد عن لون
+   النصّ لا يقترب منه. كان يستخدم لون النصّ نفسه بشفافية، فأنزل تباين
+   «موقوفة» إلى ٣٫٥٧ على بلاطةٍ نسبتها الأصلية ٦٫٥٤. */
+.flr-t.oos{background-image:repeating-linear-gradient(45deg,
+  transparent 0 5px,var(--st-oos-stripe) 5px 10px)}
+/* طاولتي: علامة ملكية لا لون إضافي */
+.flr-t.mine::after{content:'';position:absolute;bottom:4px;inset-inline-start:5px;
+  width:7px;height:7px;border-radius:50%;background:var(--tc-on);opacity:.85}
+.flr-t.sel{outline:3px solid var(--focus);outline-offset:2px}
+.flr-t:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* مفتاح الحالات: الحالات الموجودة فعلاً على الأرضية فقط */
+.flr-leg{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+.flr-lb{display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:4px 11px;
+  border-radius:11px;border:1px solid var(--line);background:var(--surface);
+  color:var(--ink);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer}
+.flr-lb .sw{width:13px;height:13px;border-radius:4px;background:var(--tc);
+  border:1px solid color-mix(in srgb,var(--ink) 18%,transparent);flex:0 0 auto}
+.flr-lb .n{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11px}
+.flr-lb.on{border-color:var(--brand);background:var(--green-soft)}
+.flr-lb.on .n{color:var(--green-ink)}
+
+/* لوح الطاولة المختارة: يلتصق أسفل الشاشة فوق شريط التنقّل */
+.flr-sel{margin-top:11px;
+  border-radius:16px;border:1px solid var(--line);background:var(--surface);
+  box-shadow:var(--sh-2);padding:11px 12px 12px}
+.flr-sel-h{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.flr-sel-n{width:38px;height:38px;border-radius:11px;background:var(--tc);color:var(--tc-on);
+  display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex:0 0 auto}
+.flr-sel-t{min-width:0;flex:1}
+.flr-sel-t b{display:block;font-size:14.5px;line-height:1.25}
+.flr-sel-t span{display:block;font-size:11.5px;color:var(--muted);unicode-bidi:isolate}
+.flr-sel-x{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--ink);font:inherit;font-size:16px;cursor:pointer;flex:0 0 auto}
+.flr-acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.flr-acts .btn{flex:1 1 46%;min-height:46px}
+/* زرّ الإجراء يحمل لون الحالة التي سينتقل إليها، فتُقرأ النتيجة قبل الضغط
+   ولا يتعلّم الطاقم لغتَي لون: واحدة على الخريطة وأخرى على الأزرار. */
+.flr-acts .btn.st{background:var(--ac);color:var(--ac-on);border-color:transparent}
+.flr-acts .btn.st:active{filter:brightness(.94)}
+.flr-note{margin-top:9px;padding:8px 10px;border-radius:11px;background:var(--surface-2);
+  border:1px dashed var(--line);font-size:12px;line-height:1.5}
+.flr-note b{color:var(--amber-ink)}
