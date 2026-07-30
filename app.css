@@ -1443,3 +1443,14 @@ nav.bottom .nav-ptt.speaking{background:linear-gradient(180deg,var(--green-btn-2
 @media(hover:hover) and (pointer:fine){ .dqr-i:hover{background:var(--surface-2)} }
 /* خيارات سؤال التحقق: بلا تلوين بلون الحالة — الاسم والأيقونة يكفيان */
 .tm-vf-opt{border-color:var(--line);color:var(--ink)}
+
+/* ===== سياسة الأدوار: مَن يؤدّي أيّ مهمة ===== */
+.rmrow{padding:8px 0;border-bottom:1px dashed var(--line)}
+.rmrow:last-child{border-bottom:none}
+.rmrow-h{font-size:12.5px;font-weight:800;margin-bottom:5px}
+.rmrow-b{display:flex;flex-wrap:wrap;gap:6px}
+.rmchip{display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700}
+.rmchip i{font-style:normal;font-size:9.5px;font-weight:700;color:var(--muted)}
+.rmchip.prime{background:var(--green-soft);border-color:var(--brand)}
+.rmchip.prime i{color:var(--green-ink)}

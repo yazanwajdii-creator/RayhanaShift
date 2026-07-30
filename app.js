@@ -6826,7 +6826,39 @@ ADMIN.assignkpi=function(v){
           '</div></div>' : '')+
       '<div class="btnrow" style="margin-top:12px"><button class="btn ghost block" id="akRun">شغّلي الإسناد التلقائي الآن</button></div>'+
       '<div class="muted small" style="margin-top:6px">يُشغّل دورة إسناد فوراً للمهام المعلّقة بدل انتظار الدورة المجدولة. '+
-        'لا يُلغي إسناداً قائماً ولا يتجاوز تثبيت الإدارة.</div>';
+        'لا يُلغي إسناداً قائماً ولا يتجاوز تثبيت الإدارة.</div>'+
+      /* سياسة الأدوار: مَن يحقّ له أداء أيّ نوع مهمة. تُملكها الإدارة لأن
+         تقسيم العمل في المقهى قرارها لا ثابتٌ في الكود. */
+      '<div class="card" style="padding:13px;margin-top:14px"><h3>مَن يؤدّي أيّ مهمة</h3>'+
+        '<div class="muted small" style="margin-bottom:10px">لكل نوع مهمة قائمة أدوار مرتّبة: '+
+          '<b>الأول صاحب الدور الأصلي</b> ومَن بعده مساندة. المحرّك يمنع من ليست في القائمة، '+
+          'ويُقدّم الأصلي على المساند. الموظفة التي لا دور معلن لها على شفتها لا تُمنع — '+
+          'فالسياسة تعمل حيث أسندتِ الأدوار.</div>'+
+        '<div id="rmBox">'+skel(2)+'</div></div>';
+    /* محرّر مصفوفة الأدوار */
+    var RMT={table_service:'خدمة الطاولات',bussing:'تبويس وترتيب',cashier:'الكاش',
+             kitchen:'المطبخ',hookah:'الأراجيل'};
+    var RSH={floor:'الصالة',kitchen:'المطبخ',cashier:'الكاش',hookah:'الأراجيل',runner:'ناقلة'};
+    function paintMatrix(){
+      aAct('settings_get',{}).then(function(sr){
+        var box=$('#rmBox',v); if(!box) return;
+        var m=((sr&&sr.config)||{})['engine.role_matrix'] || ((sr&&sr.settings)||{})['engine.role_matrix'] || null;
+        if(!m){ box.innerHTML='<div class="muted small">لم تُقرأ السياسة — تظهر بعد أول حفظ من الإعدادات.</div>'; return; }
+        box.innerHTML=Object.keys(RMT).map(function(tr){
+          var list=(m[tr]||[]);
+          return '<div class="rmrow"><div class="rmrow-h">'+esc(RMT[tr])+'</div>'+
+            '<div class="rmrow-b">'+(list.length
+              ? list.map(function(sr2,i){
+                  return '<span class="rmchip'+(i===0?' prime':'')+'">'+esc(RSH[sr2]||sr2)+
+                    (i===0?'<i>أصلي</i>':'<i>مساندة</i>')+'</span>';
+                }).join('')
+              : '<span class="muted small">بلا قاعدة — لا يُمنع أحد</span>')+'</div></div>';
+        }).join('')+
+        '<div class="muted small" style="margin-top:9px">للتعديل: الإعدادات ← '+
+          '<span class="chip">engine.role_matrix</span></div>';
+      });
+    }
+    paintMatrix();
     $('#akRun',v).addEventListener('click', function(){
       busyWrap(this, function(){
         return aAct('wf_autoassign_now',{}).then(function(r){
