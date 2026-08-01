@@ -1548,18 +1548,18 @@ var TIC = (function(){
    والحالتان needs_clean وcleaning شبه مترادفتين بلونين متقاربين.
    القاعدة الجديدة: قناة بصرية واحدة لكل سؤال.
      • اللون يجيب «مَن يحتاجني الآن؟» — ثلاث درجات إلحاح من رموز التطبيق.
-     • الأيقونة والاسم يجيبان «ما حالتها؟» — أحد عشر اسماً تبقى كما هي.
+     • الأيقونة والاسم يجيبان «ما حالتها؟» — ثمانية أسماء بعد إلغاء الحجز والتجهيز والجاهز.
    فلا يُطلب من أحد حفظ إحدى عشرة دلالة لونية. */
 var TMS = {
   free:           {ar:'متاحة',          sh:'متاحة',   ic:'free'},
   reserved:       {ar:'محجوزة',         sh:'محجوزة',  ic:'reserved'},
-  seated:         {ar:'جلسوا — الطلب؟', sh:'الطلب؟',  ic:'seated'},
+  seated:         {ar:'جلسن — الطلب؟',  sh:'الطلب؟',  ic:'seated'},
   ordered:        {ar:'تم أخذ الطلب',   sh:'أُخذ الطلب', ic:'ordered'},
   preparing:      {ar:'قيد التجهيز',    sh:'تجهيز',   ic:'preparing'},
   ready:          {ar:'جاهز للتقديم',   sh:'جاهز',    ic:'ready'},
-  served:         {ar:'يتناولون',       sh:'يتناولون',ic:'served'},
-  bill_requested: {ar:'طلبت الحساب',    sh:'الحساب',  ic:'bill'},
-  needs_clean:    {ar:'غادروا — تنظيف', sh:'تنظيف',   ic:'clean'},
+  served:         {ar:'يتناولن',        sh:'يتناولن', ic:'served'},
+  bill_requested: {ar:'طلبن الحساب',    sh:'الحساب',  ic:'bill'},
+  needs_clean:    {ar:'غادرن — تنظيف',  sh:'تنظيف',   ic:'clean'},
   cleaning:       {ar:'يجري التنظيف',   sh:'يُنظَّف',  ic:'cleaning'},
   out_of_service: {ar:'خارج الخدمة',    sh:'موقوفة',  ic:'oos'}
 };
@@ -1583,14 +1583,11 @@ function tmUrgName(x){ return x.oos?'موقوفة':(x.state==='free'?'متاحة
 var TMACT = {
   seated:         {t:'جلس الضيفات',          s:'تبدأ مدة الطاولة الآن'},
   ordered:        {t:'تم أخذ الطلب',         s:''},
-  preparing:      {t:'الطلب قيد التجهيز',    s:''},
-  ready:          {t:'الطلب جاهز',           s:'ينتظر التقديم'},
   served:         {t:'تم تقديم الطلب',       s:'الطاولة مشغولة'},
   bill_requested: {t:'طلبن الحساب',          s:''},
   needs_clean:    {t:'غادرن — تحتاج تنظيفاً', s:''},
   cleaning:       {t:'بدأ التنظيف',          s:''},
-  free:           {t:'تم تجهيز الطاولة',     s:'عادت متاحة'},
-  reserved:       {t:'حجز الطاولة',          s:'للكاش والإدارة'}
+  free:           {t:'تم تجهيز الطاولة',     s:'عادت متاحة'}
 };
 
 var TM = {area:null, data:null, timer:null, tick:null, admin:false,
@@ -3295,7 +3292,7 @@ function opsChecklistHtml(title, icon, items, closing){
   var h='<div class="card ops"><div class="ops-h">'+icon+'<span>'+title+'</span>'+
     (done?'<span class="chip green">'+(closing?'مكتمل ✔':'جاهز ✔')+'</span>':'<span class="chip '+(anyFail?'red':'orange')+'">'+critOk+'/'+crit.length+'</span>')+'</div>';
   if(done){
-    h+='<div class="ops-ok">'+(closing?'تم توثيق إغلاق المنطقة باسمكِ ✔':'المنطقة جاهزة لاستقبال الضيوف ✔')+'</div>';
+    h+='<div class="ops-ok">'+(closing?'تم توثيق إغلاق المنطقة باسمكِ ✔':'المنطقة جاهزة لاستقبال الضيفات ✔')+'</div>';
     if(anyFail) h+='<div class="muted small" style="margin-top:4px">بند غير مطابق رُفع للإدارة.</div>';
   } else {
     h+='<div class="muted small" style="margin:2px 0 7px">'+(closing?'قبل انصرافكِ أكّدي إغلاق منطقتكِ — يُوثّق باسمكِ للشفت التالي والإدارة.':'قبل الافتتاح أكّدي كل بند. أي بند غير مطابق يُرفع للإدارة فوراً كبلاغ.')+'</div>';
@@ -6902,7 +6899,7 @@ ADMIN.digest=function(v){
         var L=[];
         L.push('تقرير إغلاق اليوم — كافيه ريحانة');
         L.push('التاريخ: '+day); L.push('');
-        L.push('الحضور: '+(at.present||0)+'/'+(at.scheduled||0)+'  |  تأخير: '+(at.late_min||0)+' دقيقة  |  ساعات العمل: '+hrsOf(at.worked_min));
+        L.push('الحضور: '+(at.present||0)+'/'+(at.scheduled||0)+'  |  تأخير: '+(at.late_min||0)+' دقيقة | ساعات العمل: '+hrsOf(at.worked_min));
         L.push('إنجاز المهام: '+taskPct+'%  |  بلاغات مفتوحة: '+(iss.open_now||0)+'  |  مزاج الفريق: '+(md.avg!=null?md.avg:'—')+'/5');
         L.push(''); L.push('— سجل الحضور —');
         roster.forEach(function(p){ L.push(p.name+' · '+(p.area||'')+' · '+(p.check_in?fmtT(p.check_in):'غياب')+' → '+(p.check_out?fmtT(p.check_out):'مفتوح')+(p.worked_min!=null?' ('+hrsOf(p.worked_min)+')':'')+((p.late_minutes||0)>0?' · تأخير '+p.late_minutes+'د':'')); });
