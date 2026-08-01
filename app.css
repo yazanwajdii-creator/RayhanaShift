@@ -1644,3 +1644,17 @@ body.floormode #view{padding:0}
 .nx-out button{min-height:44px;padding:0 var(--s-4);border:none;background:none;
   color:var(--muted);font:inherit;font-size:var(--fs-sm);font-weight:700;
   text-decoration:underline;text-underline-offset:4px;cursor:pointer}
+
+/* الاستراحة الجارية: الوقت هو الخبر، فهو أكبر ما في البطاقة */
+.nx-do--brk{border:1.5px solid var(--amber);background:var(--amber-soft)}
+.nx-do--brk .timer{font-variant-numeric:tabular-nums}
+
+/* مهام الإغلاق موجودة ولم يحن وقتها — سطر خبر لا تنبيه */
+.nx-later{font-size:var(--fs-xs);color:var(--muted);text-align:center;padding:2px 0}
+
+/* اقتراحات تسجيل العمل: أسماء تُضغط بدل أن تُكتب */
+.wl-opts{display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-2)}
+.wl-o{min-height:44px;padding:0 var(--s-3);border-radius:var(--r-2);
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  font:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer}
+.wl-o.on{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}

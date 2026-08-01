@@ -955,7 +955,10 @@ function startStaff(){
   document.body.className='';
   S.tab='now';
   APP.innerHTML =
-    '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div class="binfo"><h1 id="hiName"></h1><div class="sub" id="hiSub"></div><div class="sub" style="opacity:.6">'+new Date().toLocaleDateString('ar-JO',{weekday:'long',day:'numeric',month:'long'})+'</div></div></div>'+
+    /* الترويسة كانت تعيد الاسم والشفت والمنطقة والتاريخ — وكلّها تظهر
+       في كتل الشاشة تحتها مباشرة. أربعة أسطر تُقرأ مرّتين تأكل خُمس
+       الشاشة. بقي فيها ما لا يتكرّر: التحية والزرّان. */
+    '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div class="binfo"><h1 id="hiName"></h1></div></div>'+
     '<div class="left"><span class="presdot" id="presDot" title="تأكيد التواجد"></span><span class="dot" id="syncdot"></span><button class="pill icbtn bellbtn" id="bellBtn" aria-label="الإشعارات">'+IC.bell+'<span class="bellcount" id="bellCount"></span></button><button class="pill icbtn" id="rfBtn" aria-label="تحديث">'+IC.refresh+'</button></div></div>'+
     '<div class="wrap" id="view"></div>'+
     /* زر التخاطب كان طبقةً عائمة فوق المحتوى، فكان يغطّي نصوص البطاقات
@@ -1395,7 +1398,7 @@ function refresh(){
       if(res.spotcheck) maybeSpotcheck(res.spotcheck); else if(window._scReset) window._scReset();
       try{ localStorage.setItem('rko_state', JSON.stringify(res)); }catch(e){}
       var st=res.shift;
-      $('#hiSub').textContent = st ? (st.name+' · '+(st.area||'بلا منطقة')) : 'لا يوجد شفت لكِ اليوم';
+      /* الشفت والمنطقة انتقلا إلى كتلتَي الشاشة، فلا يُكتبان في الترويسة */
       // زر التخاطب يظهر فقط أثناء الشفت وبعد تسجيل الحضور
       var pw=$('#pttWrap'); if(pw){ var a2=res.attendance; pw.style.display=(a2&&a2['in']&&!a2.out)?'':'none'; }
       // نقطة على تبويب الشفت إذا في تسليم وارد
@@ -2617,7 +2620,18 @@ function nowPendingOut(){
 }
 
 /* الكتلة الثالثة: الفعل الواحد. محتواها يتبع المرحلة، وموضعها لا يتبعها. */
-function nowAction(st, sh, inT, outT, pend, nearEnd){
+function nowAction(st, sh, inT, outT, pend, nearEnd, openBr){
+  /* الاستراحة: حين تكون جارية فالسؤال «ماذا أفعل الآن؟» جوابه «ارجعي»،
+     لا مهمة. وكانت الشاشة تبتلع الوقت تماماً بعد إلغاء بطاقة الاستراحة
+     القديمة — تضغط الموظفة «استراحة» فلا يظهر لها شيء، فلا تعرف كم مضى
+     ولا كم بقي قبل الإغلاق التلقائي عند الثلاثين. */
+  if(openBr){
+    var lim = 30;
+    return '<div class="nx-do nx-do--brk">'+
+      '<b>استراحة — <span class="timer" data-brk="'+esc(openBr.start)+'">00:00</span></b>'+
+      '<span>تُغلق تلقائياً بعد '+lim+' دقيقة من بدايتها ('+fmtT(openBr.start)+').</span>'+
+      '<button class="nx-btn" data-a="brEnd">رجعت — أنهيت الاستراحة</button></div>';
+  }
   if(!sh){
     return '<div class="nx-do nx-do--go">'+
       '<b>لا شفت مجدول لكِ اليوم</b>'+
@@ -2695,32 +2709,55 @@ function viewNow(){
     (urgent[0].body?'<span>'+esc(urgent[0].body)+'</span>':'')+'</div></div>');
 
   /* ── الكتلة ٣: الفعل ── */
+  /* وقت الإغلاق: نهاية الشفت إن كانت معروفة، وإلا إغلاق المقهى. الشفت
+     المفتوح كان يجعل كل مهام الإغلاق «مستحقّة الآن» فور الحضور — فتظهر
+     «إغلاق الكاش» الساعة ٨:٤٤ م بوصفها مهمة اللحظة، وبقيّة الشفت أمامها. */
+  var cfg=(st.cfg||{}), closeH=String(cfg.close||'23:30').split(':');
+  var closeAt=new Date(); closeAt.setHours(+closeH[0]||23, +closeH[1]||30, 0, 0);
+  var endRef = (e0!==null ? e0 : closeAt.getTime());
+  var closingFrom = endRef - 60*60000;      /* آخر ساعة قبل النهاية */
+  var inClosing = now >= closingFrom;
+
   var order={opening:0,during:1,adhoc:2,closing:3};
+  /* مهمة «مستحقّة الآن»: مهام الإغلاق لا تكون كذلك قبل أوانها. لا تُخفى
+     — تبقى في «كل المهام» ويمكن إنجازها مبكراً بإرادة الموظفة — لكنها
+     لا تُنصَّب مهمةَ اللحظة ولا تسبق ما هو مطلوب فعلاً الآن. */
+  function dueNow(t){ return !(t.phase==='closing' && !inClosing); }
   var pend=(st.tasks||[]).filter(function(t){return ['done','approved','carried','cancelled'].indexOf(t.status)<0;})
     .sort(function(a,b){
+      var da=dueNow(a)?0:1, db=dueNow(b)?0:1;
+      if(da!==db) return da-db;
       var pa=(a.wf_priority&&a.wf_priority.total)||0, pb=(b.wf_priority&&b.wf_priority.total)||0;
       if(pb!==pa) return pb-pa;
       return (order[a.phase]==null?9:order[a.phase])-(order[b.phase]==null?9:order[b.phase]);
     });
-  var nearEnd = !!(inT && !outT && e0!==null && now >= e0 - 30*60000);
-  out.push(nowAction(st, sh, inT, outT, pend, nearEnd));
+  var due=pend.filter(dueNow);
+  var nearEnd = !!(inT && !outT && now >= endRef - 30*60000);
+  var openBr=(st.breaks||[]).filter(function(b){ return !b.end; })[0];
+  out.push(nowAction(st, sh, inT, outT, due, nearEnd, openBr));
 
   /* «وماذا بعد» — سطر خبر لا زرّ. جعلُه زرّاً يفتح قائمة المهام يُكرّر
      اختصار «مهمة منجزة» أدناه، ومقصدٌ واحد في موضعين هو ما نحذفه. */
-  if(inT && !outT && pend.length>1)
+  if(inT && !outT && due.length>1)
     out.push('<div class="nx-next">'+
-      '<span class="k">التالية</span><b>'+esc(pend[1].name)+'</b>'+
-      (pend.length>2?'<i>+'+(pend.length-2)+'</i>':'')+'</div>');
+      '<span class="k">التالية</span><b>'+esc(due[1].name)+'</b>'+
+      (due.length>2?'<i>+'+(due.length-2)+'</i>':'')+'</div>');
+  /* مهام الإغلاق موجودة لكنها ليست الآن: سطرٌ واحد يقول ذلك بلا أن
+     تُزاحم مهمةَ اللحظة، فتعرف الموظفة أنها لم تُنسَ. */
+  if(inT && !outT && !inClosing){
+    var later=pend.filter(function(t){ return !dueNow(t); }).length;
+    if(later) out.push('<div class="nx-later">'+later+' مهمة إغلاق تظهر قرب نهاية الشفت</div>');
+  }
 
   /* ── الكتلة ٤: الاختصارات الأربعة ── */
   if(inT && !outT){
-    var onBrk = st.breaks && st.breaks.some(function(b){return !b.end;});
     out.push('<div class="nx-quick">'+
-      '<button data-a="'+(onBrk?'brEnd':'brStart')+'">'+IC.shift+
-        '<span>'+(onBrk?'إنهاء الاستراحة':'استراحة')+'</span></button>'+
-      /* الأربعة كما حدّدتِها حرفياً. اقترحتُ «بلاغ» مكان «مهمة منجزة»
-         ورجعتُ عنه إلى قائمتكِ — والبلاغ يبقى على ضغطتين في «المزيد». */
-      '<button data-a="goTasks">'+IC.tasks+'<span>مهمة منجزة</span></button>'+
+      '<button data-a="'+(openBr?'brEnd':'brStart')+'">'+IC.shift+
+        '<span>'+(openBr?'إنهاء الاستراحة':'استراحة')+'</span></button>'+
+      /* «سجّلي عملاً» لا «مهمة منجزة»: نصف عمل المقهى لا يُسنَد أصلاً —
+         كبّة نفايات، زبونة طلبت شيئاً، عطل عولج في لحظته. القائمة كانت
+         تعرض المسنَد فقط، فما تفعله الموظفة خارجه يضيع بلا أثر. */
+      '<button data-a="workLog">'+IC.tasks+'<span>سجّلي عملاً</span></button>'+
       '<button data-a="helpNew">'+IC.user+'<span>مساعدة</span></button>'+
       '<button data-a="moreOpen" data-sec="requests">'+IC.shift+'<span>إجازة</span></button>'+
     '</div>');
@@ -4105,6 +4142,48 @@ function wireTab(v){
          وحدها — فلا بدّ من نقل التبويب معها وإلا بقيت الشاشة مكانها. */
       else if(a==='moreOpen'){ S.tab='more'; S.moreSec=b.getAttribute('data-sec'); paintTabs(); drawTab(); }
       else if(a==='moreBack'){ S.moreSec=null; drawTab(); }
+      /* تسجيل عملٍ غير مسنَد: اقتراحاتٌ تُضغط، وكتابةٌ لما ليس فيها.
+         الوقت بثلاثة خيارات جاهزة لا حقلٍ رقميّ — لا أحد يقيس بالدقيقة
+         وهو واقف. */
+      else if(a==='workLog'){
+        sAct('work_log_options',{}).then(function(r){
+          var opts=(r&&r.options)||[];
+          sheet('سجّلي عملاً أنجزتِه',
+            '<div class="muted small" style="margin-bottom:8px">عملٌ لم يكن مُسنَداً إليكِ — يصل للإدارة باسمك.</div>'+
+            (opts.length?'<div class="wl-opts">'+opts.map(function(o){
+              return '<button class="wl-o" data-wl="'+esc(o)+'">'+esc(o)+'</button>';
+            }).join('')+'</div>':'')+
+            '<label class="f">ماذا عملتِ؟</label>'+
+            '<input class="f" id="wlN" placeholder="مثال: كبّة النفايات">'+
+            '<label class="f">كم أخذ منكِ؟</label>'+
+            '<div class="wl-opts" id="wlM">'+
+              [[5,'٥ دقائق'],[15,'ربع ساعة'],[30,'نصف ساعة']].map(function(m,i){
+                return '<button class="wl-o'+(i===0?' on':'')+'" data-wm="'+m[0]+'">'+m[1]+'</button>';
+              }).join('')+'</div>'+
+            '<div class="btnrow"><button class="btn block" id="wlGo">سجّلي</button></div>',
+            function(ov, close){
+              var mins=5;
+              $$('[data-wl]',ov).forEach(function(b2){ b2.addEventListener('click', function(){
+                $('#wlN',ov).value=b2.getAttribute('data-wl');
+              }); });
+              $$('[data-wm]',ov).forEach(function(b2){ b2.addEventListener('click', function(){
+                mins=+b2.getAttribute('data-wm');
+                $$('[data-wm]',ov).forEach(function(x){ x.classList.remove('on'); });
+                b2.classList.add('on');
+              }); });
+              $('#wlGo',ov).addEventListener('click', function(){
+                var nm=$('#wlN',ov).value.trim();
+                if(nm.length<3){ toast('اكتبي ماذا عملتِ', true); return; }
+                busyWrap(this, function(){
+                  return sAct('work_log',{name:nm, minutes:mins}, true).then(function(res){
+                    if(res&&res.ok){ close(); toast('سُجّل — شكراً لكِ'); refresh(); }
+                    else toast((res&&res.error)||'تعذّر التسجيل', true);
+                  });
+                });
+              });
+            });
+        }).catch(function(){ toast('تعذّر الاتصال', true); });
+      }
       else if(a==='pwChange'){
         sheet('تغيير كلمة السر',
           '<label class="f">كلمة السر الحالية</label>'+
