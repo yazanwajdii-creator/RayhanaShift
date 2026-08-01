@@ -1,0 +1,36 @@
+# نشر المعاينة — موقع منفصل تماماً عن Production.
+#
+# لماذا ملفّ ثانٍ ولا يكفي القائم: deploy.yml يستمع لـ main وحدها ويدفع
+# إلى موقع الإنتاج بمعرّف مخزَّن في الأسرار. هذا يستمع لفرع التطوير وحده
+# ويدفع إلى موقع المعاينة بمعرّف مكتوب صراحةً — ومعرّف الموقع ليس سرّاً،
+# والسرّ الوحيد المستعمل هنا هو رمز الدخول نفسه المستعمل هناك.
+#
+# النتيجة: لا يمكن لدفعةٍ على فرع التطوير أن تصل إلى جهاز موظفة، ولا
+# لدفعةٍ على main أن تُخطئ فتذهب إلى المعاينة.
+name: Deploy preview
+
+on:
+  push:
+    branches: [ 'claude/rayhanshift-audit-deploy-y4xj0f' ]
+  workflow_dispatch:
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to preview site
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: '.'
+          production-deploy: true          # إنتاجُ موقع المعاينة، لا إنتاج المقهى
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "معاينة ${{ github.sha }}"
+          enable-pull-request-comment: false
+          enable-commit-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 8f6b1f6f-cd2b-4bec-b8b8-7c58e567d28e
+        timeout-minutes: 5
