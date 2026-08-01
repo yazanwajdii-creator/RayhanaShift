@@ -1378,6 +1378,10 @@ function refresh(){
 }
 function drawTab(){
   var v=$('#view'); if(!v) return;
+  /* مغادرة شاشة الأرضية تأكيدٌ ضمنيّ للإجراء المعلّق: يُنفَّذ، ولا يبقى
+     شريط التراجع طافياً فوق شاشةٍ لا تخصّه. قبل كل الفروع، فحتى شاشة
+     تعذّر التحميل لا تترك شريطاً معلّقاً. */
+  if(S.tab!=='floor' && _undoT) _undoT.commit();
   if(!S.state){
     v.innerHTML='<div class="empty">تعذر تحميل بياناتك — تحققي من الاتصال</div><div class="btnrow"><button class="btn ghost block" id="reTry">إعادة المحاولة</button></div>';
     var rb=$('#reTry',v); if(rb) rb.addEventListener('click', function(){ v.innerHTML=skel(3); refresh(); });
@@ -3060,7 +3064,30 @@ function flrSelPanel(t, ar){
   return h+'</div>';
 }
 
+/* الحالات التي فيها جلسةٌ حيّة: ضيفاتٌ على الطاولة ومدّةٌ تعدّ ومسؤولةٌ لها */
+var FLR_LIVE = {seated:1, ordered:1, preparing:1, ready:1, served:1, bill_requested:1};
+
+/* لمسةٌ خاطئة على شبكةٍ من سبعٍ وعشرين بلاطة واردة. أكثر التحوّلات ضرراً
+   هو إنهاء الجلسة — «غادرن» أو «عادت متاحة» على طاولةٍ ما زالت مشغولة:
+   يُمحى عدد الضيفات والمدّة والمسؤولة، ولا تُعيدها ضغطةٌ عكسية لأن الجلسة
+   نفسها أُغلقت. تُمنح هذه وحدها ثماني ثوانٍ للتراجع قبل الإرسال.
+   وما عداها يُرسل فوراً: التحوّلات الأمامية رخيصةُ التصحيح، وتأخيرها على
+   لوحةٍ يشترك فيها الجميع ضررٌ لا حماية. */
 function flrSet(id, to, ver, btn){
+  if(FLR.busy) return;
+  var tbl=null;
+  ((FLR.data&&FLR.data.tables)||[]).forEach(function(x){ if(+x.id===+id) tbl=x; });
+  if(tbl && FLR_LIVE[tmState(tbl)] && (to==='needs_clean' || to==='free')){
+    if(btn) btn.disabled=true;
+    undoWindow('طاولة '+(+tbl.no)+' — '+((TMACT[to]||{}).t||'')+'؛ ستُغلق الجلسة', 8,
+      function(){ if(btn) btn.disabled=false; flrSend(id, to, ver, btn); },
+      function(){ if(btn) btn.disabled=false; toast('أُلغي — لم يتغيّر شيء'); });
+    return;
+  }
+  flrSend(id, to, ver, btn);
+}
+
+function flrSend(id, to, ver, btn){
   if(FLR.busy) return;
   FLR.busy=true; if(btn) btn.disabled=true;
   sAct('tbl_set',{table_id:id, to:to, version:ver, client_event_id:uid()}).then(function(r){
