@@ -291,8 +291,12 @@ a{color:var(--green)}
 .undobar{position:fixed;inset-inline:14px;bottom:calc(var(--fixed-bottom) + 8px + env(safe-area-inset-bottom));z-index:9000;background:var(--ink);color:var(--on-ink);
   border-radius:13px;padding:11px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .undobar .ub-txt{flex:1;font-size:13.5px}
-.undobar .ub-btn{background:color-mix(in srgb,var(--on-ink) 20%,transparent);color:var(--on-ink);border:none;border-radius:10px;padding:7px 13px;font:inherit;font-weight:700;cursor:pointer}
+/* زرّ التراجع هو مخرج الطوارئ من لمسةٍ خاطئة، فيأخذ حدّ اللمسة كاملاً:
+   ٤٤px على طرفيّةٍ تُستعمل واقفةً وعلى عجلة. */
+.undobar .ub-btn{background:color-mix(in srgb,var(--on-ink) 20%,transparent);color:var(--on-ink);border:none;border-radius:10px;padding:0 18px;min-height:44px;font:inherit;font-weight:700;cursor:pointer}
 .undobar .ub-ring{font-size:12.5px;opacity:.8;font-variant-numeric:tabular-nums}
+/* في وضع ملء الشاشة لا شريط تنقّل أسفل، فلا تُترك له مسافة */
+body.floormode .undobar{bottom:calc(10px + env(safe-area-inset-bottom))}
 /* ===== مركز إدارة الطاولات =====
    أداة تشغيل: كثافة معلومات عالية، أماكن ثابتة، تباين WCAG AA، بلا شبكة خلفية. */
 .ti{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
