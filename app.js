@@ -2813,22 +2813,46 @@ function viewFloor(){ return '<div id="flrHost">'+skel(3)+'</div>'; }
    ولهذا تراكبت البلاطات. عند فتح الصفحة نطلب ملء الشاشة ثم قفل الاتجاه
    أفقياً؛ وحين يرفض النظام (iOS لا يدعم القفل) نبقى بالطول ويتكفّل
    حساب الحجم أدناه بمنع أي تراكب. لا نفرض شيئاً لا يستطيعه الجهاز. */
+/* ملء الشاشة وقفل الاتجاه: بطلبٍ صريح لا تلقائياً.
+   كان يُفرض بمجرّد فتح «الصالة»، فتنقلب شاشة الهاتف عرضاً ويختفي شريط
+   المتصفّح — فلا يبقى للموظفة مخرج ظاهر. وهو على الطرفيّة اللوحية بلا
+   معنى أصلاً: هي عريضة بحكم وضعها على الحامل. صار زرّاً واحداً يُعرف
+   حاله من شكله، ويعمل في الاتجاهين. */
+function flrFull(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
+
 function flrLandscape(on){
   try{
     if(on){
       var el=document.documentElement;
       var rq=el.requestFullscreen||el.webkitRequestFullscreen;
-      if(rq && !document.fullscreenElement) rq.call(el).catch(function(){});
-      if(screen.orientation && screen.orientation.lock)
-        screen.orientation.lock('landscape').catch(function(){});
+      if(rq && !flrFull()){
+        var p=rq.call(el);
+        if(p&&p.catch) p.catch(function(){});
+      }
+      /* القفل يُطلب بعد ملء الشاشة لا قبله، ويُتجاهل فشله بصمت:
+         المتصفّحات على سطح المكتب ترفضه، وهذا ليس خطأ. */
+      if(screen.orientation && screen.orientation.lock){
+        var q=screen.orientation.lock('landscape');
+        if(q&&q.catch) q.catch(function(){});
+      }
     } else {
       if(screen.orientation && screen.orientation.unlock)
         try{ screen.orientation.unlock(); }catch(e){}
-      if(document.fullscreenElement && document.exitFullscreen)
-        document.exitFullscreen().catch(function(){});
+      if(flrFull() && document.exitFullscreen){
+        var x=document.exitFullscreen();
+        if(x&&x.catch) x.catch(function(){});
+      }
     }
   }catch(e){}
 }
+
+/* خروج الطوارئ: زرّ «رجوع» في الشريط قد لا تصله الموظفة إن علق شيء،
+   فنجعل مفتاح الرجوع في النظام يُخرج من الوضع الكامل أيضاً. */
+document.addEventListener('fullscreenchange', function(){
+  var b=$('#flrFs'); if(!b) return;
+  b.setAttribute('aria-pressed', flrFull()?'true':'false');
+  b.setAttribute('aria-label', flrFull()?'خروج من ملء الشاشة':'ملء الشاشة');
+});
 
 /* حجم البلاطة يُشتقّ من أقرب طاولتين، فلا يمكن أن تتراكبا رياضياً.
    مربّعان متمركزان على نقطتين لا يتقاطعان إلا إذا كان الفارق الأكبر في
@@ -2837,7 +2861,7 @@ function flrLandscape(on){
 
 function loadFloor(){
   var w=$('#flrHost'); if(!w) return;
-  flrLandscape(true);
+  /* لا ملء شاشة تلقائي — انظري flrLandscape */
   sAct('tbl_areas',{}).then(function(r){
     if(!$('#flrHost')) return;
     var areas=((r&&r.areas)||[]).filter(function(a){ return a.allowed; });
@@ -2868,11 +2892,12 @@ function loadFloor(){
       clearTimeout(FLR.rt);
       FLR.rt=setTimeout(function(){ flrBoard(true); },400);
     });
-    if(!FLR.rz){
-      FLR.rz=function(){ if($('#flrHost') && FLR.data) flrPaint(); };
-      window.addEventListener('resize', FLR.rz);
-      window.addEventListener('orientationchange', FLR.rz);
-    }
+    /* لا مستمع لتغيير المقاس: flrPaint لا يقرأ بُعداً واحداً — الأعمدة
+       وحجم البلاطة من شبكة CSS واستعلامات الوسائط. كان هذا المستمع بقيّةً
+       من المخطّط بالإحداثيات الذي حُذف، وكان يُعيد بناء الشبكة كاملة
+       (innerHTML وإعادة ربط كل زرّ) عند كل حدث. ودوران الشاشة يُطلق
+       عشرات الأحداث في أقل من ثانية، فتتراكم إعادات البناء ويبدو الجهاز
+       معلّقاً. الإزالة تُصلح التعليق ولا تُفقد شيئاً. */
   }).catch(function(){
     if($('#flrHost')) $('#flrHost').innerHTML='<div class="empty">تعذّر الاتصال — سيُعاد المحاولة</div>';
   });
@@ -2952,7 +2977,7 @@ function flrPaint(){
 
   /* الشريط: خروج · المناطق · مرشّحات · نبض */
   h+='<header class="flrx-bar">'+
-    '<button class="flrx-x" id="flrExit" aria-label="خروج">‹</button>'+
+    '<button class="flrx-x" id="flrExit" aria-label="رجوع">‹</button>'+
     (FLR.areas&&FLR.areas.length>1
       ? '<div class="flrx-seg">'+FLR.areas.map(function(a){
           return '<button data-fa="'+(+a.id)+'"'+(+a.id===+FLR.area?' class="on"':'')+'>'+
@@ -2969,6 +2994,8 @@ function flrPaint(){
       }).join('')+
     '</div>'+
     '<div class="flrx-live"><span class="flrx-dot"></span>'+busyN+'/'+all.length+'</div>'+
+    '<button class="flrx-fs" id="flrFs" aria-pressed="false" aria-label="ملء الشاشة">'+
+      '<span class="fs-in"></span><span class="fs-out"></span></button>'+
   '</header>';
 
   h+='<main class="flrx-grid-wrap">'+
@@ -2985,6 +3012,12 @@ function flrPaint(){
   var ex=$('#flrExit',w);
   if(ex) ex.addEventListener('click', function(){
     flrLandscape(false); S.tab='now'; paintTabs(); drawTab(); });
+  var fs=$('#flrFs',w);
+  if(fs){
+    fs.setAttribute('aria-pressed', flrFull()?'true':'false');
+    fs.setAttribute('aria-label', flrFull()?'خروج من ملء الشاشة':'ملء الشاشة');
+    fs.addEventListener('click', function(){ flrLandscape(!flrFull()); });
+  }
   $$('[data-fa]',w).forEach(function(b){ b.addEventListener('click', function(){
     FLR.area=+b.getAttribute('data-fa'); FLR.sel=null; flrBoard(false); }); });
   $$('[data-ff]',w).forEach(function(b){ b.addEventListener('click', function(){

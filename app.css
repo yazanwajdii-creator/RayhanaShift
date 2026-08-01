@@ -1436,12 +1436,26 @@ body.floormode #view{padding:0}
 
 .flrx{display:grid;grid-template-rows:auto 1fr;min-height:100dvh;background:var(--paper)}
 
-/* ── الشريط: صفٌّ واحد ── */
-.flrx-bar{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:9px;
+/* ── الشريط: صفٌّ واحد، ولاصقٌ أعلى الشاشة ──
+   لصقُه شرطُ خروج: في وضع ملء الشاشة لا شريط متصفّح ولا زرّ رجوع ظاهر،
+   فلو انزلق الشريط مع التمرير لبقيت الموظفة بلا مخرج. */
+.flrx-bar{grid-column:1/-1;position:sticky;top:0;z-index:20;
+  display:flex;flex-wrap:wrap;align-items:center;gap:9px;
   padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
   background:var(--surface);border-bottom:1px solid var(--line)}
 .flrx-x{width:44px;height:44px;flex:0 0 auto;border-radius:13px;border:1px solid var(--line);
   background:var(--surface-2);color:var(--ink);font:inherit;font-size:20px;cursor:pointer}
+/* زرّ ملء الشاشة: أيقونة واحدة تنقلب بحاله، بلا نصّ ولا إيموجي */
+.flrx-fs{width:44px;height:44px;flex:0 0 auto;
+  border-radius:13px;border:1px solid var(--line);background:var(--surface-2);
+  position:relative;cursor:pointer;padding:0}
+.flrx-fs .fs-in,.flrx-fs .fs-out{position:absolute;inset:13px;
+  border:2px solid var(--ink);border-radius:3px}
+.flrx-fs .fs-in{clip-path:polygon(0 0,42% 0,42% 42%,0 42%,0 100%,42% 100%,42% 58%,0 58%,
+  0 0,100% 0,100% 42%,58% 42%,58% 0,100% 0,100% 100%,58% 100%,58% 58%,100% 58%)}
+.flrx-fs .fs-out{display:none;inset:11px}
+.flrx-fs[aria-pressed="true"] .fs-in{display:none}
+.flrx-fs[aria-pressed="true"] .fs-out{display:block}
 .flrx-ttl{min-width:0}
 .flrx-ttl b{font-size:16.5px}
 .flrx-seg{display:flex;gap:3px;flex:0 1 auto;min-width:0;max-width:100%;background:var(--surface-2);
