@@ -2620,6 +2620,119 @@ function nowPendingOut(){
     '</div></div>';
 }
 
+/* ── كل مهامي اليوم ─────────────────────────────────────────────────
+   ثلاثة أقسام لا قائمة واحدة، لأن السؤال الذي يجول في رأس الموظفة ليس
+   «كم مهمة عندي» بل «ما الذي عليّ الآن، وما الذي سيظهر لاحقاً ولماذا لا
+   أراه». القسم الأوسط هو الجواب: المهمة لم تُنسَ ولم تُحذَف — لها وقت.
+   وهذا ما كان غائباً تماماً، فتظنّ الموظفة أن النظام أسقط مهامها. */
+function allTasksSheet(){
+  var st=S.state||{}, sh=st.shift;
+  var cfg=(st.cfg||{}), ch=String(cfg.close||'23:30').split(':');
+  var ca=new Date(); ca.setHours(+ch[0]||23, +ch[1]||30, 0, 0);
+  var e0=tsOrNull(sh&&sh.end), endRef=(e0!==null?e0:ca.getTime());
+  var openFrom=endRef-60*60000, inClosing=Date.now()>=openFrom;
+  var all=st.tasks||[];
+  var doneL=all.filter(function(t){ return t.status==='done'||t.status==='approved'; });
+  var pend=all.filter(function(t){ return ['done','approved','carried','cancelled'].indexOf(t.status)<0; });
+  var nowL=pend.filter(function(t){ return !(t.phase==='closing' && !inClosing); });
+  var laterL=pend.filter(function(t){ return t.phase==='closing' && !inClosing; });
+
+  function row(t, sub){
+    return '<div class="atk"><div class="atk-t"><b>'+esc(t.name)+'</b>'+
+      (sub?'<span>'+esc(sub)+'</span>':'')+'</div>'+
+      (t.expected?'<span class="atk-m">'+(+t.expected)+' د</span>':'')+'</div>';
+  }
+  var h='';
+  h+='<div class="atk-h">مطلوبة الآن<i>'+nowL.length+'</i></div>';
+  h+= nowL.length ? nowL.map(function(t){ return row(t, PHASE[t.phase]||''); }).join('')
+                  : '<div class="atk-e">لا مهمة مطلوبة منكِ الآن</div>';
+
+
+  h+='<div class="atk-h">تظهر تلقائياً الساعة '+fmtT(openFrom)+'<i>'+laterL.length+'</i></div>';
+  h+= laterL.length
+    ? '<div class="atk-why">مهام الإغلاق لا تُعرض قبل أوانها حتى لا تُزاحم ما هو مطلوب الآن. '+
+      'لم تُحذَف، وتستطيعين إنجاز أيٍّ منها مبكراً إن سمح الوقت.</div>'+
+      laterL.map(function(t){ return row(t, 'إغلاق'); }).join('')
+    : '<div class="atk-e">لا مهام مؤجَّلة</div>';
+
+  /* الدوريات تصل بمسارٍ آخر (قوالب متناوبة لا مهام مُسنَدة)، فتُعرض هنا
+     كي تكون هذه الورقة جواباً كاملاً لا نصف جواب. */
+  var rec=(st.recurring||[]).filter(function(rt){ return rt.turn; });
+  if(rec.length){
+    h+='<div class="atk-h">دوريات جاء دورك عليها<i>'+rec.length+'</i></div>'+
+       rec.map(function(rt){ return '<div class="atk"><div class="atk-t"><b>'+esc(rt.name)+'</b>'+
+         '<span>'+(rt.every?'كل '+(+rt.every)+' أيام':'بالتناوب')+'</span></div></div>'; }).join('');
+  }
+
+  h+='<div class="atk-h">أنجزتِها اليوم<i>'+doneL.length+'</i></div>';
+  h+= doneL.length ? doneL.map(function(t){ return row(t, ''); }).join('')
+                   : '<div class="atk-e">لم تُغلق مهمة بعد</div>';
+  sheet('كل مهامي اليوم', h);
+}
+
+/* ── «يحتاج ردّك» ───────────────────────────────────────────────────
+   خمسة أشياء كان الخادم يُنتجها كل يوم ولا يقرؤها أحد: طلب تغطية غياب،
+   وتسليمٌ وارد، ودوريّةٌ جاء دورها، ونداء زميلة، ومساندةٌ جارية. كانت
+   تُرسَم في dashAlerts وviewShift وviewTasks — وثلاثتها صارت غير قابلة
+   للوصول بعد تقليص التبويبات إلى ثلاثة، فبقيت الدوالّ وضاعت الوظائف.
+
+   تعود كتلةً واحدة لا خمس بطاقات، ولا تظهر إطلاقاً في اليوم العادي:
+   صفرُ عناصر حين لا شيء ينتظر. والترتيب بحسب كلفة التأخير لا بحسب
+   ترتيب الكتابة: المساندة الجارية أولاً لأن مؤقّتها يعدّ، ثم التغطية
+   لأنها تُقرّر يومَ غدٍ لزميلة، ثم التسليم، ثم الدورية، ثم النداء. */
+function nowInbox(st, zone){
+  var rows=[];
+
+  if(st.support){
+    rows.push('<div class="nx-in-r live">'+
+      '<div class="nx-in-t"><b>مساندة جارية'+(st.support.who?' — '+esc(st.support.who):'')+'</b>'+
+      '<span>منذ <b class="timer" data-brk="'+esc(st.support.since)+'">00:00</b>'+
+      (st.support.area?' · '+esc(st.support.area):'')+'</span></div>'+
+      '<button class="nx-in-b" data-a="supEnd" data-id="'+(+st.support.id)+'">أنهيتها</button></div>');
+  }
+
+  if(st.cover_offer){
+    var co=st.cover_offer;
+    rows.push('<div class="nx-in-r ask">'+
+      '<div class="nx-in-t"><b>تغطية غياب'+(co.from?' — '+esc(co.from):'')+'</b>'+
+      '<span>'+(co.day?esc(co.day)+' · ':'')+(co.area?esc(co.area):'الإدارة تطلب تغطيتك')+'</span></div>'+
+      '<div class="nx-in-two">'+
+        '<button class="nx-in-b" data-a="covYes" data-id="'+(+co.id)+'">أوافق</button>'+
+        '<button class="nx-in-b ghost" data-a="covNo" data-id="'+(+co.id)+'">أعتذر</button>'+
+      '</div></div>');
+  }
+
+  if(st.handover_in && !st.handover_in.confirmed){
+    var hi=st.handover_in;
+    rows.push('<div class="nx-in-r">'+
+      '<div class="nx-in-t"><b>تسليم من '+esc(hi.from||'الشفت السابق')+'</b>'+
+      '<span>'+esc(String(hi.text||hi.note||'اضغطي لقراءته').slice(0,90))+'</span></div>'+
+      '<button class="nx-in-b" data-a="hoRead" data-id="'+(+hi.id)+'">قرأتُه</button></div>');
+  }
+
+  (st.recurring||[]).filter(function(rt){ return rt.turn && !rt.done; }).forEach(function(rt){
+    rows.push('<div class="nx-in-r">'+
+      '<div class="nx-in-t"><b>'+esc(rt.name)+'</b>'+
+      '<span>جاء دورك عليها'+(rt.every?' · كل '+(+rt.every)+' أيام':'')+'</span></div>'+
+      '<button class="nx-in-b" data-a="recDone" data-id="'+(+rt.template_id)+'">أنجزتها</button></div>');
+  });
+
+  /* نداء زميلة: كان بإمكانها أن تُطلق نداءً ولا ترى نداء غيرها — نصفُ
+     حلقة، ونصفها الناقص هو المفيد. وزرّ المساندة يُغلقها: الخادم يحذّرها
+     قبل أن تترك مهامها الحرجة أو تُفرِّغ منطقتها. */
+  (st.help_open||[]).filter(function(h){ return +h.by_id !== +(S.me&&S.me.id); }).slice(0,2)
+    .forEach(function(h){
+      rows.push('<div class="nx-in-r">'+
+        '<div class="nx-in-t"><b>'+esc(h.by||'زميلة')+' تحتاج مساعدة</b>'+
+        '<span>'+esc(h.area||'')+(h.text?' · '+esc(String(h.text).slice(0,60)):'')+'</span></div>'+
+        '<button class="nx-in-b" data-a="supGo" data-area="'+(+h.area_id||0)+'" '+
+          'data-who="'+(+h.by_id||0)+'" data-nm="'+esc(h.by||'')+'">أساندها</button></div>');
+    });
+
+  if(!rows.length) return '';
+  return '<div class="nx-in"><div class="nx-in-h">يحتاج ردّك</div>'+rows.join('')+'</div>';
+}
+
 /* الكتلة الثالثة: الفعل الواحد. محتواها يتبع المرحلة، وموضعها لا يتبعها. */
 function nowAction(st, sh, inT, outT, pend, nearEnd, openBr){
   /* الاستراحة: حين تكون جارية فالسؤال «ماذا أفعل الآن؟» جوابه «ارجعي»،
@@ -2699,9 +2812,21 @@ function viewNow(){
 
   /* ── الكتلة ٢: المنطقة ── */
   var zone = (st.my_zone && st.my_zone.area) || (sh && sh.area) || null;
+  /* دورُ اليوم ومَن معها: كلاهما كان يصل من الخادم ويُرسَم في viewShift —
+     وviewShift صار غير قابل للوصول بعد تقليص التبويبات، فضاع الاثنان.
+     يعودان هنا سطرين تحت اسم المنطقة لا بطاقةً جديدة: هما تتمّة الجواب
+     على «أين أعمل الآن؟» لا سؤال ثالث. */
+  var mates=(st.colleagues||[]).filter(function(c){ return +c.id !== +(S.me&&S.me.id); });
+  var mateTxt = mates.length
+    ? mates.slice(0,3).map(function(c){ return c.name+(c.area&&c.area!==zone?' ('+c.area+')':''); }).join(' · ')
+      + (mates.length>3?' +'+(mates.length-3):'')
+    : '';
   out.push('<div class="nx-zone'+(zone?'':' none')+'">'+
     (zone ? '<b>'+esc(zone)+'</b><span>منطقتكِ الآن</span>'
-          : '<b>بلا منطقة</b><span>لم تُحدَّد لكِ منطقة اليوم</span>')+'</div>');
+          : '<b>بلا منطقة</b><span>لم تُحدَّد لكِ منطقة اليوم</span>')+
+    (sh&&sh.daily_role?'<div class="nx-role"><span class="k">دورك اليوم</span>'+esc(sh.daily_role)+'</div>':'')+
+    (mateTxt?'<div class="nx-mates"><span class="k">معكِ</span>'+esc(mateTxt)+'</div>':'')+
+  '</div>');
 
   /* تنبيه عاجل — فوق الفعل مباشرة، ولا يظهر إلا إن وُجد */
   var urgent=(st.notifs||[]).filter(function(n){ return n.kind==='alert' && !n.read; });
@@ -2737,6 +2862,9 @@ function viewNow(){
   var openBr=(st.breaks||[]).filter(function(b){ return !b.end; })[0];
   out.push(nowAction(st, sh, inT, outT, due, nearEnd, openBr));
 
+  /* ── يحتاج ردّك ── */
+  if(inT && !outT) out.push(nowInbox(st, zone));
+
   /* «وماذا بعد» — سطر خبر لا زرّ. جعلُه زرّاً يفتح قائمة المهام يُكرّر
      اختصار «مهمة منجزة» أدناه، ومقصدٌ واحد في موضعين هو ما نحذفه. */
   if(inT && !outT && due.length>1)
@@ -2747,8 +2875,15 @@ function viewNow(){
      تُزاحم مهمةَ اللحظة، فتعرف الموظفة أنها لم تُنسَ. */
   if(inT && !outT && !inClosing){
     var later=pend.filter(function(t){ return !dueNow(t); }).length;
-    if(later) out.push('<div class="nx-later">'+later+' مهمة إغلاق تظهر قرب نهاية الشفت</div>');
+    /* fmtHM يقبل نصّ «HH:MM» من قاعدة البيانات لا كائن وقت — تمريره Date
+       يُنتج «—». الصحيح fmtT الذي يبني من طابع زمنيّ. */
+    if(later) out.push('<div class="nx-later">'+later+' مهمة إغلاق تظهر تلقائياً الساعة '+
+      fmtT(closingFrom)+'</div>');
   }
+  /* الباب الوحيد إلى القائمة الكاملة. وُعِدت ورقةً «تُفتح عند الحاجة»
+     ولم تُبنَ، فلم يكن للموظفة أي طريق يرى مهامها كلها. */
+  if(inT && !outT && pend.length)
+    out.push('<div class="nx-all"><button data-a="allTasks">كل مهامي اليوم ('+pend.length+')</button></div>');
 
   /* ── الكتلة ٤: الاختصارات الأربعة ── */
   if(inT && !outT){
@@ -4224,6 +4359,65 @@ function wireTab(v){
          وحدها — فلا بدّ من نقل التبويب معها وإلا بقيت الشاشة مكانها. */
       else if(a==='moreOpen'){ S.tab='more'; S.moreSec=b.getAttribute('data-sec'); paintTabs(); drawTab(); }
       else if(a==='moreBack'){ S.moreSec=null; drawTab(); }
+      else if(a==='allTasks') allTasksSheet();
+      /* ── ردود كتلة «يحتاج ردّك» ── */
+      else if(a==='covYes' || a==='covNo'){
+        busyWrap(b, function(){
+          return sAct('coverage_respond',{id:id, accept:(a==='covYes')}, true).then(function(r){
+            if(r&&r.ok){ toast(a==='covYes'?'شكراً — سُجّلت التغطية':'سُجّل اعتذارك'); refresh(); }
+            else toast((r&&r.error)||'تعذّر التسجيل', true);
+          });
+        });
+      }
+      else if(a==='hoRead'){
+        busyWrap(b, function(){
+          return sAct('handover_confirm',{id:id}, true).then(function(r){
+            if(r&&r.ok){ toast('تم — سُجّل أنكِ قرأتِ التسليم'); refresh(); }
+            else toast((r&&r.error)||'تعذّر التسجيل', true);
+          });
+        });
+      }
+      else if(a==='recDone'){
+        var rt=((S.state&&S.state.recurring)||[]).filter(function(x){ return +x.template_id===id; })[0]||{};
+        recurringDone(id, !!rt.needs_photo, rt.name);
+      }
+      else if(a==='supEnd'){
+        busyWrap(b, function(){
+          return sAct('contrib_end',{id:id}, true).then(function(r){
+            if(r&&r.ok){ toast('انتهت المساندة — سُجّلت باسمك'); refresh(); }
+            else toast((r&&r.error)||'تعذّر الإنهاء', true);
+          });
+        });
+      }
+      /* المساندة تُفحص قبل أن تبدأ: الخادم يردّ بتحذيرات (مهامك الحرجة،
+         منطقتك ستبقى بلا أحد) فنعرضها لها لتقرّر هي — لا نمنعها ولا
+         نُخفي الثمن. */
+      else if(a==='supGo'){
+        var ar=+b.getAttribute('data-area')||null, who=+b.getAttribute('data-who')||null;
+        var nm=b.getAttribute('data-nm')||'زميلتك';
+        sAct('contrib_precheck', ar?{area_id:ar}:{}).then(function(pc){
+          if(pc && pc.ok===false){ toast(pc.error||'تعذّر', true); return; }
+          var warns=(pc&&pc.warnings)||[];
+          var body=(warns.length
+              ? '<div class="sup-w">'+warns.map(function(w){ return '<div>'+esc(w.text||'')+'</div>'; }).join('')+'</div>'
+              : '<div class="muted small">لا شيء يمنع — منطقتك مغطّاة ومهامك ليست حرجة.</div>')+
+            '<label class="f">بماذا ستساعدينها؟ (اختياري)</label>'+
+            '<input class="f" id="supD" placeholder="مثال: تجهيز أرجيلة لطاولتين">'+
+            '<div class="btnrow"><button class="btn block" id="supGo2">أبدأ المساندة</button></div>';
+          sheet('مساندة '+nm, body, function(ov, close){
+            $('#supGo2',ov).addEventListener('click', function(){
+              busyWrap(this, function(){
+                var pl={category:'support_colleague', description:($('#supD',ov)||{}).value||''};
+                if(ar) pl.area_id=ar; if(who) pl.beneficiary=who;
+                return sAct('contrib_start', pl, true).then(function(r){
+                  if(r&&r.ok){ close(); toast('بدأت المساندة — المؤقّت يعمل'); refresh(); }
+                  else toast((r&&r.error)||'تعذّر البدء', true);
+                });
+              });
+            });
+          });
+        }).catch(function(){ toast('تعذّر الاتصال', true); });
+      }
       /* تسجيل عملٍ غير مسنَد: اقتراحاتٌ تُضغط، وكتابةٌ لما ليس فيها.
          الوقت بثلاثة خيارات جاهزة لا حقلٍ رقميّ — لا أحد يقيس بالدقيقة
          وهو واقف. */

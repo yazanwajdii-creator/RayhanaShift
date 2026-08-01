@@ -1629,6 +1629,16 @@ body.floormode #view{padding:0}
 .nx-zone span{font-size:var(--fs-xs);opacity:.85}
 .nx-zone.none{background:var(--surface-2);color:var(--ink);border:1px dashed var(--line)}
 .nx-zone.none span{color:var(--muted);opacity:1}
+/* دور اليوم ومَن معكِ: سطران داخل كتلة المنطقة نفسها، مفصولان بخطٍّ
+   شفّاف. تتمّة الجواب على «أين أعمل الآن؟» لا بطاقة ثالثة تُزاحمه. */
+.nx-role,.nx-mates{margin-top:var(--s-2);padding-top:var(--s-2);
+  border-top:1px solid color-mix(in srgb,var(--on-hero) 18%,transparent);
+  font-size:var(--fs-sm);line-height:1.45}
+.nx-mates{margin-top:var(--s-1);padding-top:var(--s-1);border-top:0;
+  font-size:var(--fs-xs);opacity:.85}
+.nx-role .k,.nx-mates .k{display:inline-block;margin-inline-end:6px;
+  font-size:var(--fs-xs);font-weight:800;opacity:.7}
+.nx-zone.none .nx-role,.nx-zone.none .nx-mates{border-top-color:var(--line);color:var(--muted)}
 
 /* تنبيه عاجل — لا يظهر إلا إن وُجد، وفوق الفعل مباشرة */
 .nx-urgent{display:flex;gap:var(--s-3);align-items:flex-start;
@@ -1658,6 +1668,62 @@ body.floormode #view{padding:0}
 .nx-next b{flex:1 1 auto;font-size:var(--fs-sm);font-weight:700;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 .nx-next i{font-style:normal;font-size:var(--fs-xs);font-weight:800;color:var(--muted);flex:0 0 auto}
+
+/* ── «يحتاج ردّك» ──
+   كتلة واحدة لا خمس بطاقات، ولا تُرسَم إطلاقاً حين لا شيء ينتظر.
+   الصفوف متساوية الشكل عمداً إلا صفّ المساندة الجارية: مؤقّته يعدّ،
+   فيأخذ حدّاً ملوّناً ليُقرأ أولاً بلا أن يصرخ. */
+.nx-in{border:1px solid var(--line);border-radius:var(--r-3);background:var(--surface);
+  overflow:hidden}
+.nx-in-h{padding:var(--s-2) var(--s-4);font-size:var(--fs-xs);font-weight:800;
+  color:var(--muted);background:var(--surface-2);border-bottom:1px solid var(--line)}
+.nx-in-r{display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap;
+  padding:var(--s-3) var(--s-4);border-bottom:1px solid var(--line)}
+.nx-in-r:last-child{border-bottom:0}
+.nx-in-r.live{border-inline-start:3px solid var(--amber-ink)}
+.nx-in-r.ask{border-inline-start:3px solid var(--brand)}
+.nx-in-t{flex:1 1 150px;min-width:0}
+.nx-in-t b{display:block;font-size:var(--fs-sm);font-weight:800;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-in-t span{display:block;font-size:var(--fs-xs);color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-in-t span b{display:inline;font-variant-numeric:tabular-nums;color:var(--ink)}
+.nx-in-b{flex:0 0 auto;min-height:44px;padding:0 var(--s-4);border-radius:var(--r-2);
+  border:1px solid transparent;background:var(--ink);color:var(--on-ink);
+  font:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer}
+.nx-in-b.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.nx-in-b:active{filter:brightness(.94)}
+.nx-in-two{display:flex;gap:var(--s-2);flex:0 0 auto}
+@media (max-width:359px){ .nx-in-two{flex:1 1 100%} .nx-in-two .nx-in-b{flex:1 1 50%} }
+
+/* الباب إلى القائمة الكاملة — وزنٌ ثانوي لا يزاحم الفعل */
+.nx-all button{width:100%;min-height:44px;border-radius:var(--r-2);
+  border:1px dashed var(--line);background:none;color:var(--muted);
+  font:inherit;font-size:var(--fs-xs);font-weight:700;cursor:pointer}
+.nx-all button:active{background:var(--surface-2)}
+
+/* ورقة «كل مهامي» */
+.atk-h{display:flex;align-items:center;gap:var(--s-2);margin:var(--s-4) 0 var(--s-2);
+  font-size:var(--fs-xs);font-weight:800;color:var(--muted)}
+.atk-h:first-child{margin-top:0}
+.atk-h i{font-style:normal;margin-inline-start:auto;font-variant-numeric:tabular-nums}
+.atk{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) var(--s-4);
+  border:1px solid var(--line);border-radius:var(--r-2);margin-bottom:6px}
+.atk-t{flex:1 1 auto;min-width:0}
+.atk-t b{display:block;font-size:var(--fs-sm);font-weight:700;color:var(--ink)}
+.atk-t span{display:block;font-size:var(--fs-xs);color:var(--muted)}
+.atk-m{flex:0 0 auto;font-size:var(--fs-xs);font-weight:800;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.atk-e{padding:var(--s-3) var(--s-4);font-size:var(--fs-xs);color:var(--muted);
+  border:1px dashed var(--line);border-radius:var(--r-2)}
+.atk-why{font-size:var(--fs-xs);line-height:1.55;color:var(--muted);
+  margin-bottom:var(--s-2)}
+/* تحذيرات ما قبل المساندة: تُقرأ ولا تمنع */
+.sup-w{border:1px solid color-mix(in srgb,var(--amber-ink) 45%,transparent);
+  background:var(--c-warn-bg,var(--surface-2));border-radius:var(--r-2);
+  padding:var(--s-3) var(--s-4);margin-bottom:var(--s-3)}
+.sup-w div{font-size:var(--fs-xs);line-height:1.55;color:var(--amber-ink)}
+.sup-w div+div{margin-top:4px}
 
 /* ٤) الاختصارات الأربعة */
 .nx-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s-2)}
