@@ -630,12 +630,35 @@ function getGeo(cb){
 }
 /* الحضور/الانصراف بلمسة واحدة: يوثَّق بمعرّف الجهاز والموقع تلقائياً.
    كلمة السر أو الصورة تُطلبان فقط إذا فعّلتهما الإدارة من الإعدادات. */
-function doAttendance(kind, pin, selfie){
+/* حضورٌ بلا شفت مجدول: نسأل عن المنطقة قبل الإرسال.
+   بلا منطقة لا تُولَّد مهمة واحدة، فتقف الموظفة حاضرةً والنظام لا يعطيها
+   شيئاً. ضغطةٌ واحدة من قائمة المناطق المفتوحة تُنهي المأزق، والخادم هو
+   من يتحقّق أن المنطقة نشطة ومفتوحة في وقتها. */
+function checkinFlow(){
+  var st=S.state||{};
+  if(st.shift && st.shift.id){ doAttendance('in'); return; }
+  var areas=(st.areas||[]).filter(function(a){ return a && a.id; });
+  if(!areas.length){ doAttendance('in'); return; }
+  sheet('أين ستعملين اليوم؟',
+    '<div class="muted small" style="margin-bottom:8px">لا شفت مجدول لكِ اليوم. '+
+      'اختاري منطقتكِ لتصلكِ مهامها فوراً.</div>'+
+    '<div class="navlist">'+areas.map(function(a){
+      return '<button data-ar="'+(+a.id)+'"><span>'+esc(a.name)+'</span><span class="chev">‹</span></button>';
+    }).join('')+'</div>',
+    function(ov, close){
+      $$('[data-ar]',ov).forEach(function(b){ b.addEventListener('click', function(){
+        var aid=+b.getAttribute('data-ar'); close(); doAttendance('in', null, null, aid);
+      }); });
+    });
+}
+
+function doAttendance(kind, pin, selfie, areaId){
   var isOut = kind==='out';
   var sel='[data-a="'+(isOut?'checkout':'checkin')+'"]';
   $$(sel).forEach(function(b){ b.classList.add('busy'); });
   getGeo(function(geo){
     var p={geo:geo, device_token:devTok(), device_id:devId()};
+    if(areaId) p.area_id=areaId;
     if(pin) p.pin=pin;
     if(selfie){ if(mediaIsKey(selfie)) p.selfie_key=selfie; else p.selfie=selfie; }
     sAct(isOut?'check_out':'check_in', p, false).then(function(res){
@@ -676,28 +699,30 @@ function doAttendance(kind, pin, selfie){
             $('#coBack',ov).addEventListener('click', function(){ close(); });
           });
       } else if(res.need_pin){
-        pinSheet(kind, selfie);
+        pinSheet(kind, selfie, areaId);
       } else if((res.error||'').indexOf('صورة التحقق')>-1){
         cameraSheet({facing:'user', title:'صورة التحقق المباشرة', watermark:(S.me?S.me.name:'')+(isOut?' · انصراف':' · حضور')},
           function(d){
             /* الصورة ترتفع للتخزين الخاص أولاً؛ الصف يحمل المفتاح فقط.
                وإن تعثّرت الشبكة لا نمنع الموظفة من تسجيل حضورها. */
             mediaPut('img', d, 'attendance').then(
-              function(k){ doAttendance(kind, pin, k); },
-              function(){ doAttendance(kind, pin, d); });
+              function(k){ doAttendance(kind, pin, k, areaId); },
+              function(){ doAttendance(kind, pin, d, areaId); });
           });
       } else toast(res.error||'خطأ', true);
     }).catch(function(){ $$(sel).forEach(function(b){ b.classList.remove('busy'); }); });
   });
 }
-function pinSheet(kind, selfie){
+/* المنطقة تُمرَّر عبر مسارَي إعادة المحاولة (كلمة السر وصورة التحقق)
+   وإلا ضاعت بينهما وعاد الشفت بلا منطقة من حيث لا تدري الموظفة. */
+function pinSheet(kind, selfie, areaId){
   sheet('تأكيد الهوية',
     '<div class="muted small">الإدارة فعّلت طبقة تحقق إضافية — أدخلي كلمة سرك.</div>'+
     '<label class="f">كلمة السر</label><input class="f" id="apn" type="password" inputmode="numeric" autocomplete="off">'+
     '<div class="btnrow"><button class="btn block" id="apnGo">تأكيد</button></div>',
     function(ov, close){
       var inp=$('#apn',ov); setTimeout(function(){ inp.focus(); },100);
-      function go(){ if(!inp.value){ toast('أدخلي كلمة سرك', true); return; } close(); doAttendance(kind, inp.value, selfie); }
+      function go(){ if(!inp.value){ toast('أدخلي كلمة سرك', true); return; } close(); doAttendance(kind, inp.value, selfie, areaId); }
       $('#apnGo',ov).addEventListener('click', go);
       inp.addEventListener('keydown', function(e){ if(e.key==='Enter') go(); });
     });
@@ -4063,7 +4088,7 @@ function wireTab(v){
     b.addEventListener('click', function(){
       if(a==='ack') sAct('ack_recognition',{},true).then(refresh);
       else if(a==='hoConfirm') sAct('handover_confirm',{id:id, note:($('#hoNote')||{}).value||''},true).then(function(res){ if(res.ok) toast('تم تأكيد الاستلام ✔'); else toast(res.error||'خطأ',true); refresh(); });
-      else if(a==='checkin') doAttendance('in');
+      else if(a==='checkin') checkinFlow();
       else if(a==='checkout') doAttendance('out');
       else if(a==='goMore'){ S.tab='more'; S.moreSec=null; paintTabs(); drawTab(); }
       else if(a==='goTasks'){ S.tab='tasks'; paintTabs(); drawTab(); }
