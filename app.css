@@ -1524,6 +1524,35 @@ body.floormode #view{padding:0}
 .flr-acts .btn{flex:1 1 46%;min-height:52px;font-size:14.5px}
 .flr-acts .btn.st{background:var(--ac);color:var(--ac-on);border-color:transparent}
 .flr-acts .btn.st:active{filter:brightness(.94)}
+
+/* ---------- الأرجيلة والفحم ----------
+   شريطٌ هادئ ما دام الفحم حديثاً: معلومةٌ تُقرأ ولا تُنادي. فإذا تجاوز
+   المدّة انقلب إلى نداء — إطارٌ وخلفيةٌ محذّرتان والزرّ يصير مصمتاً.
+   هذا هو الفارق بين «اعلمي» و«افعلي الآن»، وهو الفارق الذي يجعل الشاشة
+   قابلةً للقراءة بطرف العين في الذروة. */
+.flr-hk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:11px;
+  padding:9px 11px;border-radius:13px;border:1px solid var(--line);background:var(--surface-2)}
+.flr-hk.due{border-color:color-mix(in srgb,var(--amber-ink) 55%,transparent);
+  background:var(--c-warn-bg,var(--surface-2))}
+.flr-hk .hk-t{flex:1 1 auto;font-size:13px;color:var(--muted);line-height:1.4}
+.flr-hk .hk-t b{color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums}
+.flr-hk.due .hk-t{color:var(--amber-ink)}
+.flr-hk.due .hk-t b{color:var(--amber-ink)}
+.flr-hk .btn{flex:0 0 auto;min-height:44px}
+.flr-hk .btn.block{flex:1 1 100%}
+
+/* نقل الجلسة: فعلٌ نادر، فيقع أسفل الإجراءات بوزنٍ ثانوي لا يزاحم
+   أزرار الحالة، لكنّه بمساحة لمسٍ كاملة لأنه يُستعمل والمقهى مزدحم. */
+.flr-mv{display:block;width:100%;margin-top:9px;min-height:44px;
+  border:1px dashed var(--line);border-radius:13px;background:transparent;
+  color:var(--muted);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.flr-mv:active{background:var(--surface-2)}
+.mv-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px;margin-top:6px}
+.mv-b{min-height:52px;border-radius:13px;border:1px solid var(--line);background:var(--surface-2);
+  color:var(--ink);font:inherit;font-size:18px;font-weight:800;cursor:pointer;
+  font-variant-numeric:tabular-nums}
+.mv-b:active{background:var(--ink);color:var(--on-ink)}
+
 .flr-more{margin-top:8px}
 .flr-more>summary{list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;
   justify-content:center;border-radius:13px;border:1px dashed var(--line);

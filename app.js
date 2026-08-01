@@ -1404,6 +1404,11 @@ function refresh(){
       // نقطة على تبويب الشفت إذا في تسليم وارد
       var sb=$$('nav.bottom button').filter(function(b){return b.getAttribute('data-t')==='shift';})[0];
       if(sb){ if(res.handover_in && !S.stateHandled) sb.classList.add('bdg'); else sb.classList.remove('bdg'); }
+      /* محطّة الكاش: شفتها في منطقة الكاش، فصلاحيتها أصلاً كاملة على
+         الصالتين. شاشتها الأولى هي اللوحة لا «الآن» — الجهاز ثابتٌ أمامها
+         طوال الوقت، ووظيفته أن يُري الأرضية كلها. تحويلٌ مرّة واحدة عند
+         أول تحميل فقط، فلا يُصادر اختيارها إن انتقلت بنفسها. */
+      if(res.cash_desk && !S.cashHomed){ S.cashHomed=true; S.tab='floor'; paintTabs(); }
       drawTab(); updateDot();
     }).catch(function(){});
   } else if(S.role==='admin'){ drawAdmin(); }
@@ -2877,7 +2882,7 @@ function loadTablesCard(){
    الآن: صفحة كاملة، واللون يقول الحالة لا الإلحاح، والإلحاح حلقةٌ حول
    البلاطة. والرؤية للجميع، والتعديل بحسب النطاق الذي يعلنه الخادم. */
 var FLR = {area:null, areas:null, data:null, sel:null, f:'all', timer:null, tick:null,
-           busy:false, skew:0, synced:0, at:0};
+           busy:false, skew:0, synced:0, at:0, mvFrom:null};
 
 /* لون الحالة رمزُ CSS لا سُدسي ثابت، فينقلب مع السمة تلقائياً */
 var STC = {
@@ -3109,7 +3114,23 @@ function flrPaint(){
     FLR.f=b.getAttribute('data-ff'); flrPaint(); }); });
   $$('[data-ft]',w).forEach(function(b){ b.addEventListener('click', function(){
     var id=+b.getAttribute('data-ft');
+    /* نقلٌ معلّق بعد تبديل المنطقة: أول لمسة على طاولة متاحة تُتمّه */
+    if(FLR.mvFrom){
+      var tb=null; ((FLR.data&&FLR.data.tables)||[]).forEach(function(x){ if(+x.id===id) tb=x; });
+      if(tb && tb.state==='free' && !tb.oos){ flrMoveGo(FLR.mvFrom.id, id, FLR.mvFrom.ver); return; }
+      toast('اختاري طاولة متاحة', true); return;
+    }
     FLR.sel=(FLR.sel===id)?null:id; flrPaint(); }); });
+  $$('[data-fcoal]',w).forEach(function(b){ b.addEventListener('click', function(){
+    sAct('tbl_coal',{table_id:+b.getAttribute('data-fcoal')}, true).then(function(r){
+      if(r&&r.ok){ toast('سُجّل تغيير الفحم'); flrBoard(true); }
+      else toast((r&&r.error)||'تعذّر التسجيل', true); }); }); });
+  $$('[data-fhk]',w).forEach(function(b){ b.addEventListener('click', function(){
+    sAct('tbl_hookah',{table_id:+b.getAttribute('data-fid'),
+                       on:b.getAttribute('data-fhk')==='on'}, true).then(function(r){
+      if(r&&r.ok) flrBoard(true); else toast((r&&r.error)||'تعذّر التسجيل', true); }); }); });
+  $$('[data-fmv]',w).forEach(function(b){ b.addEventListener('click', function(){
+    flrMoveSheet(+b.getAttribute('data-fmv'), +b.getAttribute('data-fv2')); }); });
   var xb=$('#flrX',w); if(xb) xb.addEventListener('click', function(){ FLR.sel=null; flrPaint(); });
   $$('[data-fgo]',w).forEach(function(b){ b.addEventListener('click', function(){
     flrSet(+b.getAttribute('data-fid'), b.getAttribute('data-fgo'), +b.getAttribute('data-fv2'), b); }); });
@@ -3176,10 +3197,75 @@ function flrSelPanel(t, ar){
         esc(a2.t)+'</button>';
     };
     h+='<div class="flr-acts">'+head.map(btn).join('')+'</div>';
+
+    /* الأرجيلة: أهمّ فعل مؤقَّت في مقهى أراجيل. حين يكون الفحم مستحقّاً
+       يصعد زرّه فوق كل شيء — لأن تأخّره أسرع ما يُفسد جلسة. */
+    if(FLR_LIVE[k]){
+      if(t.hookah){
+        h+='<div class="flr-hk'+(t.coal_due?' due':'')+'">'+
+          '<span class="hk-t">الفحم منذ <b class="tdur" data-mins="'+(+t.coal_mins||0)+
+            '" data-at="'+flrAt()+'">'+esc(tmDur(t.coal_mins||0))+'</b></span>'+
+          '<button class="btn'+(t.coal_due?' st':' ghost')+'" data-fcoal="'+t.id+'">غُيّر الفحم</button>'+
+          '<button class="btn ghost sm" data-fhk="off" data-fid="'+t.id+'">لا أرجيلة</button>'+
+        '</div>';
+      } else {
+        h+='<div class="flr-hk"><button class="btn ghost block" data-fhk="on" data-fid="'+t.id+'">'+
+          'نزّلت أرجيلة</button></div>';
+      }
+    }
+
     if(rest.length) h+='<details class="flr-more"><summary>حالات أخرى ('+rest.length+')</summary>'+
       '<div class="flr-acts">'+rest.map(function(s){ return btn(s,9); }).join('')+'</div></details>';
+
+    /* النقل: الضيفات ينتقلن في منتصف الجلسة، وكان البديل إنهاء الطاولة
+       وفتح غيرها — فيضيع وقتهن وأرجيلتهن ويُقطع سجلّ الجلسة نصفين. */
+    if(FLR_LIVE[k])
+      h+='<button class="flr-mv" data-fmv="'+t.id+'" data-fv2="'+(+t.version)+'">'+
+         'نقل الضيفات إلى طاولة أخرى</button>';
   }
   return h+'</div>';
+}
+
+/* ورقة النقل: الطاولات المتاحة في كل المناطق المفتوحة — الانتقال من
+   الداخل إلى الساحة يحدث كل مساء، فحصرُ الخيارات في المنطقة الحالية
+   يجعل الميزة عديمة الفائدة في أكثر حالاتها شيوعاً. */
+function flrMoveSheet(fromId, ver){
+  var d=FLR.data||{};
+  var here=((d.tables)||[]).filter(function(x){
+    return x.state==='free' && !x.oos && +x.id!==+fromId; });
+  sAct('tbl_areas',{}).then(function(r){
+    var areas=((r&&r.areas)||[]).filter(function(a){
+      return a.allowed && a.open && +a.id!==+FLR.area; });
+    var body='<div class="muted small" style="margin-bottom:8px">'+
+      'تنتقل الجلسة كما هي: وقتهن وعددهن وأرجيلتهن. والطاولة الحالية تصير «تحتاج تنظيف».</div>';
+    body += here.length
+      ? '<label class="f">في '+esc((d.area&&d.area.name)||'المنطقة')+'</label><div class="mv-g">'+
+        here.map(function(x){ return '<button class="mv-b" data-mv="'+x.id+'">'+(+x.no)+'</button>'; }).join('')+'</div>'
+      : '<div class="muted small">لا طاولة متاحة في هذه المنطقة.</div>';
+    if(areas.length)
+      body += '<label class="f" style="margin-top:10px">منطقة أخرى</label><div class="navlist">'+
+        areas.map(function(a){
+          return '<button data-mva="'+a.id+'"><span>'+esc(a.name)+'</span>'+
+                 '<span class="chev">‹</span></button>'; }).join('')+'</div>';
+    sheet('نقل الضيفات', body, function(ov, close){
+      $$('[data-mv]',ov).forEach(function(b){ b.addEventListener('click', function(){
+        close(); flrMoveGo(fromId, +b.getAttribute('data-mv'), ver); }); });
+      /* منطقة أخرى: نُبدّل إليها أولاً ثم تختار الطاولة من الشبكة نفسها */
+      $$('[data-mva]',ov).forEach(function(b){ b.addEventListener('click', function(){
+        close();
+        FLR.mvFrom={id:fromId, ver:ver};
+        FLR.area=+b.getAttribute('data-mva'); FLR.sel=null; flrBoard(false);
+        toast('اختاري الطاولة المتاحة هنا');
+      }); });
+    });
+  }).catch(function(){ toast('تعذّر الاتصال', true); });
+}
+
+function flrMoveGo(fromId, toId, ver){
+  sAct('tbl_move',{from_id:fromId, to_id:toId, version:ver}, true).then(function(r){
+    if(r&&r.ok){ FLR.mvFrom=null; FLR.sel=toId; toast('انتقلت الجلسة'); flrBoard(true); }
+    else toast((r&&r.error)||'تعذّر النقل', true);
+  });
 }
 
 /* الحالات التي فيها جلسةٌ حيّة: ضيفاتٌ على الطاولة ومدّةٌ تعدّ ومسؤولةٌ لها */
@@ -4926,14 +5012,28 @@ ADMIN.employees=function(v){
          '<div class="check"><input type="checkbox" id="eF" '+(e.flexible?'checked':'')+'><span>مرنة (جوكر) — يظهر للإدارة فقط</span></div>'+
          '<div class="check"><input type="checkbox" id="eNR" '+(e.no_rotate?'checked':'')+'><span>استثناء من التدوير التلقائي للمهام</span></div>'+
          '<label class="f">بوصلة التطوير (هدف أسبوعي يظهر لها)</label><input class="f" id="eDF" value="'+(e&&e.dev_focus?esc(e.dev_focus):'')+'" placeholder="مثال: إتقان تحضير اللاتيه آرت">'+
-         '<div class="card soft" style="padding:9px 12px;margin-top:8px"><div class="small">حساب الموظفة مرتبط بأول هاتف تدخل منه ولا يفتح على جهاز آخر. لاعتماد هاتف جديد لها اضغطي:</div><div class="btnrow"><button class="btn sm ghost" id="eUnbind" type="button">اعتماد جهاز جديد (فك الارتباط)</button></div></div>':'')+
+         /* الوصول: خانتان صريحتان بدل قاعدةٍ واحدة تُطبَّق على الجميع.
+            الأصل في الاثنتين «مغلق»، ويُفتح لموظفةٍ بعينها بقرارٍ مكتوب
+            من الإدارة — لا بإعدادٍ عام يُرخي القبضة عن الكلّ. */
+         '<div class="card soft" style="padding:10px 12px;margin-top:10px">'+
+           '<b class="small">الوصول</b>'+
+           '<div class="check" style="margin-top:6px"><input type="checkbox" id="eMD" '+(e.multi_device?'checked':'')+'>'+
+             '<span>تدخل من أكثر من جهاز<br><span class="muted small">الأصل: حسابها مربوط بأول جهاز فقط'+
+             (e.bound?'':' — لم ترتبط بجهازٍ بعد')+'</span></span></div>'+
+           '<div class="check"><input type="checkbox" id="eAO" '+(e.allow_outside?'checked':'')+'>'+
+             '<span>تسجّل الحضور من خارج المقهى<br><span class="muted small">'+
+             'الأصل: داخل النطاق فقط. يبقى موقعها مسجّلاً في كل الحالات.</span></span></div>'+
+           '<div class="small muted" style="margin-top:8px">لاعتماد هاتفٍ جديد لها بدل القديم دون فتح الحساب على كل الأجهزة:</div>'+
+           '<div class="btnrow"><button class="btn sm ghost" id="eUnbind" type="button">اعتماد جهاز جديد (فك الارتباط)</button></div>'+
+         '</div>':'')+
       '<div class="btnrow"><button class="btn block" id="eGo">حفظ</button></div>',
       function(ov, close){
         var ub=$('#eUnbind',ov); if(ub) ub.addEventListener('click', function(){ busyWrap(this, function(){ return aAct('unbind_device',{employee_id:e.id}).then(function(r){ if(r.ok) toast('تم — تستطيع الموظفة الدخول من جهازها الجديد الآن ✔'); else toast(r.error||'خطأ',true); }); }); });
         $('#eGo',ov).addEventListener('click', function(){
           var p={name:$('#eN',ov).value.trim(), color:$('#eC',ov).value, username:$('#eU',ov).value.trim()};
           if(!p.name){ toast('اكتبي الاسم', true); return; }
-          if(e){ p.id=e.id; p.active=$('#eA',ov).checked; p.flexible=$('#eF',ov).checked; p.no_rotate=$('#eNR',ov).checked; }
+          if(e){ p.id=e.id; p.active=$('#eA',ov).checked; p.flexible=$('#eF',ov).checked; p.no_rotate=$('#eNR',ov).checked;
+                 p.multi_device=$('#eMD',ov).checked; p.allow_outside=$('#eAO',ov).checked; }
           else{
             p.password=$('#eP',ov).value;
             if(!p.password || p.password.length<4){ toast('كلمة السر ٤ خانات على الأقل', true); return; }
@@ -5506,7 +5606,7 @@ ADMIN.tables=function(v){
       var aid=+b.getAttribute('data-to');
       sheet('فتح '+b.getAttribute('data-nm')+' مبكراً',
         '<div class="muted small" style="margin-bottom:8px">الفتح المبكر يُسجَّل بالسبب والوقت، وتدخل طاولات المنطقة فوراً في احتساب الضغط.</div>'+
-        '<label class="f">سبب الفتح المبكر</label><input class="f" id="aoR" placeholder="مثال: حجز مجموعة الساعة 4">'+
+        '<label class="f">سبب الفتح المبكر</label><input class="f" id="aoR" placeholder="مثال: مجموعة كبيرة متوقّعة الساعة ٤">'+
         '<div class="btnrow"><button class="btn block" id="aoGo">فتح المنطقة</button></div>',
         function(ov,close){
           $('#aoGo',ov).addEventListener('click', function(){
@@ -7655,7 +7755,7 @@ ADMIN.dayphase=function(v){
           [30,60,120,180,240].map(function(m){ return '<option value="'+m+'"'+(m===60?' selected':'')+'>'+m+' دقيقة</option>'; }).join('')+
         '</select>'+
         '<label class="f">السبب (يظهر للفريق وفي السجل)</label>'+
-        '<textarea class="f" id="dpR" rows="2" placeholder="مثال: حجز خاص من ٧ إلى ٩"></textarea>'+
+        '<textarea class="f" id="dpR" rows="2" placeholder="مثال: عطل في مكيّف الصالة من ٧ إلى ٩"></textarea>'+
         '<div class="btnrow"><button class="btn block" id="dpGo">أعلني</button></div>',
         function(ov, close){
           $('#dpGo',ov).addEventListener('click', function(){
