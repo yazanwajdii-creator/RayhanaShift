@@ -198,7 +198,13 @@ function secFmt(s){ s=Math.max(0,Math.floor(s||0)); var m=Math.floor(s/60); retu
 var S = { token:null, role:null, me:null, state:null, tab:'now', adminSec:null, cacheTs:0 };
 function saveSess(){ try{ localStorage.setItem('rko_sess', JSON.stringify({token:S.token, role:S.role, me:S.me})); }catch(e){} }
 function loadSess(){ try{ var v=JSON.parse(localStorage.getItem('rko_sess')||'null'); if(v&&v.token){ S.token=v.token; S.role=v.role; S.me=v.me; } }catch(e){} }
-function clearSess(){ S.token=null; S.role=null; S.me=null; S.state=null; try{ localStorage.removeItem('rko_sess'); }catch(e){} }
+/* إنهاء الجلسة: الخروج · القفل التلقائي · انتهاء الجلسة من الخادم.
+   كان قناةُ اللحظة الحيّة تبقى مفتوحة بعد كلّ ذلك وتُعيد الاتصال من نفسها،
+   فيستمرّ الجهاز يستقبل حالات الطاولات بعد تسجيل الخروج. rtStop كانت معرَّفة
+   ولا يستدعيها أحد — وُصلت هنا لأنها نقطة الإنهاء الوحيدة لكل المسارات. */
+function clearSess(){ S.token=null; S.role=null; S.me=null; S.state=null;
+  try{ rtStop(); }catch(e){}
+  try{ localStorage.removeItem('rko_sess'); }catch(e){} }
 
 /* ---------- طابور العمليات دون اتصال —  IndexedDB ----------
    localStorage متزامن ومحدود ويُمسح تحت ضغط الذاكرة، وقد يفقد عمليات الموظفة.
@@ -958,7 +964,13 @@ function startStaff(){
   // أثناء أول تحميل بلا كاش: هيكل تحميل (.sk) بدل شاشة فاضية
   if(!S.state){ var _sv=$('#view'); if(_sv) _sv.innerHTML='<section class="today"><div class="sk sk--block"></div><div class="sk sk--block"></div><div class="sk sk--block"></div></section>'; }
   refresh();
-  clearInterval(tickT); tickT=setInterval(function(){ if(S.role==='staff' && (S.tab==='tasks'||S.tab==='now'||S.tab==='shift'||S.tab==='floor')) updateTimers(); }, 1000);
+  /* updateTimers لا يمسّ إلا ‎.timer‎ (ثوانٍ)، وtmTick يمسّ ‎.tdur‎ (دقائق).
+     كان الثاني بلا محرّك خارج ورقة الطاولة، فيبقى «منذ كم» ثابتاً — وعدّاد
+     المساندة الجارية يظهر فارغاً أصلاً لأن نصّه يُكتب من النبضة وحدها. */
+  clearInterval(tickT); tickT=setInterval(function(){
+    if(S.role!=='staff') return;
+    if(S.tab==='tasks'||S.tab==='now'||S.tab==='shift'||S.tab==='floor'){ updateTimers(); tmTick(); }
+  }, 1000);
   startPresence();
   pttInit();
   qSync();
@@ -1394,7 +1406,7 @@ function animIn(el){ if(!el) return; el.classList.remove('vin'); void el.offsetW
    جداول RKO كلها deny-all، فلا يجوز الاشتراك المباشر بها. نشترك بقناة
    rko_rt_pulse التي تحمل نوع الحدث ومنطقة ومعرّفاً فقط — بلا محتوى —
    ثم نعيد الجلب عبر البوابة. الاستطلاع يبقى احتياطاً بطيئاً. */
-var RT = {sock:null, on:false, subs:[], tries:0, timer:null};
+var RT = {sock:null, on:false, subs:[], tries:0, timer:null, off:false};
 
 function rtOn(kind, cb){ RT.subs.push({kind:kind, cb:cb}); }
 function rtFire(row){
@@ -1404,6 +1416,7 @@ function rtFire(row){
 }
 function rtConnect(){
   if(RT.sock || !S.token) return;
+  RT.off = false;
   var key = getKey(), url;
   try{ url = CONFIG.SUPABASE_URL.replace(/^http/, 'ws') + '/realtime/v1/websocket?apikey=' +
              encodeURIComponent(key) + '&vsn=1.0.0'; }catch(e){ return; }
@@ -1431,6 +1444,7 @@ function rtConnect(){
   };
   function down(){
     clearInterval(hb); RT.on = false; RT.sock = null;
+    if(RT.off) return;                       /* إغلاق مقصود: لا إعادة اتصال */
     /* تراجع أسّي مع سقف — لا نغرق الشبكة */
     RT.tries = Math.min(RT.tries + 1, 6);
     clearTimeout(RT.timer);
@@ -1439,9 +1453,13 @@ function rtConnect(){
   sock.onclose = down;
   sock.onerror = function(){ try{ sock.close(); }catch(e){} };
 }
+/* إغلاق مقصود. كان يُلغي onclose ليمنع إعادة الاتصال، فلا تعمل down ولا
+   تُلغى نبضة الـ٢٥ ثانية — فيتراكم مؤقّت معلّق مع كل دورة اتصال/إغلاق.
+   الآن ندع down تعمل لتنظّف نفسها، ونمنع إعادة الاتصال براية صريحة. */
 function rtStop(){
   clearTimeout(RT.timer);
-  if(RT.sock){ try{ RT.sock.onclose = null; RT.sock.close(); }catch(e){} }
+  RT.off = true;
+  if(RT.sock){ try{ RT.sock.close(); }catch(e){} }
   RT.sock = null; RT.on = false; RT.subs = [];
 }
 document.addEventListener('visibilitychange', function(){
@@ -1947,12 +1965,22 @@ function tmRender(){
   });
 }
 
-/* المؤقتات تتحرك دون إعادة تحميل ودون استدعاء الخادم */
+/* المؤقتات تتحرك دون إعادة تحميل ودون استدعاء الخادم.
+   ثلاث حالات: طابعٌ زمنيّ مطلق (data-since) · دقائقُ من الخادم مع لحظة
+   الرسم (data-mins + data-at) فينمو العدّ من لحظته هو لا من عدّادٍ مشترك ·
+   ودقائقُ بلا لحظة، وهي ورقة الطاولة التي تُحرّك عدّادها بنفسها. */
 function tmTick(){
   $$('.tdur').forEach(function(el){
-    var s = el.getAttribute('data-since');
-    if(s) el.textContent = tmDur(tmMinsSince(s));
-    else { var m = +el.getAttribute('data-mins') || 0; el.textContent = tmDur(m + (tmTick._n || 0)); }
+    var s = el.getAttribute('data-since'), v;
+    if(s) v = tmDur(tmMinsSince(s));
+    else {
+      var m = +el.getAttribute('data-mins') || 0;
+      var at = +el.getAttribute('data-at') || 0;
+      v = tmDur(at ? m + Math.floor((Date.now() - at) / 60000) : m + (tmTick._n || 0));
+    }
+    /* لا نكتب إلا عند التغيّر: النبضة ثانويّة والدقّة بالدقيقة، فالكتابة
+       المتكرّرة تُبطل تخطيط النصّ بلا فائدة. */
+    if(el.textContent !== v) el.textContent = v;
   });
 }
 
@@ -2519,7 +2547,8 @@ function openShiftHeader(inT){
   return '<div class="ossh"><div class="ossh-h">'+
       '<span class="ossh-dot" aria-hidden="true"></span><b>شفت مفتوح</b>'+
       '<span class="ossh-tag">بلا وقت انتهاء محدّد</span></div>'+
-    (inT ? '<div class="ossh-t"><b class="tdur" data-since="'+esc(inT)+'">'+hm(mins_)+'</b>'+
+    /* الصياغة نفسها التي تكتبها النبضة: لولا ذلك لتغيّر شكل الرقم بعد ثانية */
+    (inT ? '<div class="ossh-t"><b class="tdur" data-since="'+esc(inT)+'">'+tmDur(mins_)+'</b>'+
            '<span>منذ الحضور '+fmtT(inT)+'</span></div>' : '')+
     '<div class="ossh-n">حضور غير مجدول: لا نهاية مخطّطة، فلا نسبة إنجاز ولا وضع إغلاق. '+
       'أنهي يومك بالانصراف حين تنتهين.</div></div>';
@@ -2759,7 +2788,7 @@ function loadTablesCard(){
    الآن: صفحة كاملة، واللون يقول الحالة لا الإلحاح، والإلحاح حلقةٌ حول
    البلاطة. والرؤية للجميع، والتعديل بحسب النطاق الذي يعلنه الخادم. */
 var FLR = {area:null, areas:null, data:null, sel:null, f:'all', timer:null, tick:null,
-           busy:false, skew:0, synced:0};
+           busy:false, skew:0, synced:0, at:0};
 
 /* لون الحالة رمزُ CSS لا سُدسي ثابت، فينقلب مع السمة تلقائياً */
 var STC = {
@@ -2817,9 +2846,12 @@ function loadFloor(){
     if(!FLR.area || !areas.some(function(a){ return +a.id===+FLR.area; })) FLR.area=+areas[0].id;
     flrBoard(false);
     clearInterval(FLR.timer); clearInterval(FLR.tick);
+    /* «منذ كم» على البلاطات كانت لا تتحرّك: updateTimers لا يمسّ إلا ‎.timer‎،
+       ومحرّك ‎.tdur‎ الوحيد كان داخل ورقة الطاولة. صارت تُحدَّث هنا كل ٣٠ ثانية
+       من لحظة رسمها هي، فلا تنتظر استطلاع العشرين ثانية ولا تقفز معه. */
     FLR.tick=setInterval(function(){
       if(!$('#flrHost')){ clearInterval(FLR.tick); return; }
-      updateTimers();
+      updateTimers(); tmTick();
     },30000);
     FLR.timer=setInterval(function(){
       if(!$('#flrHost')){ clearInterval(FLR.timer); return; }
@@ -2853,12 +2885,19 @@ function flrBoard(quiet){
     }
     if(res.server_now) FLR.skew=Date.now()-new Date(res.server_now).getTime();
     FLR.synced=Date.now()-FLR.skew;
+    /* لحظة الجلب بساعة الجهاز: مرجع «منذ كم» على البلاطات. الرسم قد يتكرّر
+       بين استطلاعين (فلتر أو اختيار طاولة)، فلو أرّخنا من لحظة الرسم لعاد
+       العدّاد إلى الوراء عند كل لمسة. */
+    FLR.at=Date.now();
     FLR.data=res;
     flrPaint();
   }).catch(function(){
     if(!FLR.data && $('#flrHost')) $('#flrHost').innerHTML='<div class="empty">تعذّر الاتصال</div>';
   });
 }
+
+/* مرجع العدّ: لحظة آخر جلب، ويسقط إلى «الآن» قبل أول جلب فقط */
+function flrAt(){ return FLR.at || Date.now(); }
 
 function flrCan(t){
   var d=FLR.data||{}, sc=d.scope||'full';
@@ -2954,7 +2993,7 @@ function flrPaint(){
     flrSet(+b.getAttribute('data-fid'), b.getAttribute('data-fgo'), +b.getAttribute('data-fv2'), b); }); });
   var dt=$('#flrDetail',w);
   if(dt) dt.addEventListener('click', function(){ TM.admin=false; tmDetail(+dt.getAttribute('data-fid')); });
-  updateTimers();
+  updateTimers(); tmTick();
 }
 
 function flrSideEmpty(){
@@ -2980,7 +3019,8 @@ function flrCardTile(x){
     '<span class="flrc-no">'+(+x.no)+'</span>'+
     '<span class="flrc-st">'+esc(st.ar)+'</span>'+
     '<span class="flrc-f">'+
-      (busy&&x.mins>0?'<span class="t tdur" data-mins="'+(+x.mins)+'">'+tmDur(x.mins)+'</span>':'<span class="t"></span>')+
+      (busy&&x.mins>0?'<span class="t tdur" data-mins="'+(+x.mins)+'" data-at="'+flrAt()+'">'+
+        tmDur(x.mins)+'</span>':'<span class="t"></span>')+
       foot+'</span>'+
   '</button>';
 }
@@ -2991,7 +3031,8 @@ function flrSelPanel(t, ar){
   var h='<div class="flr-sel" style="--tc:'+stCol(k)+';--tc-on:'+stOn(k)+'">'+
     '<div class="flr-sel-h"><span class="flr-sel-n">'+(+t.no)+'</span>'+
     '<span class="flr-sel-t"><b>طاولة '+(+t.no)+'</b><span>'+esc(st.ar)+
-      ((k!=='free'&&!t.oos&&t.mins)?' · '+esc(tmDur(t.mins)):'')+
+      ((k!=='free'&&!t.oos&&t.mins)?' · <b class="tdur" data-mins="'+(+t.mins)+
+        '" data-at="'+flrAt()+'">'+esc(tmDur(t.mins))+'</b>':'')+
       (t.guests?' · '+(+t.guests)+' ضيفات':'')+(t.owner?' · '+esc(t.owner):'')+'</span></span>'+
     '<button class="flr-sel-i" id="flrDetail" data-fid="'+t.id+'" aria-label="سجلّ الطاولة">'+TIC.list+'</button>'+
     '<button class="flr-sel-x" id="flrX" aria-label="إغلاق">×</button></div>';
