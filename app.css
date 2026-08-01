@@ -1559,3 +1559,88 @@ body.floormode #view{padding:0}
   .flrx.has-sel .flrx-side{position:sticky;bottom:0;z-index:5;padding-top:8px;
     background:linear-gradient(to top,var(--paper) 72%,transparent)}
 }
+
+/* ===================================================================
+   شاشة «الآن» — أربع كتل ثابتة
+   القاعدة: الموظفة في الذروة لا تقرأ الشاشة بل تصل بيدها إلى موضعٍ
+   حفظته. فالمواضع ثابتة والأحجام متدرّجة بوضوح: الفعل أكبر من الحالة،
+   والحالة أكبر من الاختصار. لا بطاقات متساوية الوزن.
+   =================================================================== */
+.nowx{gap:var(--s-3)}
+
+/* سؤال الأمس — يعلو كل شيء، وحدُّه العلويّ يقول إنه ليس من اليوم */
+.nx-ask{background:var(--amber-soft);border:1px solid var(--amber);
+  border-radius:var(--r-3);padding:var(--s-4)}
+.nx-ask b{display:block;font-size:var(--fs-md);color:var(--ink)}
+.nx-ask>span{display:block;margin-top:2px;font-size:var(--fs-sm);color:var(--muted)}
+.nx-ask-b{display:flex;flex-wrap:wrap;gap:var(--s-2);margin-top:var(--s-3)}
+.nx-ask-b button{flex:1 1 auto;min-height:52px;padding:0 var(--s-3);
+  border-radius:var(--r-2);border:1px solid var(--line);background:var(--surface);
+  color:var(--ink);font:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer;
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.nx-ask-b button i{font-style:normal;font-size:var(--fs-xs);font-weight:800;color:var(--muted)}
+
+/* ١) الحالة */
+.nx-id{display:flex;flex-direction:column;gap:2px}
+.nx-id-t{display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap}
+.nx-id-t b{font-size:var(--fs-lg);line-height:1.2}
+.nx-st{font-size:var(--fs-xs);font-weight:800;padding:3px 10px;border-radius:var(--r-full);
+  border:1px solid var(--line);background:var(--surface-2);color:var(--muted)}
+.nx-st.on{background:var(--green-soft);border-color:var(--green);color:var(--green)}
+/* الكهرماني على تعبئته الفاتحة يقرأ ٣٫٢٥ في السمتين — تحت العتبة.
+   الحلّ حبرُ الواجهة على التعبئة الكهرمانية: اللون يبقى دالّاً على
+   الحالة والإطار يحملها، والقراءة تعود فوق ٤٫٥. */
+.nx-st.brk{background:var(--amber-soft);border-color:var(--amber);color:var(--ink)}
+.nx-id-s{font-size:var(--fs-sm);color:var(--muted)}
+
+/* ٢) المنطقة */
+.nx-zone{background:var(--hero);color:var(--on-hero);border-radius:var(--r-3);
+  padding:var(--s-3) var(--s-4);display:flex;flex-direction:column;gap:1px}
+.nx-zone b{font-size:var(--fs-md)}
+.nx-zone span{font-size:var(--fs-xs);opacity:.85}
+.nx-zone.none{background:var(--surface-2);color:var(--ink);border:1px dashed var(--line)}
+.nx-zone.none span{color:var(--muted);opacity:1}
+
+/* تنبيه عاجل — لا يظهر إلا إن وُجد، وفوق الفعل مباشرة */
+.nx-urgent{display:flex;gap:var(--s-3);align-items:flex-start;
+  background:var(--surface);border:1.5px solid var(--red);
+  border-radius:var(--r-3);padding:var(--s-3) var(--s-4)}
+.nx-urgent svg{width:20px;height:20px;flex:0 0 auto;color:var(--red);margin-top:1px}
+.nx-urgent b{display:block;font-size:var(--fs-sm)}
+.nx-urgent span{display:block;font-size:var(--fs-xs);color:var(--muted);margin-top:2px}
+
+/* ٣) الفعل — أبرز ما في الشاشة بلا منازع */
+.nx-do{border-radius:var(--r-3);padding:var(--s-4);
+  background:var(--surface);border:1px solid var(--line);box-shadow:var(--sh-1)}
+.nx-do b{display:block;font-size:var(--fs-lg);line-height:1.25}
+.nx-do>span{display:block;margin-top:var(--s-1);font-size:var(--fs-sm);color:var(--muted)}
+.nx-do--go{border:1.5px solid var(--brand)}
+.nx-do--warn{border:1.5px solid var(--amber)}
+.nx-do--idle,.nx-do--done{background:var(--surface-2);box-shadow:none;text-align:center}
+.nx-btn{margin-top:var(--s-3);width:100%;min-height:60px;border:none;border-radius:var(--r-2);
+  background:var(--brand);color:var(--on-brand);font:inherit;font-size:var(--fs-lg);
+  font-weight:800;cursor:pointer}
+
+/* «وماذا بعد» — سطر لا بطاقة */
+.nx-next{display:flex;align-items:center;gap:var(--s-2);width:100%;min-height:48px;
+  padding:0 var(--s-4);border-radius:var(--r-2);border:1px dashed var(--line);
+  background:none;color:var(--ink);font:inherit;text-align:start;cursor:pointer}
+.nx-next .k{font-size:var(--fs-xs);font-weight:800;color:var(--muted);flex:0 0 auto}
+.nx-next b{flex:1 1 auto;font-size:var(--fs-sm);font-weight:700;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.nx-next i{font-style:normal;font-size:var(--fs-xs);font-weight:800;color:var(--muted);flex:0 0 auto}
+
+/* ٤) الاختصارات الأربعة */
+.nx-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s-2)}
+.nx-quick button{min-height:72px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:var(--s-1);padding:var(--s-2) 4px;
+  border-radius:var(--r-2);border:1px solid var(--line);background:var(--surface);
+  color:var(--ink);font:inherit;font-size:var(--fs-xs);font-weight:700;cursor:pointer}
+.nx-quick button svg{width:20px;height:20px;color:var(--muted)}
+.nx-quick button span{line-height:1.15;text-align:center}
+
+/* الانصراف الهادئ — موجود ولا ينافس الفعل */
+.nx-out{text-align:center}
+.nx-out button{min-height:44px;padding:0 var(--s-4);border:none;background:none;
+  color:var(--muted);font:inherit;font-size:var(--fs-sm);font-weight:700;
+  text-decoration:underline;text-underline-offset:4px;cursor:pointer}

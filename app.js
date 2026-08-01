@@ -356,12 +356,19 @@ function rpc(fn, action, p, mutQueue){
 function sAct(action, p, mut){ if(mut){ p=p||{}; if(!p.op_id) p.op_id=uid(); } return rpc('rko_staff', action, p, mut); }
 function aAct(action, p){ return rpc('rko_admin', action, p, false); }
 
-/* ---------- قفل الخمول (جهاز مشترك) ---------- */
+/* ---------- قفل الخمول (جهاز مشترك) ----------
+   كان ٢٥ دقيقة مثبّتة هنا، والإعداد في قاعدة البيانات لا يقرؤه أحد —
+   فكان يعرض رقماً غير الرقم العامل. صار يُقرأ من حمولة الشفت، والمثبّت
+   هنا احتياطٌ لما قبل وصولها فقط. */
 var idleT=null, IDLE_MIN=25;
+function idleMins(){
+  var c=(S.state&&S.state.cfg)||{}, m=+c.idle_minutes;
+  return (m>=1 && m<=240) ? m : IDLE_MIN;
+}
 function idleReset(){
   if(S.role!=='staff') return;
   clearTimeout(idleT);
-  idleT=setTimeout(function(){ clearSess(); renderLogin(); toast('أُغلقت الجلسة تلقائياً لحماية حسابك'); }, IDLE_MIN*60*1000);
+  idleT=setTimeout(function(){ clearSess(); renderLogin(); toast('أُغلقت الجلسة تلقائياً لحماية حسابك'); }, idleMins()*60*1000);
 }
 ['click','touchstart','keydown','scroll'].forEach(function(ev){ document.addEventListener(ev, idleReset, {passive:true}); });
 
@@ -931,16 +938,13 @@ function startStaff(){
        داخل شريط التنقّل نفسه: لا طبقة عائمة، فلا احتمال تغطية أصلاً، وهو
        عند الإبهام حيث اليد أساساً. ومحدّد المستهدَف انتقل إلى ورقة الضغط
        المطوّل بدل شريحة عائمة ثانية. */
+    /* ثلاثة تبويبات لا خمسة. «المهام» صار داخل «الآن» — المهمة الحالية
+       والتالية هما كل ما تحتاجه الموظفة، وقائمة المهام الكاملة ورقةٌ
+       تُفتح عند الحاجة لا تبويبٌ دائم. و«الشفت» اندمج في كتلة الحالة
+       أعلى «الآن». والتخاطب الصوتي أُخرج من الشريط. */
     '<nav class="bottom">'+
       '<button data-t="now"><span class="ic">'+IC.home+'</span>الآن</button>'+
-      '<button data-t="tasks"><span class="ic">'+IC.tasks+'</span>المهام</button>'+
-      '<button id="pttBtn" class="nav-ptt" aria-label="اضغطي مع الاستمرار للتحدث">'+
-        '<span class="ic">'+IC.mic+'</span><span class="ptt-l">تحدّثي</span></button>'+
-      /* «الصالة» أخذت مكان «ملفّي» في الشريط لا لأن ملفّي غير مهم، بل لأن
-         الأرضية تُفتح كل بضع دقائق وملفّي مرةً في الشفت. الترتيب يتبع
-         التكرار الفعلي، وملفّي انتقل إلى «المزيد» في أعلى القائمة. */
       '<button data-t="floor"><span class="ic">'+TIC.map+'</span>الصالة</button>'+
-      '<button data-t="shift"><span class="ic">'+IC.shift+'</span>الشفت</button>'+
       '<button data-t="more"><span class="ic">'+IC.more+'</span>المزيد</button>'+
     '</nav>'+
     '<div id="pttToast" class="ptt-toast"></div>';
@@ -2500,8 +2504,12 @@ function heroTaskCard(t){
     (deferred?'<div class="card soft" style="margin:9px 0 0;padding:9px 11px;border:1px dashed var(--line)"><div class="small"><b>أجّلها النظام:</b> '+esc(t.defer_reason)+'</div><div class="muted small" style="margin-top:2px">تعود إلى قائمتك تلقائياً حين تهدأ الصالة — لا حاجة لأي إجراء.</div></div>':'')+
     '<div class="ht-meta">الوقت التقريبي '+range+(needs.length?' · '+needs.join(' · '):'')+'</div>'+
     (t.status==='returned'&&t.admin_note?'<div class="small" style="color:var(--red);margin-top:6px">ملاحظة الإدارة: '+esc(t.admin_note)+'</div>':'')+
-    '<div class="row" style="justify-content:space-between;margin-top:10px"><span class="chip '+stCls+'">'+stTxt+'</span>'+
-    '<span class="btnrow" style="margin:0"><button class="btn sm ghost" data-a="tWhy" data-id="'+t.id+'">لماذا أنا؟</button><button class="btn sm ghost" data-a="goTasks">كل المهام</button></span></div>'+
+    /* حُذف زرّان من هذا السطر:
+       «لماذا أنا؟» — عرضُ سبب اختيار الموظفة لمهمة ممنوعٌ بنصّ الوثيقة،
+       وهو يفتح جدالاً لا يُغلق ولا يغيّر شيئاً في المهمة نفسها.
+       «كل المهام» — صار سطر «التالية» أسفل البطاقة يفتحها، فكان تكراراً
+       لمقصدٍ واحد في موضعين. */
+    '<div class="row" style="justify-content:space-between;margin-top:10px"><span class="chip '+stCls+'">'+stTxt+'</span></div>'+
     (t.status==='running'
       ? '<div style="margin-top:10px">'+prim+'</div>'+
         '<div class="btnrow" style="margin-top:6px">'+sec+
@@ -2557,128 +2565,147 @@ function openShiftHeader(inT){
     '<div class="ossh-n">حضور غير مجدول: لا نهاية مخطّطة، فلا نسبة إنجاز ولا وضع إغلاق. '+
       'أنهي يومك بالانصراف حين تنتهين.</div></div>';
 }
-function viewNow(){
-  /* شاشة «الآن» — سياقية: قبل الحضور / أثناء الشفت / قرب الإغلاق / بعد الانصراف */
-  var st=S.state, sh=st.shift, att=st.attendance, out=[];
-  var inT = att && att['in'], outT = att && att.out;
-  out.push(dayPhaseStrip(st.day));
-  out.push(dashAlerts());
-  /* سؤال تشغيلي عابر — اختياري، بلا أسماء، ولا يُذكر أنه تحقّق */
-  if(st.ask && st.ask.area_id && !S._askDone){
-    out.push('<div class="card" id="askCard" style="padding:13px 15px;border:1px dashed var(--line)">'+
-      '<div style="font-weight:700;font-size:15px">'+esc(st.ask.q||'')+'</div>'+
-      '<div class="btnrow" style="margin-top:9px">'+
-        '<button class="btn sm ghost" data-obs="ready" data-area="'+st.ask.area_id+'">جاهزة</button>'+
-        '<button class="btn sm ghost" data-obs="minor" data-area="'+st.ask.area_id+'">نقص بسيط</button>'+
-        '<button class="btn sm ghost" data-obs="needs_follow" data-area="'+st.ask.area_id+'">تحتاج متابعة</button>'+
-      '</div>'+
-      '<div class="muted small" style="margin-top:6px">اختياري — يمكنكِ تجاهله <button class="btn sm ghost" data-obs="skip" style="padding:2px 8px;min-height:0">إخفاء</button></div></div>');
-  }
-  if(PUSH_OK===false){
-    out.push('<div class="card" style="border:1.5px solid var(--amber);text-align:center;padding:16px 14px">'+
-      '<h3 style="justify-content:center;margin:0 0 4px">فعّلي إشعارات هاتفكِ</h3>'+
-      '<div class="muted small" style="margin-bottom:10px">ليصلكِ تنبيه المهام وقرارات طلباتكِ على هاتفكِ حتى والتطبيق مغلق.</div>'+
-      '<button class="btn btn--primary btn--block btn--lg" data-a="enablePush">تفعيل الإشعارات ✔</button></div>');
-  }
-  if(st.my_zone){ var mz=st.my_zone, wk=mz.works||[];
-    out.push('<div class="card" style="background:var(--hero);color:var(--on-hero);border:none;padding:12px 14px"><b>منطقتكِ: '+esc(mz.area)+'</b>'+(mz.until?' <span class="small" style="color:rgba(255,255,255,.78)">حتى '+fmtT(mz.until)+'</span>':'')+
-      (wk.length?'<div class="small" style="margin-top:4px;opacity:.95">'+wk.map(esc).join(' · ')+'</div>':'')+'</div>');
-  }
+/* ============ شاشة «الآن» — أربع كتل ثابتة ============
+   القاعدة التي تحكم هذا الملف: الموظفة في الذروة لا تقرأ الشاشة، بل تصل
+   بيدها إلى موضعٍ حفظته. فترتيب الكتل لا يتغيّر بين شفت وآخر ولا بين
+   حمولة وأخرى — يتغيّر ما بداخلها لا مكانها.
+
+     ١) مَن أنا وما حالتي ووقت شفتي
+     ٢) أين أعمل الآن
+     ٣) ماذا أفعل الآن — زرّ واحد كبير، وتحته سطر: وماذا بعد
+     ٤) أربعة اختصارات
+
+   وسؤال الانصراف يعلو الكتل كلّها حين يوجد، لأنه الشيء الوحيد الذي
+   يخصّ الأمس ويجب أن يُغلق قبل أن يبدأ اليوم. */
+function nowPendingOut(){
+  var po = S.state && S.state.pending_out;
+  if(!po || !po.shift_id || S._outAsked) return '';
+  var endTxt = po.shift_end ? fmtT(po.shift_end) : null;
+  return '<div class="nx-ask" id="outAsk">'+
+    '<b>شفتكِ أمس بقي مفتوحاً</b>'+
+    '<span>أُغلق تلقائياً '+fmtT(po.closed_at)+'. متى غادرتِ فعلاً؟</span>'+
+    '<div class="nx-ask-b">'+
+      (endTxt?'<button data-oc="shift_end">نهاية الشفت<i>'+esc(endTxt)+'</i></button>':'')+
+      (endTxt?'<button data-oc="minus_30">قبلها بنصف ساعة<i>'+esc(fmtT(new Date(new Date(po.shift_end).getTime()-1800000)))+'</i></button>':'')+
+      '<button data-oc="custom">وقت آخر</button>'+
+    '</div></div>';
+}
+
+/* الكتلة الثالثة: الفعل الواحد. محتواها يتبع المرحلة، وموضعها لا يتبعها. */
+function nowAction(st, sh, inT, outT, pend, nearEnd){
   if(!sh){
-    out.push('<div class="card soft arch center" style="padding:26px 14px"><h3 style="justify-content:center">لا يوجد شفت مجدول لكِ اليوم</h3>'+
-      '<div class="muted">إن كنتِ في الكافيه فعلاً سجلي حضوراً غير مجدول — يُسجَّل وقتك الفعلي ويظهر للإدارة.</div>'+
-      '<div class="btnrow" style="justify-content:center"><button class="btn btn--primary btn--block btn--lg" data-a="checkin">تسجيل حضور غير مجدول ✔</button>'+
-      '<button class="btn ghost block" data-a="goMore">مراسلة الإدارة / طلب إجازة</button></div></div>');
-    return '<section class="today">'+out.join('')+'</section>';
+    return '<div class="nx-do nx-do--go">'+
+      '<b>لا شفت مجدول لكِ اليوم</b>'+
+      '<span>إن كنتِ في الكافيه فعلاً، سجّلي حضورك ويصل وقتك للإدارة.</span>'+
+      '<button class="nx-btn" data-a="checkin">تسجيل الحضور</button></div>';
   }
-  var now=Date.now(), s0=new Date(sh.start).getTime(), e0=tsOrNull(sh.end);
-  /* الشفت المخصص (حضور غير مجدول) لا نوع له، فالخادم يعيد end = null.
-     و new Date(null) في جافاسكربت ليس NaN بل ١٩٧٠ — أي صفر. فكانت النتيجة
-     أن كل حساب ينهار بصمت: pct=100% و«انتهى الشفت» و«وضع الإغلاق» على
-     شفت بدأ قبل دقيقتين. هذا ما رأته هبه الساعة ٤:٠٦ فجراً.
-     الشفت المفتوح الآن حالة أولى معلنة: عدّاد تصاعدي بلا حلقة ولا نسبة،
-     لأن النسبة بلا نهاية معروفة رقمٌ مُختلق. */
-  var openEnded = (e0===null);
-  /* نهاية صوريّة بعيدة تُبقي مساراً واحداً للكود: لا «انتهى» ولا «قرب الإغلاق»
-     ولا قسمة على نطاق مجهول. الرأس نفسه يُستبدل أدناه. */
-  if(openEnded) e0 = now + 24*3600000;
-  var total=Math.max(1,e0-s0), pct=Math.min(1,Math.max(0,(now-s0)/total)), left;
-  if(now<s0) left='يبدأ '+fmtT(sh.start);
-  else if(now>=e0) left='انتهى الشفت';
-  else { var lm=Math.round((e0-now)/60000); left='باقٍ '+(lm>=60?Math.floor(lm/60)+' س '+(lm%60)+' د':lm+' د'); }
-  var pctN=Math.round(pct*100), dashA=(97.4*pct).toFixed(1);
-  var shiftBar = openEnded ? openShiftHeader(inT) :
-    '<div class="shift"><div class="shift-ring-row">'+
-    '<svg class="shift-ring" width="66" height="66" viewBox="0 0 36 36">'+
-      '<circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,.20)" stroke-width="3.4"/>'+
-      '<circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--amber)" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="'+dashA+' 200" transform="rotate(-90 18 18)"/>'+
-      '<text x="18" y="21" text-anchor="middle" fill="#fff" font-size="9.5" font-weight="800">'+pctN+'٪</text></svg>'+
-    '<div class="shift-info"><div class="sh-left">'+esc(left)+'</div><div class="sh-sub">'+fmtT(sh.start)+' → '+fmtT(sh.end)+' · استراحة '+mins(sh.break_minutes)+'</div></div>'+
-    '<div class="sh-now">'+fmtT(Date.now())+'</div></div></div>';
-
-  /* ===== المرحلة 1: قبل تسجيل الحضور ===== */
   if(!inT){
-    out.push(shiftBar);
-    out.push('<div class="card"><h3>'+esc(sh.name)+' · '+esc(sh.area||'')+((sh.extra_areas&&sh.extra_areas.length)?' + '+sh.extra_areas.map(esc).join(' + '):'')+'</h3>'+
-      '<div class="muted">'+fmtT(sh.start)+' → '+fmtT(sh.end)+' · استراحة '+mins(sh.break_minutes)+(sh.break_parts>1?' ('+sh.break_parts+' أجزاء)':'')+'</div>'+
-      (sh.daily_role?'<div style="margin-top:6px"><span class="chip ink">دورك اليوم: '+esc(sh.daily_role)+'</span></div>':'')+'</div>');
-    out.push('<button class="btn btn--primary btn--block btn--lg" data-a="checkin">تسجيل الحضور ✔</button>');
-    return '<section class="today">'+out.join('')+'</section>';
+    return '<div class="nx-do nx-do--go">'+
+      '<b>'+esc(sh.name||'شفتك')+' يبدأ '+fmtT(sh.start)+'</b>'+
+      '<span>سجّلي حضورك من داخل الكافيه.</span>'+
+      '<button class="nx-btn" data-a="checkin">تسجيل الحضور</button></div>';
   }
-
-  /* ===== بعد الانصراف ===== */
   if(outT){
-    out.push(shiftBar);
-    out.push('<div class="card center soft" style="padding:22px 14px"><h3 style="justify-content:center">أُغلق يومك ✔</h3>'+
-      '<div class="muted">حضور '+fmtT(inT)+' → انصراف '+fmtT(outT)+(att.overtime>0?' · إضافي '+mins(att.overtime):'')+'</div>'+
-      '<div class="muted small" style="margin-top:6px">تعبتِ معنا اليوم — شكراً لكِ</div></div>');
-    return '<section class="today">'+out.join('')+'</section>';
+    return '<div class="nx-do nx-do--done">'+
+      '<b>أُغلق يومك</b>'+
+      '<span>حضور '+fmtT(inT)+' · انصراف '+fmtT(outT)+'</span></div>';
   }
+  if(pend.length) return heroTaskCard(pend[0]);
 
+  /* لا مهام: إمّا الشفت بلا منطقة — وهو عطل تشغيلي تعرفه الإدارة لا
+     الموظفة — أو انتهى كل شيء فالانصراف هو الفعل التالي. */
+  if(!sh.area_id){
+    return '<div class="nx-do nx-do--warn">'+
+      '<b>شفتكِ بلا منطقة</b>'+
+      '<span>لذلك لم تصلكِ مهام. أبلغي الإدارة وستظهر فوراً.</span>'+
+      '<button class="nx-btn" data-a="helpNew">تنبيه الإدارة</button></div>';
+  }
+  if(nearEnd){
+    return '<div class="nx-do nx-do--go">'+
+      '<b>أنهيتِ كل شيء</b>'+
+      '<span>لم يبقَ مطلوب منكِ — يمكنكِ الانصراف.</span>'+
+      '<button class="nx-btn" data-a="checkout">تسجيل الانصراف</button></div>';
+  }
+  return '<div class="nx-do nx-do--idle">'+
+    '<b>لا مهمة مطلوبة منكِ الآن</b>'+
+    '<span>أنجزتِ ما عليكِ — استعدي لأي نداء.</span></div>';
+}
+
+function viewNow(){
+  var st=S.state, sh=st.shift, att=st.attendance;
+  var inT = att && att['in'], outT = att && att.out;
+  var out=[];
+
+  /* سؤال الأمس أوّلاً */
+  out.push(nowPendingOut());
+
+  /* ── الكتلة ١: الحالة ── */
+  var stateTxt, stateCls;
+  if(!inT)      { stateTxt='لم تبدئي بعد'; stateCls='off'; }
+  else if(outT) { stateTxt='انتهى دوامك';  stateCls='off'; }
+  else if(st.breaks && st.breaks.some(function(b){return !b.end;}))
+                { stateTxt='في استراحة';   stateCls='brk'; }
+  else          { stateTxt='قيد الدوام';   stateCls='on';  }
+
+  var e0=tsOrNull(sh&&sh.end), now=Date.now();
+  var timeTxt = !sh ? '' :
+    (e0===null ? 'من '+fmtT(sh.start)+' — بلا وقت انتهاء محدّد'
+               : fmtT(sh.start)+' → '+fmtT(sh.end));
+  out.push('<div class="nx-id">'+
+    '<div class="nx-id-t"><b>'+esc(S.me?S.me.name:'')+'</b>'+
+      '<span class="nx-st '+stateCls+'">'+stateTxt+'</span></div>'+
+    (timeTxt?'<div class="nx-id-s">'+esc(sh.name||'شفت')+' · '+esc(timeTxt)+'</div>':'')+
+  '</div>');
+
+  /* ── الكتلة ٢: المنطقة ── */
+  var zone = (st.my_zone && st.my_zone.area) || (sh && sh.area) || null;
+  out.push('<div class="nx-zone'+(zone?'':' none')+'">'+
+    (zone ? '<b>'+esc(zone)+'</b><span>منطقتكِ الآن</span>'
+          : '<b>بلا منطقة</b><span>لم تُحدَّد لكِ منطقة اليوم</span>')+'</div>');
+
+  /* تنبيه عاجل — فوق الفعل مباشرة، ولا يظهر إلا إن وُجد */
+  var urgent=(st.notifs||[]).filter(function(n){ return n.kind==='alert' && !n.read; });
+  if(urgent.length) out.push('<div class="nx-urgent">'+IC.bell+
+    '<div><b>'+esc(urgent[0].title||'تنبيه')+'</b>'+
+    (urgent[0].body?'<span>'+esc(urgent[0].body)+'</span>':'')+'</div></div>');
+
+  /* ── الكتلة ٣: الفعل ── */
   var order={opening:0,during:1,adhoc:2,closing:3};
-  var pendAll=(st.tasks||[]).filter(function(t){return ['done','approved','carried','cancelled'].indexOf(t.status)<0;})
+  var pend=(st.tasks||[]).filter(function(t){return ['done','approved','carried','cancelled'].indexOf(t.status)<0;})
     .sort(function(a,b){
       var pa=(a.wf_priority&&a.wf_priority.total)||0, pb=(b.wf_priority&&b.wf_priority.total)||0;
       if(pb!==pa) return pb-pa;
       return (order[a.phase]==null?9:order[a.phase])-(order[b.phase]==null?9:order[b.phase]);
     });
-  var nearEnd = now >= e0 - 75*60000;
+  var nearEnd = !!(inT && !outT && e0!==null && now >= e0 - 30*60000);
+  out.push(nowAction(st, sh, inT, outT, pend, nearEnd));
 
-  /* ===== المرحلة 3: قرب نهاية الشفت — وضع الإغلاق ===== */
-  if(nearEnd){
-    var closing=pendAll.filter(function(t){return t.phase==='closing';});
-    var otherPend=pendAll.filter(function(t){return t.phase!=='closing';});
-    out.push(shiftBar);
-    out.push('<div class="ht-k" style="margin:2px 2px 0">وضع الإغلاق — المتبقّي قبل الانصراف</div>');
-    if(closing.length){ out.push(heroTaskCard(closing[0]));
-      if(closing.length>1) out.push('<div class="list">'+closing.slice(1).map(function(t){return '<div class="row"><div class="row__body"><div class="row__title">'+esc(t.name)+'</div><div class="row__sub">إغلاق · '+mins(t.expected)+'</div></div><span class="badge badge--warn">قادمة</span></div>';}).join('')+'</div>');
-    }
-    if(otherPend.length) out.push('<div class="card decision" style="padding:11px 14px"><b>'+otherPend.length+' مهمة لم تُغلق بعد</b><div class="muted small">راجعيها من «المهام» قبل الانصراف</div><div class="btnrow"><button class="btn sm ghost" data-a="goTasks">فتح المهام</button></div></div>');
-    if(sh.requires_handover && !st.handover_sent)
-      out.push('<div class="card decision" style="padding:12px 14px"><b>تسليم الشفت</b><div class="muted small">سلّمي الشفت لزميلة موجودة قبل الانصراف — تأكيدها شرط.</div><div class="btnrow"><button class="btn block" data-a="hoNew">تعبئة نموذج التسليم</button></div></div>');
-    out.push(dashBreak());
-    out.push(dashOps('due'));
-    out.push('<button class="btn btn--primary btn--block btn--lg" data-a="checkout">تسجيل الانصراف</button>');
-    return '<section class="today">'+out.join('')+'</section>';
+  /* «وماذا بعد» — سطر خبر لا زرّ. جعلُه زرّاً يفتح قائمة المهام يُكرّر
+     اختصار «مهمة منجزة» أدناه، ومقصدٌ واحد في موضعين هو ما نحذفه. */
+  if(inT && !outT && pend.length>1)
+    out.push('<div class="nx-next">'+
+      '<span class="k">التالية</span><b>'+esc(pend[1].name)+'</b>'+
+      (pend.length>2?'<i>+'+(pend.length-2)+'</i>':'')+'</div>');
+
+  /* ── الكتلة ٤: الاختصارات الأربعة ── */
+  if(inT && !outT){
+    var onBrk = st.breaks && st.breaks.some(function(b){return !b.end;});
+    out.push('<div class="nx-quick">'+
+      '<button data-a="'+(onBrk?'brEnd':'brStart')+'">'+IC.shift+
+        '<span>'+(onBrk?'إنهاء الاستراحة':'استراحة')+'</span></button>'+
+      /* الأربعة كما حدّدتِها حرفياً. اقترحتُ «بلاغ» مكان «مهمة منجزة»
+         ورجعتُ عنه إلى قائمتكِ — والبلاغ يبقى على ضغطتين في «المزيد». */
+      '<button data-a="goTasks">'+IC.tasks+'<span>مهمة منجزة</span></button>'+
+      '<button data-a="helpNew">'+IC.user+'<span>مساعدة</span></button>'+
+      '<button data-a="moreOpen" data-sec="requests">'+IC.shift+'<span>إجازة</span></button>'+
+    '</div>');
+    /* الانصراف: سطرٌ هادئ ما دام الشفت جارياً، ويصعد إلى الفعل نفسه
+       في آخر نصف ساعة (انظري nowAction). */
+    if(!nearEnd)
+      out.push('<div class="nx-out"><button data-a="checkout">تسجيل الانصراف</button></div>');
   }
 
-  /* ===== المرحلة 2: أثناء الشفت ===== */
-  if(pendAll.length) out.push(heroTaskCard(pendAll[0]));
-  else if(sh && !sh.area_id)
-    out.push('<div class="card" style="padding:16px;border:1.5px solid var(--amber)"><b>شفتكِ بلا منطقة محدَّدة</b>'+
-      '<div class="muted small" style="margin-top:4px">لذلك لم تُسنَد لكِ مهام. أبلغي الإدارة لتحديد منطقتكِ، وستظهر مهامكِ فوراً.</div>'+
-      '<div class="btnrow" style="margin-top:9px"><button class="btn sm ghost block" data-a="helpNew">تنبيه الإدارة</button></div></div>');
-  else out.push('<div class="card center soft" style="padding:16px"><b>لا مهام مطلوبة منك الآن</b><div class="muted small">أنجزتِ كل شيء — استعدي لأي نداء</div></div>');
-  out.push(shiftBar);
-  out.push(dashBreak());
-  var up=pendAll.slice(1,3);
-  if(up.length) out.push('<div class="list">'+up.map(function(t){
-      return '<div class="row"><div class="row__body"><div class="row__title">'+esc(t.name)+'</div><div class="row__sub">'+esc(PHASE[t.phase]||'')+' · '+mins(t.expected)+'</div></div><span class="badge badge--muted">قادمة</span></div>';
-    }).join('')+'</div>'+
-    '<div class="center" style="margin:2px 0 4px"><button class="btn sm ghost" data-a="goTasks">كل المهام ('+pendAll.length+')</button></div>');
-  out.push(dashOps('due'));
-  out.push('<div class="btnrow"><button class="btn ghost block" data-a="checkout">تسجيل الانصراف</button></div>');
-  return '<section class="today">'+out.join('')+'</section>';
+  return '<section class="today nowx">'+out.join('')+'</section>';
 }
 /* ===== محطة التحضير — تظهر فقط لمن لديها أصناف ضمن منطقتها ===== */
 function prepRemain(exp){ var ms=new Date(exp).getTime()-Date.now(); if(ms<=0) return 'منتهية';
@@ -3827,24 +3854,21 @@ function coverTakeSwap(id){
     });
   });
 }
+/* أربعة أقسام لا تسعة. ما خرج ولماذا:
+   «نسيتِ الحضور أو الانصراف؟» ← صار سؤالاً يظهر من نفسه عند فتح التطبيق،
+   فلا معنى لأن تبحث عنه الموظفة · «التواصل مع الإدارة» ← اندمج في البلاغ:
+   قناة واحدة لا قناتان لنفس الغرض · «سجل الشفت» و«أدلة العمل» ← مؤجَّلان
+   حتى ثلاثين يوماً من التشغيل · «ملفّي» ← إداريّ لا يخصّ يوم الموظفة. */
 var MORE_SECS=[
   ['myhours','ساعاتي','ساعات عملكِ آخر ٣٠ يوماً وكيف حُسبت', IC.tasks],
   ['requests','الطلبات والإجازات','إجازة، إذن، تبديل وتغطية الشفتات', IC.shift],
-  ['fix','نسيتِ الحضور أو الانصراف؟','تعديل يُرسل للإدارة للمراجعة', IC.refresh],
-  ['issues','البلاغات والصيانة','عطل، نقص مستلزمات، سلامة', IC.bell],
-  ['logbook','سجل الشفت','ملاحظات تشغيلية للشفت التالي', IC.tasks],
-  ['contact','التواصل مع الإدارة','ملاحظة نصية أو صوتية سريعة', IC.mic],
-  ['sops','أدلة العمل','الإجراءات القياسية المعتمدة', IC.grow],
+  ['issues','بلاغ أو ملاحظة للإدارة','عطل، نقص مستلزمات، سلامة، أو ملاحظة', IC.bell],
   ['settings','إعدادات العرض','السمة، حجم الخط، التثبيت', IC.more]
 ];
 function viewMore(){
   var st=S.state;
   if(!S.moreSec){
-    /* «ملفّي» أخلى مكانه في شريط التنقّل لـ«الصالة»، فصار أول بند هنا —
-       لا مخفياً: يُفتح بضغطة واحدة كما كان. */
     return '<div class="navlist">'+
-      '<button data-a="goGrow"><span class="ic">'+IC.user+'</span><span>ملفّي'+
-      '<span class="nl-sub">ساعاتك وتقدّمك ومهاراتك</span></span><span class="chev">‹</span></button>'+
       MORE_SECS.map(function(s){
       return '<button data-a="moreOpen" data-sec="'+s[0]+'"><span class="ic">'+s[3]+'</span><span>'+s[1]+'<span class="nl-sub">'+s[2]+'</span></span><span class="chev">‹</span></button>';
     }).join('')+'</div>'+
@@ -3856,17 +3880,13 @@ function viewMore(){
 }
 function moreSection(sec, st){
   if(sec==='myhours') return moreHoursCard();
-  if(sec==='fix') return moreFixCard();
   if(sec==='requests') return moreReqCard(st)+
     '<div class="card"><h3>تبديل وتغطية الشفتات</h3>'+
     '<div class="muted small">تحتاجين تغطية شفتكِ أو تبديله؟ أو تساعدين زميلة؟ نظّميها هنا — بموافقة الإدارة.</div>'+
     '<div class="btnrow"><button class="btn ghost block" data-a="coverOpen">فتح تبديل وتغطية</button></div></div>';
-  if(sec==='issues') return moreIssueCard();
-  if(sec==='logbook') return moreLogCard();
-  if(sec==='contact') return moreNoteCard();
-  if(sec==='sops') return '<div class="card"><h3>أدلة العمل</h3>'+
-    '<div class="muted small">خطوات الإجراءات القياسية المعتمدة — طريقة تنظيف الآلات، الافتتاح، الإغلاق، معايير الخدمة.</div>'+
-    '<div class="btnrow"><button class="btn ghost block" data-a="sopOpen">تصفّح الأدلة</button></div></div>';
+  /* البلاغ والملاحظة قناة واحدة: كلاهما «أريد أن تعرف الإدارة شيئاً»،
+     وقناتان لغرضٍ واحد تجعلان الموظفة تتردّد أيّهما تختار. */
+  if(sec==='issues') return moreIssueCard()+moreNoteCard();
   if(sec==='settings') return '<div class="card"><h3>إعدادات العرض</h3>'+
     '<div class="btnrow" style="flex-wrap:wrap"><button class="btn ghost" data-a="themeToggle">تبديل السمة (فاتح/داكن)</button>'+
     '<button class="btn ghost" data-a="fontToggle">حجم الخط: '+((function(){try{return localStorage.getItem('rko_font')==='lg';}catch(e){return false;}})()?'كبير':'عادي')+'</button>'+
@@ -3966,6 +3986,37 @@ function moreIssueCard(){
 
 /* ---------- ربط أحداث تبويبات الموظفة ---------- */
 function wireTab(v){
+  /* سؤال «متى غادرتِ أمس؟» — ثلاثة خيارات جاهزة، والثالث يفتح منتقي وقت
+     لا حقلَ كتابة. والتحقّق كلّه خادميّ: هذه الأزرار تُرسل خياراً لا وقتاً
+     موثوقاً به. */
+  $$('[data-oc]', v).forEach(function(b){ b.addEventListener('click', function(){
+    var ch=b.getAttribute('data-oc');
+    var po=(S.state&&S.state.pending_out)||{};
+    function send(extra){
+      var pl={shift_id:po.shift_id, choice:ch};
+      for(var k in (extra||{})) pl[k]=extra[k];
+      sAct('checkout_confirm', pl, true).then(function(r){
+        if(r&&r.ok){ S._outAsked=true; toast('شكراً — سُجّل وقتك'); refresh(); }
+        else toast((r&&r.error)||'تعذّر التسجيل', true);
+      });
+    }
+    if(ch!=='custom'){ send(); return; }
+    /* منتقي وقت لا حقل كتابة: الأصابع لا تكتب في الذروة */
+    var day = po.day || String(po.closed_at||'').slice(0,10);
+    var pre = po.shift_end ? fmtHM(po.shift_end) : '22:00';
+    sheet('متى غادرتِ؟',
+      '<label class="f">وقت مغادرتك</label>'+
+      '<input class="f" id="ocT" type="time" step="300" value="'+esc(pre)+'">'+
+      '<div class="btnrow"><button class="btn block" id="ocGo">تأكيد</button></div>',
+      function(ov, close){
+        $('#ocGo',ov).addEventListener('click', function(){
+          var val=$('#ocT',ov).value;
+          if(!/^\d{2}:\d{2}$/.test(val||'')){ toast('اختاري وقتاً', true); return; }
+          close();
+          send({at: new Date(day+'T'+val+':00').toISOString()});
+        });
+      });
+  }); });
   /* شفتاتي القادمة + مهامها المتوقّعة (الفعلية تُولَّد صباح الشفت) */
   if($('#upNext', v)) loadUpNext();
   /* السحب للتأكيد على بطاقة المهمة + البوابة تمنع مسبقاً بسبب معروض */
@@ -4018,7 +4069,9 @@ function wireTab(v){
       else if(a==='goTasks'){ S.tab='tasks'; paintTabs(); drawTab(); }
       else if(a==='goFloor'){ S.tab='floor'; paintTabs(); drawTab(); }
       else if(a==='goGrow'){ S.tab='grow'; paintTabs(); drawTab(); }
-      else if(a==='moreOpen'){ S.moreSec=b.getAttribute('data-sec'); drawTab(); }
+      /* تُستدعى الآن من اختصارات شاشة «الآن» أيضاً، لا من قائمة «المزيد»
+         وحدها — فلا بدّ من نقل التبويب معها وإلا بقيت الشاشة مكانها. */
+      else if(a==='moreOpen'){ S.tab='more'; S.moreSec=b.getAttribute('data-sec'); paintTabs(); drawTab(); }
       else if(a==='moreBack'){ S.moreSec=null; drawTab(); }
       else if(a==='themeToggle'){ toggleTheme(); }
       else if(a==='enablePush'){ enablePush((S.state&&S.state.push&&S.state.push.vapid_public)||PUSHKEY, function(ok){ if(ok) drawTab(); }); }
@@ -6087,7 +6140,28 @@ function evBar(val, w){
     '<span class="evd-bar '+cls+'"><i style="width:'+pct+'%"></i></span>'+
     '<span class="evd-v">'+(val==null?'—':Math.round(pct))+'</span></div>';
 }
+/* التقييم الشهري مؤجَّل حتى ثلاثين يوماً من تشغيل حقيقي.
+   السبب مذكور للمالكة لا مخفيّ عنها: مدخلاته ساعاتٌ ومهامٌ مُقرَّة، ولم
+   يُشغَّل النظام يوماً حقيقياً بعد. تقييمٌ بلا مدخلات يُنتج رقماً مُختلقاً
+   يُقرأ على أنه حكم. لا حذف: الشاشة والدالّة والجدول كما هي، والراية
+   واحدة (eval.enabled) تُعيدها في لحظة. */
 ADMIN.evals=function(v){
+  v.innerHTML=skel(2);
+  aAct('settings_get',{}).then(function(sr){
+    var ec=((sr&&sr.settings&&sr.settings.eval)||{});
+    if(ec.enabled!==true){
+      v.innerHTML='<div class="card"><h3>التقييم الشهري — مؤجَّل</h3>'+
+        '<div class="muted small">يعتمد على ساعاتٍ ومهامٍ مُقرَّة من تشغيل حقيقي. '+
+        'يُفتح بعد ثلاثين يوماً من بدء التشغيل الفعلي في المقهى، فيكون أول تقييم '+
+        'مبنيّاً على عمل حقيقي لا على أرقامٍ ناقصة.</div>'+
+        '<div class="muted small" style="margin-top:8px">لا شيء حُذف — الشاشة وحساباتها '+
+        'وسجلّها كما هي، وتُفتح من الإعدادات متى قرّرتِ.</div></div>';
+      return;
+    }
+    evalsRun(v);
+  }).catch(function(){ v.innerHTML='<div class="empty">تعذّر تحميل الإعدادات</div>'; });
+};
+function evalsRun(v){
   v.innerHTML='<input class="f" id="evM" type="month" value="'+thisMonth()+'"><div id="evB" style="margin-top:10px">'+skel(3)+'</div>';
   function load(){
     aAct('month_eval',{month:$('#evM').value}).then(function(res){
