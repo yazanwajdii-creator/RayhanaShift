@@ -3915,7 +3915,14 @@ function moreSection(sec, st){
   if(sec==='settings') return '<div class="card"><h3>إعدادات العرض</h3>'+
     '<div class="btnrow" style="flex-wrap:wrap"><button class="btn ghost" data-a="themeToggle">تبديل السمة (فاتح/داكن)</button>'+
     '<button class="btn ghost" data-a="fontToggle">حجم الخط: '+((function(){try{return localStorage.getItem('rko_font')==='lg';}catch(e){return false;}})()?'كبير':'عادي')+'</button>'+
-    '<button class="btn ghost" data-a="installApp">تثبيت التطبيق على الجهاز</button></div></div>';
+    '<button class="btn ghost" data-a="installApp">تثبيت التطبيق على الجهاز</button></div></div>'+
+    /* كل موظفة على هاتفها، والمالكة هي من أنشأت الحساب ووضعت كلمة السر.
+       ما دامت الموظفة لا تستطيع تغييرها، فحضورها وساعاتها ليست منسوبةً
+       إليها وحدها. هذا هو موضع تغييرها. */
+    '<div class="card"><h3>كلمة السر</h3>'+
+    '<div class="muted small">حسابك على هاتفك أنتِ. غيّري كلمة سرك لتصير لكِ وحدك — '+
+      'ولا تشاركيها مع أحد.</div>'+
+    '<div class="btnrow"><button class="btn ghost block" data-a="pwChange">تغيير كلمة السر</button></div></div>';
   return '';
 }
 /* ساعاتي: الموظفة ترى ساعاتها هي فقط (الخادم يقصرها على هويتها، لا الواجهة).
@@ -4098,6 +4105,33 @@ function wireTab(v){
          وحدها — فلا بدّ من نقل التبويب معها وإلا بقيت الشاشة مكانها. */
       else if(a==='moreOpen'){ S.tab='more'; S.moreSec=b.getAttribute('data-sec'); paintTabs(); drawTab(); }
       else if(a==='moreBack'){ S.moreSec=null; drawTab(); }
+      else if(a==='pwChange'){
+        sheet('تغيير كلمة السر',
+          '<label class="f">كلمة السر الحالية</label>'+
+          '<input class="f" id="pwC" type="password" autocomplete="current-password">'+
+          '<label class="f">الجديدة</label>'+
+          '<input class="f" id="pwN" type="password" autocomplete="new-password">'+
+          '<label class="f">أعيدي كتابتها</label>'+
+          '<input class="f" id="pwN2" type="password" autocomplete="new-password">'+
+          '<div class="muted small">٦ خانات على الأقل. بعد التغيير تُغلق جلساتك على أي جهاز آخر.</div>'+
+          '<div class="btnrow"><button class="btn block" id="pwGo">حفظ</button></div>',
+          function(ov, close){
+            $('#pwGo',ov).addEventListener('click', function(){
+              var c=$('#pwC',ov).value, n1=$('#pwN',ov).value, n2=$('#pwN2',ov).value;
+              if(!c){ toast('اكتبي كلمة سرك الحالية', true); return; }
+              if(n1.length<6){ toast('الجديدة ٦ خانات على الأقل', true); return; }
+              /* التطابق يُفحص هنا لأنه خطأ كتابةٍ لا خطأ صلاحية —
+                 والخادم يفحص الباقي كلّه ولا يثق بشيء من هنا. */
+              if(n1!==n2){ toast('الكلمتان غير متطابقتين', true); return; }
+              busyWrap(this, function(){
+                return sAct('change_password',{current:c, new:n1}, true).then(function(r){
+                  if(r&&r.ok){ close(); toast('تغيّرت كلمة سرك'); }
+                  else toast((r&&r.error)||'تعذّر التغيير', true);
+                });
+              });
+            });
+          });
+      }
       else if(a==='themeToggle'){ toggleTheme(); }
       else if(a==='enablePush'){ enablePush((S.state&&S.state.push&&S.state.push.vapid_public)||PUSHKEY, function(ok){ if(ok) drawTab(); }); }
       else if(a==='tCant'){ var tc=findTask(id); if(tc) cannotFlow(tc); }
