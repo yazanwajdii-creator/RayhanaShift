@@ -1836,13 +1836,6 @@ body.floormode #view{padding:0}
 .rcp-res.near b,.rcp-res.near span{color:var(--amber-ink)}
 .rcp-res.review b,.rcp-res.review span{color:var(--muted)}
 
-/* العلامة المائية: لا تمنع اللقطة — تجعلها منسوبة. شفّافة بما يكفي
-   ألّا تُعيق القراءة، وواضحة بما يكفي أن تظهر في الصورة. */
-.rcp-wm{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden;
-  display:grid;grid-template-columns:repeat(2,1fr);align-content:space-around;
-  transform:rotate(-24deg);opacity:.085}
-.rcp-wm span{font-size:12px;font-weight:800;color:var(--ink);white-space:nowrap;
-  text-align:center;letter-spacing:.3px}
 .overlay .sheet{position:relative}
 /* الخروج للخلفية يطمس الشاشة: جهازٌ متروك لا يبقى عارضاً وصفة */
 body.rcp-hide .sheet,body.rcp-hide #view{filter:blur(14px)}
@@ -1863,3 +1856,46 @@ body.rcp-hide .sheet,body.rcp-hide #view{filter:blur(14px)}
 .fa-b button:disabled{opacity:.5}
 .gst-big{font-size:44px;font-weight:800;line-height:1.1;color:var(--ink);
   font-variant-numeric:tabular-nums;margin:2px 0 4px}
+
+/* ═══ بطاقة الافتتاح ═══
+   ليست مهمّة: لا شارة إنجاز ولا لون نجاح صارخ. مربّعاتٌ تُلمَس وتهدأ. */
+.nx-op{border:1px solid var(--line);border-radius:var(--r-3);background:var(--surface);
+  overflow:hidden}
+.nx-op.late{border-color:color-mix(in srgb,var(--amber-ink) 45%,transparent)}
+.nx-op-h{display:flex;align-items:baseline;gap:var(--s-2);padding:var(--s-3) var(--s-4);
+  background:var(--surface-2);border-bottom:1px solid var(--line)}
+.nx-op-h b{flex:1 1 auto;font-size:var(--fs-sm);font-weight:800;color:var(--ink)}
+.nx-op-h span{flex:0 0 auto;font-size:var(--fs-xs);font-weight:800;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.nx-op-n{padding:var(--s-2) var(--s-4);font-size:var(--fs-xs);color:var(--amber-ink);
+  border-bottom:1px solid var(--line)}
+.nx-op-l{display:flex;flex-direction:column}
+.nx-op-i{display:flex;align-items:center;gap:var(--s-3);width:100%;min-height:52px;
+  padding:var(--s-2) var(--s-4);border:0;border-bottom:1px solid var(--line);
+  background:none;color:var(--ink);font:inherit;font-size:var(--fs-sm);
+  text-align:start;cursor:pointer}
+.nx-op-i:last-child{border-bottom:0}
+.nx-op-i .ck{flex:0 0 auto;width:24px;height:24px;border-radius:8px;
+  border:2px solid var(--line);position:relative}
+.nx-op-i.on .ck{background:var(--green-ink);border-color:var(--green-ink)}
+.nx-op-i.on .ck::after{content:'';position:absolute;inset-inline-start:7px;top:3px;
+  width:6px;height:12px;border:solid var(--surface);border-width:0 2.5px 2.5px 0;
+  transform:rotate(45deg)}
+.nx-op-i.on{color:var(--muted)}
+.nx-op-i:disabled{opacity:.6}
+
+/* ═══ المؤقّت التنازلي داخل الوصفة ═══ */
+.rcp-tm{display:flex;align-items:center;gap:var(--s-3);margin-bottom:var(--s-3);
+  padding:var(--s-3) var(--s-4);border-radius:var(--r-2);
+  border:1px solid var(--line);background:var(--surface-2)}
+.rcp-tm .tm-l{flex:1 1 auto;font-size:var(--fs-xs);font-weight:700;color:var(--muted)}
+.rcp-tm .tm-v{flex:0 0 auto;font-size:26px;font-weight:800;color:var(--ink);
+  font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.rcp-tm .tm-b{flex:0 0 auto;min-height:44px;padding:0 var(--s-4);border-radius:var(--r-2);
+  border:1px solid transparent;background:var(--ink);color:var(--on-ink);
+  font:inherit;font-size:var(--fs-sm);font-weight:800;cursor:pointer}
+.rcp-tm.run{border-color:color-mix(in srgb,var(--amber-ink) 55%,transparent)}
+.rcp-tm.run .tm-v{color:var(--amber-ink)}
+.rcp-tm.done{border-color:color-mix(in srgb,var(--green-ink) 60%,transparent);
+  background:color-mix(in srgb,var(--green-ink) 10%,transparent)}
+.rcp-tm.done .tm-v{color:var(--green-ink)}

@@ -16,25 +16,8 @@ var B = window.__RKO || {};
 var $  = function(s, r){ return (r||document).querySelector(s); };
 var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
 
-var RC = {rows:null, q:'', cat:'', wm:true, host:null};
+var RC = {rows:null, q:'', cat:'', host:null, tmr:null};
 
-/* ---------- العلامة المائية ----------
-   لا تمنع لقطة الشاشة — لا وسيلة تمنعها في الويب. لكنها تجعل اللقطة
-   تحمل اسم من أخذها ووقتها، فيصير التسريب منسوباً. الردع بالنسبة لا
-   بالقفل، وهذا ما يعمل فعلاً. */
-function wmText(){
-  var n = (B.S.me && B.S.me.name) || '';
-  var d = new Date();
-  var hh = d.getHours(), ap = hh < 12 ? 'ص' : 'م';
-  var h12 = hh % 12 || 12;
-  return n + ' · ' + h12 + ':' + ('0'+d.getMinutes()).slice(-2) + ' ' + ap;
-}
-function wmLayer(){
-  if(!RC.wm) return '';
-  var t = B.esc(wmText()), cells = '';
-  for(var i=0;i<24;i++) cells += '<span>'+t+'</span>';
-  return '<div class="rcp-wm" aria-hidden="true">'+cells+'</div>';
-}
 
 /* ---------- الفهرس ---------- */
 function paint(){
@@ -56,7 +39,7 @@ function paint(){
     '<div class="rcp-bar">'+
       '<input class="rcp-s" id="rcpQ" type="search" inputmode="search" '+
         'placeholder="ابحثي عن صنف" value="'+B.esc(RC.q)+'" autocomplete="off">'+
-      '<button class="rcp-quiz" id="rcpQuiz">اختبريني</button>'+
+      '<button class="rcp-quiz" id="rcpQuiz">راجعي معي</button>'+
     '</div>'+
     '<div class="rcp-cats">'+
       '<button class="rcp-c'+(RC.cat?'':' on')+'" data-c="">الكل<i>'+RC.rows.length+'</i></button>'+
@@ -101,6 +84,38 @@ function paint(){
     openItem(b.getAttribute('data-id')); }); });
 }
 
+function fmtSec(n){
+  n = Math.max(0, n|0);
+  return n >= 60 ? (Math.floor(n/60)+':'+('0'+(n%60)).slice(-2)) : (n+' ث');
+}
+/* مؤقّت يدٌ واحدة تُشغّله: زرٌّ واحد يبدأ ويوقف ويُصفّر بعد الانتهاء.
+   وينتهي بنبضة اهتزاز إن سمح الجهاز — الصوت لا يُسمع في مطبخٍ عامل. */
+function wireTimer(ov){
+  var box = $('#rcpTm', ov); if(!box) return;
+  var total = +box.getAttribute('data-s') || 0, left = total, t = null;
+  var val = $('#rcpTv', ov), btn = $('#rcpTb', ov);
+  function paintT(){ val.textContent = fmtSec(left); }
+  function stop(){ clearInterval(t); t = null; btn.textContent = 'ابدئي'; box.classList.remove('run'); }
+  function done(){
+    stop(); left = total; paintT(); box.classList.add('done');
+    try{ if(navigator.vibrate) navigator.vibrate([180,90,180]); }catch(e){}
+    setTimeout(function(){ box.classList.remove('done'); }, 6000);
+  }
+  btn.addEventListener('click', function(){
+    if(t){ stop(); left = total; paintT(); return; }
+    box.classList.remove('done'); btn.textContent = 'إيقاف'; box.classList.add('run');
+    t = setInterval(function(){
+      left--; paintT();
+      if(left <= 0) done();
+    }, 1000);
+  });
+  /* مغادرة الورقة تُوقف العدّاد: مؤقّتٌ يعمل بلا شاشة يُربك لا يُساعد */
+  var mo = new MutationObserver(function(){
+    if(!document.body.contains(box)){ stop(); mo.disconnect(); }
+  });
+  mo.observe(document.body, {childList:true, subtree:true});
+}
+
 /* تسوية البحث: الموظفة تكتب «لاتيه» و«لاته»، و«آيس» و«ايس» */
 function norm(t){
   return String(t||'').replace(/[ً-ْـ]/g,'')
@@ -114,14 +129,12 @@ function openItem(id){
     if(!r || !r.ok || !r.item){ B.toast('تعذّر فتح الصنف', true); return; }
     var it = r.item, h = '';
 
-    h += wmLayer();
-
     var chips = [];
     if(it.cup)  chips.push('الكوب: '+it.cup);
     if(it.ice)  chips.push('الثلج: '+it.ice);
     if(it.fill_line) chips.push('خطّ التعبئة: '+it.fill_line);
-    if(it.mix_seconds) chips.push('الخلط: '+it.mix_seconds+' ثانية');
-    else if(it.mix_text) chips.push('الخلط: '+it.mix_text);
+    if(!it.timer && it.mix_seconds) chips.push('الخلط: '+it.mix_seconds+' ثانية');
+    else if(!it.timer && it.mix_text) chips.push('الخلط: '+it.mix_text);
     if(it.blender) chips.push('خلاط');
     if(chips.length)
       h += '<div class="rcp-chips">'+chips.map(function(c){
@@ -129,6 +142,14 @@ function openItem(id){
 
     /* ملاحظة الضغط أولاً: هي ما تُقرأ والمقهى مزدحم، وما عداها يُقرأ
        في الهدوء. ترتيبٌ يتبع لحظة الاستعمال لا ترتيب الجدول. */
+    /* المؤقّت التنازليّ: ٢٥ ثانية للفرابيه، ودقائق الوافل. يعمل داخل
+       الصفحة نفسها فلا تخرج الموظفة لتطبيق ساعة وتعود. */
+    var tsec = +it.timer || +it.mix_seconds || 0;
+    if(tsec) h += '<div class="rcp-tm" id="rcpTm" data-s="'+tsec+'">'+
+      '<div class="tm-l">'+B.esc(it.timer_label||'المؤقّت')+'</div>'+
+      '<div class="tm-v" id="rcpTv">'+fmtSec(tsec)+'</div>'+
+      '<button class="tm-b" id="rcpTb">ابدئي</button></div>';
+
     if(it.busy) h += '<div class="rcp-busy"><b>وقت الضغط</b><span>'+B.esc(it.busy)+'</span></div>';
     if(it.warn) h += '<div class="rcp-warn"><b>انتبهي</b><span>'+B.esc(it.warn)+'</span></div>';
 
@@ -171,6 +192,7 @@ function openItem(id){
          '<button class="btn sm" id="rcpNGo">أضيفي</button></div>';
 
     B.sheet(it.name, h, function(ov, close){
+      wireTimer(ov);
       var nb = $('#rcpNGo', ov);
       nb.addEventListener('click', function(){
         var t = ($('#rcpN', ov)||{}).value || '';
@@ -192,14 +214,13 @@ function openItem(id){
 function quizStart(){
   B.sAct('recipe_quiz_new', {}).then(function(q){
     if(!q || !q.ok) return;                       /* البوابة تُظهر الخطأ */
-    B.sheet('اختبار سريع',
-      wmLayer()+
+    B.sheet('مراجعة سريعة',
       '<p class="rcp-q">'+B.esc(q.q).replace(/\n/g,'<br>')+'</p>'+
       (q.kind==='ing'
         ? '<div class="rcp-p muted">اكتبي ما تتذكّرينه — الترتيب لا يهمّ.</div>'
         : '')+
       '<textarea class="f" id="rcpA" rows="3" placeholder="إجابتك"></textarea>'+
-      '<div class="btnrow"><button class="btn block" id="rcpAGo">تصحيح</button></div>',
+      '<div class="btnrow"><button class="btn block" id="rcpAGo">شوفي إجابتي</button></div>',
       function(ov, close){
         $('#rcpAGo', ov).addEventListener('click', function(){
           var a = ($('#rcpA', ov)||{}).value || '';
@@ -208,13 +229,13 @@ function quizStart(){
           B.sAct('recipe_quiz_answer', {id:q.id, answer:a}, true).then(function(r){
             if(!r || !r.ok) return;
             close();
-            B.sheet('النتيجة',
+            B.sheet('كيف كانت؟',
               '<div class="rcp-res '+B.esc(r.verdict)+'">'+
                 '<b>'+(+r.hits)+' من '+(+r.total)+'</b>'+
                 '<span>'+B.esc(r.msg||'')+'</span></div>'+
               '<div class="btnrow">'+
                 '<button class="btn block" id="rcpSee">افتحي الوصفة</button>'+
-                '<button class="btn ghost block" id="rcpMore">سؤال آخر</button></div>',
+                '<button class="btn ghost block" id="rcpMore">صنف آخر</button></div>',
               function(ov2, close2){
                 $('#rcpSee', ov2).addEventListener('click', function(){ close2(); openItem(r.item_id); });
                 $('#rcpMore', ov2).addEventListener('click', function(){ close2(); quizStart(); });
@@ -242,7 +263,7 @@ window.RCP = {
     paint();
     B.sAct('recipes', {}).then(function(r){
       if(!r || !r.ok){ host.innerHTML = '<div class="empty">'+B.esc((r&&r.error)||'تعذّر التحميل')+'</div>'; return; }
-      RC.rows = r.rows || []; RC.wm = r.watermark !== false; paint();
+      RC.rows = r.rows || []; paint();
     }).catch(function(){ host.innerHTML = '<div class="empty">تعذّر الاتصال</div>'; });
   }
 };

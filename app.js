@@ -2699,6 +2699,24 @@ function allTasksSheet(){
   sheet('كل مهامي اليوم', h);
 }
 
+/* ── بطاقة الافتتاح ──
+   ستّة بنودٍ تتكرّر كل صباح لا مكان لها في قائمة المهام: لا تُقاس، ولا
+   تُقارَن بين الموظفات، ولا معنى لأن يحملها التقييم. ومع ذلك نسيان
+   أحدها يفتح المقهى ناقصاً. فتظهر بطاقةً في لحظتها وتختفي بإتمامها.
+   والمرحلة الثانية لا تُعرض قبل موعدها: بطاقتان معاً تُعيدان الازدحام. */
+function nowOpening(op){
+  var items=(op.items||[]), done=items.filter(function(x){ return x.done; }).length;
+  return '<div class="nx-op'+(op.late?' late':'')+'">'+
+    '<div class="nx-op-h"><b>'+(op.stage===1?'افتتاح المقهى':'بعد ربع ساعة')+'</b>'+
+      '<span>'+done+' من '+items.length+'</span></div>'+
+    (op.late?'<div class="nx-op-n">خذي وقتك — تُغلق البطاقة متى أتممتِها.</div>':'')+
+    '<div class="nx-op-l">'+items.map(function(x){
+      return '<button class="nx-op-i'+(x.done?' on':'')+'" data-opk="'+esc(x.key)+'" '+
+        'data-ops="'+(+op.stage)+'" aria-pressed="'+(x.done?'true':'false')+'">'+
+        '<span class="ck"></span><span>'+esc(x.label)+'</span></button>';
+    }).join('')+'</div></div>';
+}
+
 /* ── «يحتاج ردّك» ───────────────────────────────────────────────────
    خمسة أشياء كان الخادم يُنتجها كل يوم ولا يقرؤها أحد: طلب تغطية غياب،
    وتسليمٌ وارد، ودوريّةٌ جاء دورها، ونداء زميلة، ومساندةٌ جارية. كانت
@@ -2890,6 +2908,11 @@ function viewNow(){
   var nearEnd = !!(inT && !outT && now >= endRef - 30*60000);
   var openBr=(st.breaks||[]).filter(function(b){ return !b.end; })[0];
   out.push(nowAction(st, sh, inT, outT, due, nearEnd, openBr));
+
+  /* بطاقة الافتتاح: ترافق مسؤولة الفتح خطوة بخطوة ثم تختفي. ليست
+     مهمّة ولا تدخل التقييم — لذلك لا تحمل زرّ «أنجزت» بل مربّعات تُلمَس
+     ويُسجَّل وقتها واسمها للتتبّع فقط. */
+  if(inT && !outT && st.opening) out.push(nowOpening(st.opening));
 
   /* ── يحتاج ردّك ── */
   if(inT && !outT) out.push(nowInbox(st, zone));
@@ -4431,6 +4454,15 @@ function wireTab(v){
       if(s!=='skip') sAct('zone_observe',{area_id:ar, state:s}, false).then(function(){ toast('شكراً'); });
     });
   });
+  /* بنود الافتتاح: لمسةٌ واحدة تُثبّت، ولمسةٌ ثانية تتراجع — لأن اليد
+     تُخطئ على هاتفٍ في جيب مريول. */
+  $$('[data-opk]', v).forEach(function(b){ b.addEventListener('click', function(){
+    var on=b.getAttribute('aria-pressed')==='true';
+    b.disabled=true;
+    sAct(on?'open_uncheck':'open_check',
+         {stage:+b.getAttribute('data-ops'), key:b.getAttribute('data-opk')}, true)
+      .then(function(r){ b.disabled=false; if(r&&r.ok) refresh(); });
+  }); });
   $$('[data-a]', v).forEach(function(b){
     var a=b.getAttribute('data-a'), id=+b.getAttribute('data-id');
     b.addEventListener('click', function(){
@@ -4732,7 +4764,7 @@ function startAdmin(){
 }
 var SECS=[
   ['dash','','اليوم'],['board','','لوحة العمليات'],['ocdecisions','','مركز القرارات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
-  ['issues','','البلاغات'],['kitchen','','المطبخ: الوصفات والاختبارات'],['guests','','من يزورنا؟'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],['roster','','جدولة تلقائية'],
+  ['issues','','البلاغات'],['kitchen','','المطبخ: المهام والمراجعة'],['recipes','','الوصفات — تعديل وإخفاء'],['guests','','من يزورنا؟'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],['roster','','جدولة تلقائية'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['tables','','خريطة الطاولات'],['templates','','قوالب المهام'],
   ['tasks','','مهام اليوم'],['prep','','محطة التحضير'],['ops','','الجاهزية والسلامة'],['attendance','','الحضور'],['skills','','المهارات'],
   ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
@@ -7480,10 +7512,94 @@ ADMIN.guests=function(v){
 
 /* المطبخ: ما يحتاجه المالك من قسم الوصفات — ما تعلّمه الفريق، وأي
    صنفٍ ما زال يحتاج تدريباً. لا ترتيب موظفات ولا درجات معلنة. */
+/* الوصفات من جهة الإدارة: تعديل صنف · إخفاؤه · إخفاء فئة كاملة.
+   «الشاي غير مهم» تُنفَّذ بضغطة على الفئة لا بحذف ثمانية أصناف — والحذف
+   لا يُستعمل أصلاً: الإخفاء يُبقي الوصفة إن عادت الحاجة. */
+ADMIN.recipes=function(v){
+  v.innerHTML=skel(2);
+  aAct('rcp_admin_list',{}).then(function(r){
+    if(!r||!r.ok){ v.innerHTML='<div class="empty">تعذّر التحميل</div>'; return; }
+    var cats=r.cats||[], rows=r.rows||[];
+    v.innerHTML=
+      '<div class="card"><h3>الفئات</h3>'+
+        '<div class="muted small">إخفاء الفئة يُخفي أصنافها كلها عن شاشة الموظفات — ولا يحذف شيئاً.</div>'+
+        cats.map(function(c){
+          var off=(+c.active===0);
+          return '<div class="row" style="justify-content:space-between;padding:7px 0;gap:8px">'+
+            '<span>'+esc(c.cat)+' <span class="muted small">('+(+c.active)+' من '+(+c.total)+')</span></span>'+
+            '<button class="btn sm '+(off?'':'ghost')+'" data-ct="'+esc(c.cat)+'" data-on="'+(off?'1':'0')+'">'+
+              (off?'أعيديها':'أخفيها')+'</button></div>';
+        }).join('')+'</div>'+
+      '<div class="card"><h3>الأصناف ('+rows.length+')</h3>'+
+        '<input class="f" id="rcpF" placeholder="ابحثي بالاسم">'+
+        '<div id="rcpL">'+rcpRows(rows)+'</div></div>';
+    function rcpRows(list){
+      return list.map(function(x){
+        return '<div class="row" style="justify-content:space-between;padding:7px 0;gap:8px;'+
+          'border-bottom:1px dashed var(--line)">'+
+          '<span>'+esc(x.name)+'<span class="muted small"> · '+esc(x.cat||'—')+
+            (x.timer?' · مؤقّت '+(+x.timer)+'ث':'')+'</span></span>'+
+          '<span class="btnrow" style="margin:0">'+
+            '<button class="btn sm ghost" data-ed="'+esc(x.id)+'">تعديل</button>'+
+            '<button class="btn sm ghost" data-tg="'+esc(x.id)+'" data-on="'+(x.active?'0':'1')+'">'+
+              (x.active?'إخفاء':'إظهار')+'</button></span></div>';
+      }).join('')||'<div class="muted small">لا نتائج</div>';
+    }
+    function wire(){
+      $$('[data-ed]',v).forEach(function(b){ b.addEventListener('click', function(){
+        rcpEdit(b.getAttribute('data-ed'), function(){ ADMIN.recipes(v); }); }); });
+      $$('[data-tg]',v).forEach(function(b){ b.addEventListener('click', function(){
+        aAct('rcp_item_save',{id:b.getAttribute('data-tg'), active:b.getAttribute('data-on')==='1'})
+          .then(function(x){ if(x&&x.ok) ADMIN.recipes(v); }); }); });
+    }
+    wire();
+    $$('[data-ct]',v).forEach(function(b){ b.addEventListener('click', function(){
+      aAct('rcp_cat_toggle',{cat:b.getAttribute('data-ct'), active:b.getAttribute('data-on')==='1'})
+        .then(function(x){ if(x&&x.ok){ toast(x.msg); ADMIN.recipes(v); } }); }); });
+    var f=$('#rcpF',v);
+    f.addEventListener('input', function(){
+      var q=f.value.trim();
+      $('#rcpL',v).innerHTML=rcpRows(q?rows.filter(function(x){
+        return (x.name||'').indexOf(q)>=0 || (x.cat||'').indexOf(q)>=0; }):rows);
+      wire();
+    });
+  });
+};
+function rcpEdit(id, after){
+  aAct('rcp_admin_list',{}).then(function(){
+    sAct('recipe',{id:id}).then(function(r){
+      var it=(r&&r.item)||{};
+      sheet('تعديل: '+(it.name||''),
+        '<label class="f">الاسم</label><input class="f" id="reN" value="'+esc(it.name||'')+'">'+
+        '<label class="f">الفئة</label><input class="f" id="reC" value="'+esc(it.cat||'')+'">'+
+        '<label class="f">الكوب</label><input class="f" id="reCup" value="'+esc(it.cup||'')+'">'+
+        '<label class="f">مؤقّت تنازليّ (بالثواني — اتركيه فارغاً إن لا حاجة)</label>'+
+        '<input class="f" id="reT" type="number" inputmode="numeric" value="'+(it.timer||'')+'">'+
+        '<label class="f">اسم المؤقّت</label><input class="f" id="reTL" placeholder="خلط الفرابيه · خبز الوافل" value="'+esc(it.timer_label||'')+'">'+
+        '<label class="f">ملاحظة وقت الضغط</label><textarea class="f" id="reB" rows="2">'+esc(it.busy||'')+'</textarea>'+
+        '<label class="f">انتبهي (تحذير يظهر بالأحمر)</label><textarea class="f" id="reW" rows="2">'+esc(it.warn||'')+'</textarea>'+
+        '<label class="f">علامات النجاح</label><textarea class="f" id="reS" rows="2">'+esc(it.success||'')+'</textarea>'+
+        '<div class="btnrow"><button class="btn block" id="reGo">حفظ</button></div>',
+        function(ov, close){
+          $('#reGo',ov).addEventListener('click', function(){
+            busyWrap(this, function(){
+              return aAct('rcp_item_save',{id:id,
+                name:$('#reN',ov).value, cat:$('#reC',ov).value, cup:$('#reCup',ov).value,
+                timer:$('#reT',ov).value, timer_label:$('#reTL',ov).value,
+                busy:$('#reB',ov).value, warn:$('#reW',ov).value, success:$('#reS',ov).value
+              }).then(function(x){ if(x&&x.ok){ close(); toast(x.msg); if(after) after(); } });
+            });
+          });
+        });
+    });
+  });
+}
+
 ADMIN.kitchen=function(v){
   v.innerHTML=skel(2);
-  Promise.all([aAct('quiz_report',{}), aAct('recipe_notes',{})]).then(function(rr){
-    var q=rr[0]||{}, n=rr[1]||{}, tt=(q.totals||{});
+  Promise.all([aAct('quiz_report',{}), aAct('recipe_notes',{}), aAct('kt_list',{}), aAct('opening_log',{})]).then(function(rr){
+    var q=rr[0]||{}, n=rr[1]||{}, kt=rr[2]||{}, op=rr[3]||{}, tt=(q.totals||{});
+    var ROT={daily:'يوميّاً', intraday:'أثناء اليوم', weekly:'أسبوعيّاً'};
     v.innerHTML=
       '<div class="card"><h3>الاختبارات — ٣٠ يوماً</h3>'+
         '<div class="muted small">'+(+tt.answered||0)+' إجابة · '+(+tt.full||0)+' كاملة · '+
@@ -7497,6 +7613,24 @@ ADMIN.kitchen=function(v){
                 '<span>'+esc(w.item)+'</span><b>'+(+w.review)+' <span class="muted small">من '+
                 (+w.asked)+'</span></b></div>'; }).join('')
           : '<div class="muted small">لا صنف متعثّر بعد.</div>')+'</div>'+
+      '<div class="card"><h3>مهام المطبخ — التدوير على الموظفات</h3>'+
+        '<div class="muted small">يوميّاً: تُوزَّع كل يوم · أثناء اليوم: تتكرّر داخل الشفت · أسبوعيّاً: مرّة في الأسبوع.</div>'+
+        ((kt.rows||[]).length ? (kt.rows||[]).map(function(t){
+          return '<div style="border-bottom:1px dashed var(--line);padding:8px 0">'+
+            '<b>'+esc(t.title)+'</b>'+(t.on?'':' <span class="chip">مُطفأة</span>')+
+            '<div class="btnrow" style="margin:6px 0 0;flex-wrap:wrap">'+
+              ['daily','intraday','weekly'].map(function(k){
+                return '<button class="btn sm '+(t.rotation===k?'':'ghost')+'" data-rot="'+esc(t.id)+'" data-v="'+k+'">'+
+                  ROT[k]+'</button>'; }).join('')+
+              '<button class="btn sm ghost" data-kon="'+esc(t.id)+'" data-v="'+(t.on?'0':'1')+'">'+
+                (t.on?'أطفئيها':'شغّليها')+'</button></div></div>';
+        }).join('') : '<div class="muted small">لا مهام مطبخ.</div>')+'</div>'+
+      '<div class="card"><h3>سجلّ الافتتاح — للتتبّع فقط</h3>'+
+        ((op.rows||[]).length ? (op.rows||[]).slice(0,10).map(function(o){
+          return '<div class="row" style="justify-content:space-between;padding:6px 0">'+
+            '<span class="muted small">'+esc(o.day)+' · '+esc(o.who||'')+'</span>'+
+            '<b>'+(+o.stage1_done)+'+'+(+o.stage2_done)+' <span class="muted small">'+fmtT(o.first_at)+'</span></b></div>';
+        }).join('') : '<div class="muted small">لم يُسجَّل افتتاح بعد.</div>')+'</div>'+
       '<div class="card"><h3>ملاحظات الفريق على الأصناف</h3>'+
         ((n.rows||[]).length
           ? (n.rows||[]).map(function(x){
@@ -7509,6 +7643,12 @@ ADMIN.kitchen=function(v){
                     (x.pinned?'إلغاء التثبيت':'ثبّتيها')+'</button>'+
                   '<button class="btn sm ghost" data-rmn="'+(+x.id)+'">حذف</button></div></div>'; }).join('')
           : '<div class="muted small">لا ملاحظات بعد.</div>')+'</div>';
+    $$('[data-rot]',v).forEach(function(b){ b.addEventListener('click', function(){
+      aAct('kt_save',{id:b.getAttribute('data-rot'), rotation:b.getAttribute('data-v')})
+        .then(function(r){ if(r&&r.ok) ADMIN.kitchen(v); }); }); });
+    $$('[data-kon]',v).forEach(function(b){ b.addEventListener('click', function(){
+      aAct('kt_save',{id:b.getAttribute('data-kon'), on:b.getAttribute('data-v')==='1'})
+        .then(function(r){ if(r&&r.ok) ADMIN.kitchen(v); }); }); });
     $$('[data-pin]',v).forEach(function(b){ b.addEventListener('click', function(){
       aAct('recipe_note_pin',{id:+b.getAttribute('data-pin'), pinned:b.getAttribute('data-v')==='1'})
         .then(function(r){ if(r&&r.ok) ADMIN.kitchen(v); }); }); });
