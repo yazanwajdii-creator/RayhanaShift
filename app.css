@@ -408,7 +408,12 @@ body.floormode .undobar{bottom:calc(10px + env(safe-area-inset-bottom))}
 .tt-fl .ti{font-size:12.5px;line-height:1}
 .tt-fl.bad{background:var(--red);color:var(--on-ink)} .tt-fl.warn{background:var(--amber-btn);color:#FFFFFF}
 /* الطاولة المتجاوزة تنبض حلقتها — تُرى دون قراءة أي نص */
-.tt.urg{animation:ttpulse 1.7s ease-in-out infinite}
+/* التأخّر يُرى على البلاطة نفسها لا في قائمة بعيدة: حلقةٌ حول الطاولة
+   وشارةٌ بالدقائق. الحركة تحت prefers-reduced-motion. */
+.tt.urg{animation:ttpulse 1.7s ease-in-out infinite;
+  box-shadow:0 0 0 3px var(--accent),0 2px 0 rgba(0,0,0,.16),0 6px 16px rgba(16,29,23,.22)}
+.tt.urg .tt-min{background:var(--accent);color:var(--accent-on)}
+@media (prefers-reduced-motion:reduce){ .tt.urg{animation:none} }
 @keyframes ttpulse{0%,100%{box-shadow:0 2px 0 rgba(0,0,0,.16),0 0 0 0 rgba(185,28,28,.55)}
   50%{box-shadow:0 2px 0 rgba(0,0,0,.16),0 0 0 7px rgba(185,28,28,0)}}
 .tt.oos{opacity:.55;filter:grayscale(.5)}
@@ -1535,6 +1540,12 @@ body.floormode #view{padding:0}
 .flrx-nud .n-clean{border-color:color-mix(in srgb,var(--red-ink) 55%,transparent)}
 .flrx-nud .n-clean b{background:var(--red-btn,var(--red))}
 .flrx-nud .n-bill b{background:var(--brand)}
+/* محاور ملاحظة الضيفات */
+.fb-t{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.fb-o{min-height:44px;padding:0 14px;border-radius:var(--r-full);cursor:pointer;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  font:inherit;font-size:14px;font-weight:700}
+.fb-o.on{background:var(--accent);color:var(--accent-on);border-color:transparent}
 .flr-note{display:block;width:100%;min-height:46px;margin-top:8px;
   border:1px dashed var(--line);border-radius:var(--r-2);cursor:pointer;
   background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:700}
