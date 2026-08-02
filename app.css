@@ -1558,6 +1558,10 @@ body.floormode #view{padding:0}
   border:1px solid var(--line);background:var(--surface);color:var(--ink);
   font:inherit;font-size:14px;font-weight:700}
 .fb-o.on{background:var(--accent);color:var(--accent-on);border-color:transparent}
+/* أزرار الاختيار في الأوراق تأخذ نبرة العلامة نفسها لا أخضر ثانياً */
+.sheet .btn.block:not(.ghost):not(.amber){background:linear-gradient(165deg,
+  color-mix(in srgb,var(--accent) 88%,#fff),var(--accent))}
+.chipset button.on,.pick.on{background:var(--accent);color:var(--accent-on);border-color:transparent}
 .flr-note{display:block;width:100%;min-height:46px;margin-top:8px;
   border:1px dashed var(--line);border-radius:var(--r-2);cursor:pointer;
   background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:700}
@@ -1853,11 +1857,13 @@ body.floormode #view{padding:0}
 .rcp-cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:var(--s-2);
   margin-bottom:var(--s-2);scrollbar-width:none}
 .rcp-cats::-webkit-scrollbar{display:none}
-.rcp-c{flex:0 0 auto;min-height:44px;padding:0 var(--s-3);border-radius:22px;
-  border:1px solid var(--line);background:var(--surface);color:var(--muted);
-  font:inherit;font-size:14.5px;font-weight:700;cursor:pointer;white-space:nowrap}
-.rcp-c i{font-style:normal;margin-inline-start:5px;opacity:.65;font-variant-numeric:tabular-nums}
-.rcp-c.on{background:var(--brand);color:var(--on-brand);border-color:transparent}
+.rcp-c{flex:0 0 auto;min-height:48px;padding:0 16px;border-radius:var(--r-full);
+  cursor:pointer;border:1.5px solid color-mix(in srgb,var(--accent) 45%,transparent);
+  background:var(--accent-soft);color:var(--accent-ink);
+  font:inherit;font-size:15px;font-weight:800;display:inline-flex;align-items:center;gap:7px}
+.rcp-c i{font-style:normal;font-size:13px;font-weight:800;opacity:.75;
+  font-variant-numeric:tabular-nums}
+.rcp-c.on{background:var(--accent);color:var(--accent-on);border-color:transparent}
 .rcp-h{font-size:var(--fs-xs);font-weight:800;color:var(--muted);
   margin:var(--s-3) 2px var(--s-2)}
 .rcp-i{display:flex;align-items:center;gap:var(--s-3);width:100%;min-height:62px;
@@ -1958,20 +1964,23 @@ body.floormode #view{padding:0}
   gap:var(--s-6,26px);padding:var(--s-5);
   /* حجابٌ داكن ثابت في السمتين: الطبقة لحظةُ تركيزٍ واحدة، وقلبُها
      مع السمة يجعل الرقم يذوب في الخلفية نهاراً — قِسناه ١٫٢٩ فأصلحناه. */
-  background:rgba(13,28,20,.95);
+  /* أرضية عاجية لا حجاب أسود: المطبخ مضيء والعين تأتي من الضوء لا إليه */
+  background:#FBF7EF;
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.rcp-tovl .tov-n{font-size:var(--fs-lg);font-weight:700;color:#EAE4D8;
-  text-align:center;margin-bottom:22px;letter-spacing:.3px}
+.rcp-tovl .tov-n{font-size:clamp(26px,7vw,34px);font-weight:800;color:#26593E;
+  text-align:center;margin-bottom:26px;letter-spacing:.2px;line-height:1.3}
 .rcp-tovl .tov-v{font-size:clamp(96px,34vw,190px);font-weight:800;line-height:1;
   /* لونك أنت بالضبط. الرقم ١٣٣px — نصٌّ كبير يكفيه ٣:١ لا ٤٫٥، ولذلك
      يجوز هنا ما لا يجوز في سطرٍ صغير. */
-  color:#C05A2E;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+  /* الزيتيّ الغامق من الثيم على العاجيّ: ٩٫٢٧ — أعلى ممّا كان بضِعف */
+  color:#26593E;font-variant-numeric:tabular-nums;letter-spacing:-2px}
 .rcp-tovl .tov-x{min-height:56px;min-width:180px;padding:0 var(--s-5);
   border:0;border-radius:var(--r-full);cursor:pointer;
-  background:#FBF9F4;color:#16281D;
+  background:#26593E;color:#FBF7EF;
   font:inherit;font-size:var(--fs-md);font-weight:800;
   box-shadow:0 6px 20px rgba(0,0,0,.28)}
-.rcp-tovl.done{background:rgba(22,74,45,.96)}
+.rcp-tovl.done{background:#E4F0E6}
+.rcp-tovl.done .tov-v{color:#1B4A31}
 .rcp-tovl.done .tov-v{font-size:clamp(56px,18vw,110px)}
 @keyframes rcpPulse{0%,100%{opacity:1}50%{opacity:.35}}
 /* حركة الظهور: البطاقات تنزلق قليلاً بدل أن تقفز دفعةً واحدة.
