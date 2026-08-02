@@ -846,7 +846,8 @@ function renderLogin(){
     '<div class="wrap" style="max-width:420px">'+
       '<div class="card" style="margin-top:-26px;position:relative;z-index:2;border-radius:18px">'+
         '<h3 style="justify-content:center">تسجيل الدخول</h3>'+
-        '<label class="f">اسم المستخدم</label><input class="f" id="luU" autocomplete="username" autocapitalize="none" spellcheck="false">'+
+        '<div id="luUBox"><label class="f">اسم المستخدم</label>'+
+          '<input class="f" id="luU" autocomplete="username" autocapitalize="none" spellcheck="false"></div>'+
         '<label class="f">كلمة السر</label><input class="f" id="luP" type="password" inputmode="numeric" autocomplete="current-password">'+
         '<div class="btnrow"><button class="btn block" id="luGo">دخول</button></div>'+
       '</div>'+
@@ -875,11 +876,33 @@ function renderLogin(){
     if(res && res.ok){
       if(devTok() && !res.device){ try{ localStorage.removeItem('rko_devtok'); localStorage.removeItem('rko_devlabel'); }catch(e){} paintDev(null); }
       else paintDev(res.device);
+      /* الجهاز الثابت: الاسم يُختار من قائمة تحدّدها الإدارة، فلا تكتب
+         الموظفة اسم مستخدمها على جهازٍ يستعمله الجميع. */
+      paintNames(res.names||[]);
     }
   }).catch(function(){});
+  function paintNames(names){
+    if(!names.length) return;
+    var box=$('#luUBox'); if(!box) return;
+    box.innerHTML='<label class="f">الموظفة</label><select class="f" id="luU">'+
+      '<option value="">— اختاري اسمك —</option>'+
+      names.map(function(n){ return '<option value="'+n.id+'">'+esc(n.name)+'</option>'; }).join('')+
+      '</select>';
+    $('#luU').addEventListener('keydown', function(e){ if(e.key==='Enter') go(); });
+  }
   function go(){
-    var u=$('#luU').value.trim(), pw=$('#luP').value;
-    if(!u || !pw){ toast('أدخلي اسم المستخدم وكلمة السر', true); return; }
+    var el=$('#luU'), byId=(el.tagName==='SELECT');
+    var u=el.value.trim(), pw=$('#luP').value;
+    if(!u || !pw){ toast(byId?'اختاري اسمك وأدخلي كلمة السر':'أدخلي اسم المستخدم وكلمة السر', true); return; }
+    if(byId){
+      busyWrap($('#luGo'), function(){
+        return rpc('rko_staff','login',{employee_id:+u, password:pw, device:devId(), device_token:devTok()}).then(function(res){
+          if(!res.ok){ toast(res.error||'خطأ', true, res.device_locked?6000:0); $('#luP').value=''; return; }
+          S.token=res.token; S.role='staff'; S.me=res.me; saveSess(); startStaff();
+        });
+      });
+      return;
+    }
     busyWrap($('#luGo'), function(){
       return rpc('rko_staff','login',{username:u, password:pw, device:devId(), device_token:devTok()}).then(function(res){
         if(!res.ok){ toast(res.error||'خطأ', true, res.device_locked?6000:0); $('#luP').value=''; return; }
@@ -2664,8 +2687,11 @@ function allTasksSheet(){
   var all=st.tasks||[];
   var doneL=all.filter(function(t){ return t.status==='done'||t.status==='approved'; });
   var pend=all.filter(function(t){ return ['done','approved','carried','cancelled'].indexOf(t.status)<0; });
-  var nowL=pend.filter(function(t){ return !(t.phase==='closing' && !inClosing); });
-  var laterL=pend.filter(function(t){ return t.phase==='closing' && !inClosing; });
+  /* الخادم يحسب لكل مهمة متى تبدأ نافذتها. هنا نحترم حسابه بدل تخمين
+     العميل: مهمّة الإغلاق ٢٢:١٥ لا تُزاحم مهمة افتتاحٍ في التاسعة. */
+  var nowL=pend.filter(function(t){ return t.ready !== false; });
+  var laterL=pend.filter(function(t){ return t.ready === false; });
+  laterL.sort(function(a,b){ return tsOrNull(a.due_at)-tsOrNull(b.due_at); });
 
   function row(t, sub){
     return '<div class="atk"><div class="atk-t"><b>'+esc(t.name)+'</b>'+
@@ -2678,11 +2704,11 @@ function allTasksSheet(){
                   : '<div class="atk-e">لا مهمة مطلوبة منكِ الآن</div>';
 
 
-  h+='<div class="atk-h">تظهر تلقائياً الساعة '+fmtT(openFrom)+'<i>'+laterL.length+'</i></div>';
+  h+='<div class="atk-h">تظهر في وقتها<i>'+laterL.length+'</i></div>';
   h+= laterL.length
-    ? '<div class="atk-why">مهام الإغلاق لا تُعرض قبل أوانها حتى لا تُزاحم ما هو مطلوب الآن. '+
+    ? '<div class="atk-why">كل مهمة لها وقتها: تظهر وحدها حين يحين، فلا تُزاحم ما هو مطلوب الآن. '+
       'لم تُحذَف، وتستطيعين إنجاز أيٍّ منها مبكراً إن سمح الوقت.</div>'+
-      laterL.map(function(t){ return row(t, 'إغلاق'); }).join('')
+      laterL.map(function(t){ return row(t, (PHASE[t.phase]||'')+(t.due_at?' · '+fmtT(t.due_at):'')); }).join('')
     : '<div class="atk-e">لا مهام مؤجَّلة</div>';
 
   /* الدوريات تصل بمسارٍ آخر (قوالب متناوبة لا مهام مُسنَدة)، فتُعرض هنا
@@ -2932,10 +2958,11 @@ function viewNow(){
   var inClosing = now >= closingFrom;
 
   var order={opening:0,during:1,adhoc:2,closing:3};
-  /* مهمة «مستحقّة الآن»: مهام الإغلاق لا تكون كذلك قبل أوانها. لا تُخفى
-     — تبقى في «كل المهام» ويمكن إنجازها مبكراً بإرادة الموظفة — لكنها
-     لا تُنصَّب مهمةَ اللحظة ولا تسبق ما هو مطلوب فعلاً الآن. */
-  function dueNow(t){ return !(t.phase==='closing' && !inClosing); }
+  /* «مستحقّة الآن» يقرّرها الخادم من ساعة المقهى لا من ساعة الجهاز:
+     لكل مهمة نافذة (افتتاح ٠٩:٠٠–١١:٠٠ · أثناء الدوام ١٠:٠٠–٢٣:٠٠ ·
+     إغلاق ٢٢:١٥ فصاعداً) أو وقتٌ صريح كشطف الساحة ١٠:٣٠. لا تُخفى —
+     تبقى في «مهامي» ويمكن إنجازها مبكراً — لكنها لا تُزاحم وقتها. */
+  function dueNow(t){ return t.ready !== false; }
   var pend=(st.tasks||[]).filter(function(t){return ['done','approved','carried','cancelled'].indexOf(t.status)<0;})
     .sort(function(a,b){
       var da=dueNow(a)?0:1, db=dueNow(b)?0:1;
@@ -7945,13 +7972,30 @@ ADMIN.devices=function(v){
         (d?'':'<label class="f">اسم المستخدم</label><input class="f" id="dU" autocapitalize="none" spellcheck="false" placeholder="مثال: tablet1">')+
         '<label class="f">كلمة السر'+(d?' (اتركها فارغة للإبقاء عليها)':'')+'</label><input class="f" id="dP" type="password">'+
         (d?'<div class="check"><input type="checkbox" id="dA" '+(d.active?'checked':'')+'><span>مفعّل</span></div>'+
-           '<div class="check"><input type="checkbox" id="dR"><span>إبطال التفعيلات السابقة — يعيد طلب التفعيل على الجهاز</span></div>':'')+
+           '<div class="check"><input type="checkbox" id="dR"><span>إبطال التفعيلات السابقة — يعيد طلب التفعيل على الجهاز</span></div>'+
+           /* الجهاز الثابت لا يُكتب عليه اسم مستخدم: الأسماء المسموحة تظهر
+              قائمةً منسدلة، وأنت وحدك من يحدّدها. */
+           '<label class="f" style="margin-top:10px">المنطقة المرتبطة بالجهاز</label>'+
+           '<select class="f" id="dAr"><option value="">— بلا —</option>'+
+             (A.areas||[]).map(function(a){
+               return '<option value="'+a.id+'"'+(+d.area_id===+a.id?' selected':'')+'>'+esc(a.name)+'</option>'; }).join('')+
+           '</select>'+
+           '<label class="f">من تظهر أسماؤهنّ على هذا الجهاز</label>'+
+           '<div class="muted small" style="margin-bottom:6px">من تُحدَّد هنا تدخل باختيار اسمها من قائمة على الجهاز. '+
+             'إن لم تُحدَّد أي موظفة بقي الدخول باسم المستخدم وكلمة السر كالمعتاد.</div>'+
+           '<div id="dNm">'+(A.emps||[]).filter(function(e){return e.role!=='admin';}).map(function(e){
+             var on=(d.allowed_emp_ids||[]).map(String).indexOf(String(e.id))>=0;
+             return '<div class="check"><input type="checkbox" data-dnm="'+e.id+'"'+(on?' checked':'')+'><span>'+esc(e.name)+'</span></div>';
+           }).join('')+'</div>':'')+
         '<div class="btnrow"><button class="btn block" id="dGo">حفظ</button></div>',
         function(ov, close){
           $('#dGo',ov).addEventListener('click', function(){
             var p={label:$('#dL',ov).value};
             if(d){
               p.id=d.id; p.active=$('#dA',ov).checked; p.rotate=$('#dR',ov).checked;
+              p.area_id=$('#dAr',ov).value||null;
+              p.allowed_emp_ids=$$('[data-dnm]',ov).filter(function(c){return c.checked;})
+                                 .map(function(c){return +c.getAttribute('data-dnm');});
               if($('#dP',ov).value) p.password=$('#dP',ov).value;
             } else {
               p.username=$('#dU',ov).value.trim(); p.password=$('#dP',ov).value;

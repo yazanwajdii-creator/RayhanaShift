@@ -1796,8 +1796,10 @@ body.floormode #view{padding:0}
 .rcp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--s-3)}
 .rcp-chips span{font-size:var(--fs-xs);font-weight:700;color:var(--ink);
   background:var(--surface-2);border-radius:20px;padding:5px 10px}
-.rcp-sec{font-size:var(--fs-xs);font-weight:800;color:var(--muted);
-  margin:var(--s-4) 0 var(--s-2)}
+.rcp-sec{display:flex;align-items:center;gap:var(--s-2);
+  font-size:var(--fs-sm);font-weight:800;color:var(--ink);
+  margin:var(--s-5) 0 var(--s-2);letter-spacing:.2px}
+.rcp-sec::after{content:"";flex:1 1 auto;height:1px;background:var(--line)}
 .rcp-p{font-size:var(--fs-sm);line-height:1.6;color:var(--ink);margin:0 0 var(--s-2)}
 .rcp-p.muted{color:var(--muted);font-size:var(--fs-xs)}
 .rcp-ing{display:flex;flex-direction:column;gap:4px}
@@ -1808,22 +1810,31 @@ body.floormode #view{padding:0}
   border-radius:var(--r-2);background:var(--surface);
   border:1px solid var(--line);
   border-inline-start:3px solid color-mix(in srgb,var(--brand) 55%,transparent)}
-.rcp-ir b{flex:1 1 auto;font-size:var(--fs-sm);font-weight:700;color:var(--ink)}
+.rcp-ir b{flex:1 1 auto;font-size:var(--fs-md);font-weight:700;color:var(--ink)}
 .rcp-ir span{flex:0 0 auto;font-size:var(--fs-sm);font-weight:800;
   color:var(--on-brand);background:var(--brand);
-  border-radius:20px;padding:3px 11px;
+  border-radius:20px;padding:4px 12px;
+  direction:ltr;unicode-bidi:isolate;
   font-variant-numeric:tabular-nums;white-space:nowrap}
 .rcp-ir i{flex:1 1 100%;font-style:normal;font-size:var(--fs-xs);color:var(--muted)}
 .rcp-st{margin:0;padding:0;list-style:none;counter-reset:rcpstep}
 .rcp-st li{position:relative;counter-increment:rcpstep;
-  padding:10px 42px 10px var(--s-3);margin-bottom:6px;
+  padding-block:12px;padding-inline-end:48px;padding-inline-start:var(--s-3);
+  margin-bottom:7px;min-height:52px;display:flex;align-items:center;
   border-radius:var(--r-2);background:var(--surface-2);
-  font-size:var(--fs-sm);line-height:1.6;color:var(--ink)}
+  border:1px solid transparent;
+  font-size:var(--fs-md);line-height:1.6;color:var(--ink);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background .15s,border-color .15s,opacity .15s}
 .rcp-st li::before{content:counter(rcpstep);position:absolute;
-  inset-inline-start:auto;inset-inline-end:10px;top:9px;
-  width:24px;height:24px;border-radius:50%;
-  background:var(--ink);color:var(--on-ink);
-  font-size:12.5px;font-weight:800;line-height:24px;text-align:center}
+  inset-inline-end:12px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;border-radius:50%;
+  background:var(--brand);color:var(--on-brand);
+  font-size:13.5px;font-weight:800;line-height:28px;text-align:center;
+  font-variant-numeric:tabular-nums}
+/* الخطوة تُلمَس فتُشطَب: مَن يداها مشغولتان تحتاج أن تعرف أين وصلت */
+.rcp-st li.on{background:transparent;border-color:var(--line);opacity:.55}
+.rcp-st li.on::before{content:"\2713";background:var(--green-ink);color:#fff}
 .rcp-busy,.rcp-warn,.rcp-ok{border-radius:var(--r-2);padding:var(--s-3);
   margin-bottom:var(--s-3);border:1px solid var(--line)}
 .rcp-busy b,.rcp-warn b,.rcp-ok b{display:block;font-size:var(--fs-xs);
@@ -1856,6 +1867,30 @@ body.floormode #view{padding:0}
 .rcp-res.near{border-color:color-mix(in srgb,var(--amber-ink) 55%,transparent)}
 .rcp-res.near b,.rcp-res.near span{color:var(--amber-ink)}
 .rcp-res.review b,.rcp-res.review span{color:var(--muted)}
+
+/* طبقة المؤقّت: تُعتم كل شيء ويبقى الرقم. الموظفة تنظر من الخلاط
+   إلى الشاشة على بُعد ذراعين، فالرقم بحجم راحة اليد لا بحجم سطر. */
+.rcp-tovl{position:fixed;inset:0;z-index:900;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:var(--s-4);padding:var(--s-5);
+  /* حجابٌ داكن ثابت في السمتين: الطبقة لحظةُ تركيزٍ واحدة، وقلبُها
+     مع السمة يجعل الرقم يذوب في الخلفية نهاراً — قِسناه ١٫٢٩ فأصلحناه. */
+  background:rgba(13,28,20,.95);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.rcp-tovl .tov-n{font-size:var(--fs-lg);font-weight:700;color:#EAE4D8;
+  text-align:center}
+.rcp-tovl .tov-v{font-size:clamp(96px,34vw,190px);font-weight:800;line-height:1;
+  color:#FBF9F4;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+.rcp-tovl .tov-x{min-height:56px;min-width:180px;padding:0 var(--s-5);
+  border:0;border-radius:var(--r-full);cursor:pointer;
+  background:#FBF9F4;color:#16281D;
+  font:inherit;font-size:var(--fs-md);font-weight:800;
+  box-shadow:0 6px 20px rgba(0,0,0,.28)}
+.rcp-tovl.done{background:rgba(22,74,45,.96)}
+.rcp-tovl.done .tov-v{font-size:clamp(56px,18vw,110px)}
+@keyframes rcpPulse{0%,100%{opacity:1}50%{opacity:.35}}
+.rcp-tovl.done .tov-v{animation:rcpPulse 1s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.rcp-tovl.done .tov-v{animation:none}}
 
 .overlay .sheet{position:relative}
 /* الخروج للخلفية يطمس الشاشة: جهازٌ متروك لا يبقى عارضاً وصفة */

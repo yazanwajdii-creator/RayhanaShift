@@ -68,8 +68,6 @@ function paint(){
         '</button>';
     }).join('');
   }
-  /* شفافية: الموظفة تعرف أنّ فتح الوصفة مُسجَّل — والمعرفة هي الرادع، لا المفاجأة. */
-  html += '<div class="rcp-priv">الوصفات ملك الكافيه. يسجّل النظام مَن فتح كل وصفة ومتى.</div>';
   h.innerHTML = html;
 
   var qi = $('#rcpQ', h);
@@ -103,16 +101,54 @@ function wireTimer(ov){
     total = Math.min(1800, Math.max(30, total + (+pb.getAttribute('data-tadj'))));
     left = total; val.textContent = fmtSec(left);
   }); });
-  function paintT(){ val.textContent = fmtSec(left); }
-  function stop(){ clearInterval(t); t = null; btn.textContent = 'ابدئي'; box.classList.remove('run'); }
+  /* طبقةٌ تملأ الشاشة أثناء العدّ: الموظفة تنظر إليها من بعيد ويداها
+     مشغولتان، فالرقم وحده يجب أن يُقرأ — لا وصفة تحته ولا زرّ يشتّت. */
+  var ovl = null, buzz = null;
+  function layer(name){
+    if(ovl) return ovl;
+    ovl = document.createElement('div');
+    ovl.className = 'rcp-tovl';
+    ovl.innerHTML = '<div class="tov-n">'+B.esc(name||'')+'</div>'+
+      '<div class="tov-v" id="tovV">'+fmtSec(left)+'</div>'+
+      '<button class="tov-x" id="tovX">إلغاء</button>';
+    document.body.appendChild(ovl);
+    ovl.querySelector('#tovX').addEventListener('click', function(){
+      if(t){ stop(); left = total; paintT(); } else { hush(); }
+    });
+    return ovl;
+  }
+  function drop(){ if(ovl && ovl.parentNode) ovl.parentNode.removeChild(ovl); ovl = null; }
+  /* الاهتزاز يستمرّ دقيقة كاملة حتى تلمسه: نبضةٌ واحدة تضيع في الضغط */
+  function hush(){ clearInterval(buzz); buzz = null;
+    try{ if(navigator.vibrate) navigator.vibrate(0); }catch(e){}
+    drop(); box.classList.remove('done'); }
+
+  function paintT(){
+    val.textContent = fmtSec(left);
+    var tv = ovl && ovl.querySelector('#tovV'); if(tv) tv.textContent = fmtSec(left);
+  }
+  function stop(){ clearInterval(t); t = null; btn.textContent = 'ابدئي';
+    box.classList.remove('run'); drop(); }
   function done(){
-    stop(); left = total; paintT(); box.classList.add('done');
-    try{ if(navigator.vibrate) navigator.vibrate([180,90,180]); }catch(e){}
-    setTimeout(function(){ box.classList.remove('done'); }, 6000);
+    clearInterval(t); t = null; btn.textContent = 'ابدئي'; box.classList.remove('run');
+    left = 0; paintT(); box.classList.add('done');
+    if(ovl){ ovl.classList.add('done');
+      var tv = ovl.querySelector('#tovV'); if(tv) tv.textContent = 'انتهى';
+      var xb = ovl.querySelector('#tovX'); if(xb) xb.textContent = 'تمام';
+    }
+    var untilT = Date.now() + 60000;
+    function pulse(){
+      if(Date.now() > untilT){ hush(); left = total; paintT(); return; }
+      try{ if(navigator.vibrate) navigator.vibrate([420,260]); }catch(e){}
+    }
+    pulse(); buzz = setInterval(pulse, 700);
   }
   btn.addEventListener('click', function(){
     if(t){ stop(); left = total; paintT(); return; }
+    if(buzz){ hush(); left = total; paintT(); return; }
     box.classList.remove('done'); btn.textContent = 'إيقاف'; box.classList.add('run');
+    layer(box.getAttribute('data-name') || '');
+    paintT();
     t = setInterval(function(){
       left--; paintT();
       if(left <= 0) done();
@@ -120,7 +156,7 @@ function wireTimer(ov){
   });
   /* مغادرة الورقة تُوقف العدّاد: مؤقّتٌ يعمل بلا شاشة يُربك لا يُساعد */
   var mo = new MutationObserver(function(){
-    if(!document.body.contains(box)){ stop(); mo.disconnect(); }
+    if(!document.body.contains(box)){ stop(); hush(); mo.disconnect(); }
   });
   mo.observe(document.body, {childList:true, subtree:true});
 }
@@ -156,7 +192,8 @@ function openItem(id){
     var tsec = +it.timer || +it.mix_seconds || 0;
     var manual = !!it.timer_manual || (!tsec && it.blender);
     if(tsec || manual){
-      h += '<div class="rcp-tm'+(manual&&!tsec?' man':'')+'" id="rcpTm" data-s="'+(tsec||60)+'">'+
+      h += '<div class="rcp-tm'+(manual&&!tsec?' man':'')+'" id="rcpTm" data-s="'+(tsec||60)+'"'+
+        ' data-name="'+B.esc(it.name||'')+'">'+
         '<div class="tm-l">'+B.esc(it.timer_label||(manual?'المدّة تختلف — حدّديها':'المؤقّت'))+'</div>'+
         '<div class="tm-row">'+
           (manual?'<button class="tm-pm" data-tadj="-30" aria-label="أنقص">−</button>':'')+
@@ -209,6 +246,18 @@ function openItem(id){
 
     B.sheet(it.name, h, function(ov, close){
       wireTimer(ov);
+      /* الخطوة تُلمَس فتُشطَب: الوصفة صارت شيئاً تعملين عليه لا نصّاً
+         تقرئينه. لا يُحفظ شيء في الخادم — هذا أثرٌ لعينها لا سجلّ عليها. */
+      $$('.rcp-st li', ov).forEach(function(li){
+        li.setAttribute('role','button');
+        li.setAttribute('tabindex','0');
+        function flip(){ li.classList.toggle('on');
+          li.setAttribute('aria-pressed', li.classList.contains('on')?'true':'false'); }
+        li.addEventListener('click', flip);
+        li.addEventListener('keydown', function(e){
+          if(e.key===' '||e.key==='Enter'){ e.preventDefault(); flip(); }
+        });
+      });
       var nb = $('#rcpNGo', ov);
       nb.addEventListener('click', function(){
         var t = ($('#rcpN', ov)||{}).value || '';
