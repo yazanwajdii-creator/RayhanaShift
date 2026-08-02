@@ -162,6 +162,11 @@ try{
 }catch(e){}
 function toast(msg, err, dur){
   var t = $('#toast');
+  /* رسالة خطأ تكرّرت خلال ثانيتين تُبتلع: البوابة صارت تُظهر خطأ الخادم
+     تلقائياً، فلو أظهره النداء أيضاً لظهرت الرسالة نفسها مرتين. */
+  var sig=(err?'!':'')+msg, nw=Date.now();
+  if(err && toast._sig===sig && nw-(toast._at||0) < 2000) return;
+  toast._sig=sig; toast._at=nw;
   t.innerHTML = '<b style="margin-inline-end:6px">'+(err?'⚠':'✔')+'</b>'+esc(msg);
   t.className = err ? 'err show' : 'show';
   clearTimeout(toast._t); toast._t = setTimeout(function(){ t.className=''; }, dur||(err?3800:2400));
@@ -346,6 +351,14 @@ function rpc(fn, action, p, mutQueue){
   p = p||{};
   return rawRpc(fn, action, p).then(function(res){
     if(res && res.relogin){ clearSess(); renderLogin(); toast('انتهت الجلسة — سجلي الدخول من جديد', true); throw {handled:true}; }
+    /* حارس الفشل الصامت. اثنان وعشرون نداءً في التطبيق كانت تُظهر رسالة
+       نجاح داخل then بلا فحص res.ok — فإذا رفض الخادم (وسيطٌ غير صالح،
+       بوابة تشغيل، حقل ناقص) ترى الموظفة «أُرسل» ويُمسَح النموذج ولا
+       يصل شيء. هذا ما حدث مع البلاغات الصوتية: rko_issues صفر صفوف
+       بينما الشاشة قالت «أُرسل».
+       الفحص هنا يجعل الفشل مرئياً مهما نسي النداء — والرسالة المكرّرة
+       يبتلعها toast، فلا يتضرّر النداء الذي يفحص بنفسه. */
+    if(res && res.ok === false && res.error) toast(res.error, true);
     return res;
   }).catch(function(e){
     if(e && e.handled) throw e;
@@ -1271,16 +1284,22 @@ function sysDark(){ return !!(window.matchMedia && matchMedia('(prefers-color-sc
 function effDark(){ var t=curTheme(); if(t==='dark') return true; if(t==='light') return false; return sysDark(); }
 function toggleTheme(){ var nx = effDark() ? 'light' : 'dark'; applyTheme(nx); toast(nx==='dark'?'الوضع الليلي':'الوضع النهاري'); var b=$('#thBtn'); if(b) b.innerHTML=THI(); var b2=$('#thBtnA'); if(b2) b2.innerHTML=THI(); }
 function THI(){ return effDark()?IC.sun:IC.moon; }
+/* كانت تخرج فوراً لغير الموظفة، ولوحة الإدارة بلا جرس أصلاً — فلم يكن
+   للمالك أي مؤشّر على أن شيئاً حدث. كان عليه أن يتذكّر فتح «البلاغات»
+   بين أربعة وثلاثين قسماً ليكتشف عطلاً أو نسيان انصراف. */
 function loadNotifs(){
-  if(S.role!=='staff') return;
-  pushGate();                                               // بوابة إجبارية: تفعيل الإشعارات قبل العمل
-  sAct('notif_list',{}).then(function(res){
-    if(!res.ok) return;
+  if(S.role!=='staff' && S.role!=='admin') return;
+  if(S.role==='staff') pushGate();           // بوابة إجبارية: تفعيل الإشعارات قبل العمل
+  (S.role==='admin' ? aAct('notif_list',{}) : sAct('notif_list',{})).then(function(res){
+    if(!res || !res.ok) return;
     notifCache=res.rows||[];
     var c=$('#bellCount'); if(c){ c.textContent=res.unread>0?(res.unread>9?'9+':res.unread):''; c.style.display=res.unread>0?'flex':'none'; }
   }).catch(function(){});
 }
 /* وجهة الإشعار: ما الشاشة التي يتحدث عنها، وكيف نصل إليها بضغطة واحدة */
+var ADMGO = {issues:'issues', requests:'requests', cover:'cover', handover:'handovers',
+             shift:'shifts', tasks:'tasks', contrib:'contrib', tables:'tables',
+             now:'dash', grow:'skills'};
 var NTGO = {shift:'جدول شفتاتي', tasks:'مهامي', cover:'الطلبات والتغطية', handover:'الطلبات والتغطية',
             requests:'الطلبات والتغطية', issues:'البلاغات', contrib:'شاشة اليوم',
             tables:'شاشة اليوم', grow:'تطوّري', now:'شاشة اليوم'};
@@ -1311,7 +1330,11 @@ function openNotifs(){
       var pb=$('#notifPush',ov); if(pb) pb.addEventListener('click', function(){ enablePush((S.state&&S.state.push&&S.state.push.vapid_public)||PUSHKEY, function(){}); });
       $$('[data-nt]',ov).forEach(function(b){ b.addEventListener('click', function(){
         var n=notifCache[+b.getAttribute('data-nt')]; if(!n||!n.target) return;
-        close(); notifGo(n.target);
+        close();
+        /* الإشعار نفسه يعني شاشتين مختلفتين حسب من يقرؤه: «issues» عند
+           المالك قسمُ إدارةٍ لا تبويبٌ داخل «المزيد». */
+        if(S.role==='admin'){ S.adminSec=(ADMGO[n.target]||'issues'); drawAdmin(); return; }
+        notifGo(n.target);
       });});
     });
   sAct('notif_read',{}).then(function(){ loadNotifs(); });
@@ -4551,7 +4574,9 @@ function wireTab(v){
         var x=$('#ntText').value.trim();
         if(!x&&!VOICE.nt){toast('اكتبي الملاحظة أو سجّليها صوتاً',true);return;}
         var ntp={text:x}, ntv=voicePayload('nt'); for(var nk in ntv) ntp[nk]=ntv[nk];
-        sAct('note_send', ntp, true).then(function(){ toast('وصلت ملاحظتك'); $('#ntText').value=''; voiceReset(null,'nt'); });
+        sAct('note_send', ntp, true).then(function(res){
+          if(!(res && res.ok)) return;
+          toast('وصلت ملاحظتك'); $('#ntText').value=''; voiceReset(null,'nt'); });
       }
       else if(a==='lgAdd'){ var lt=$('#lgText').value.trim(); if(!lt){toast('اكتبي التفاصيل',true);return;} sAct('logbook_add',{category:$('#lgCat').value, text:lt},true).then(function(res){ toast(res.msg||'أُضيف'); $('#lgText').value=''; }); }
       else if(a==='lgView') sAct('logbook_day',{}).then(function(res){
@@ -4566,7 +4591,10 @@ function wireTab(v){
         if(window._isPhotoKey) isp.photo_key=window._isPhotoKey; else if(window._isPhoto) isp.photo=window._isPhoto;
         var isv=voicePayload('is'); for(var ik in isv) isp[ik]=isv[ik];
         sAct('issue_report', isp, true).then(function(res){
-          toast(res.msg||'أُرسل'); $('#isTitle').value=''; $('#isDet').value='';
+          /* لا يُمسح النموذج إلا بعد نجاحٍ مؤكَّد. كان يُمسح دائماً، فإذا
+             رفض الخادم ضاع البلاغ ونصّه معاً ولا سبيل لإعادته. */
+          if(!(res && res.ok)) return;
+          toast(res.msg||'وصل بلاغك للإدارة'); $('#isTitle').value=''; $('#isDet').value='';
           window._isPhoto=''; window._isPhotoKey='';
           var pv=$('#isPrev'); if(pv)pv.style.display='none'; voiceReset(null,'is');
         });
@@ -4625,11 +4653,17 @@ function startAdmin(){
   document.body.className='';
   APP.innerHTML =
     '<div class="top"><div class="brand"><div class="logo">'+brandMark(42)+'</div><div class="binfo"><h1>لوحة الإدارة</h1><div class="sub">ريحانة — نظام التشغيل</div></div></div>'+
-    '<div class="left"><button class="pill icbtn" id="thBtnA" aria-label="السمة">'+THI()+'</button><button class="pill" id="admHome">الرئيسية</button><button class="pill" id="admOut">خروج</button></div></div>'+
+    /* الجرس: كان غائباً تماماً عن لوحة الإدارة. أُضيف أول عنصر في
+       الشريط لأنه أهمّ ما فيه — البلاغ والغياب ونسيان الانصراف كلها
+       تصل هنا، وبلا مؤشّرٍ لا يعرف المالك أنها وصلت. */
+    '<div class="left"><button class="pill icbtn bellbtn" id="bellBtn" aria-label="الإشعارات">'+IC.bell+'<span class="bellcount" id="bellCount"></span></button><button class="pill icbtn" id="thBtnA" aria-label="السمة">'+THI()+'</button><button class="pill" id="admHome">الرئيسية</button><button class="pill" id="admOut">خروج</button></div></div>'+
     '<div class="wrap" id="view"></div>';
   $('#admOut').addEventListener('click', function(){ aAct('logout',{}); clearSess(); renderLogin(); });
   var _tha=$('#thBtnA'); if(_tha) _tha.addEventListener('click', toggleTheme);
   $('#admHome').addEventListener('click', function(){ S.adminSec=null; drawAdmin(); });
+  $('#bellBtn').addEventListener('click', openNotifs);
+  loadNotifs();
+  clearInterval(notifT); notifT=setInterval(loadNotifs, 90000);
   updateDot(); S.adminSec=null; drawAdmin();
 }
 var SECS=[
