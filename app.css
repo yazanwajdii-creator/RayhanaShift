@@ -84,6 +84,7 @@
   --amber:#BD8638; --amber-2:#BD8638; --amber-soft:#F8E7D3; --orange:#BD8638;
   --red:#B6513D;
   --amber-btn:#94631A; --amber-btn-2:#9D6C26;
+  --ivory:#FBF7EF; --accent:#845513; --accent-on:#FFFFFF; --accent-soft:#F3E3CE;
   --green-btn:#3D7757; --green-btn-2:#468060;
   --red-btn:#AA5544; --red-btn-2:#B45E4C;
   --amber-ink:#89622E; --green-ink:#3E7355; --red-ink:#924A3B;
@@ -117,6 +118,7 @@
   --amber:#D6A86E; --amber-2:#D6A86E; --amber-soft:#322514; --orange:#D6A86E;
   --red:#D17F6E;
   --amber-btn:#94631A; --amber-btn-2:#9D6C26;
+  --ivory:#1E241F; --accent:#C08A3E; --accent-on:#120C04; --accent-soft:#2E2416;
   --green-btn:#3D7757; --green-btn-2:#468060;
   --red-btn:#AA5544; --red-btn-2:#B45E4C;
   --amber-ink:#B38A56; --green-ink:#659C7C; --red-ink:#D58776;
@@ -151,6 +153,7 @@
     --amber:#D6A86E; --amber-2:#D6A86E; --amber-soft:#322514; --orange:#D6A86E;
     --red:#D17F6E;
     --amber-btn:#94631A; --amber-btn-2:#9D6C26;
+  --ivory:#1E241F; --accent:#C08A3E; --accent-on:#120C04; --accent-soft:#2E2416;
     --green-btn:#3D7757; --green-btn-2:#468060;
     --red-btn:#AA5544; --red-btn-2:#B45E4C;
     --amber-ink:#B38A56; --green-ink:#659C7C; --red-ink:#D58776;
@@ -1742,12 +1745,14 @@ body.floormode #view{padding:0}
 
 /* ٤) الاختصارات الأربعة */
 .nx-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s-2)}
-.nx-quick button{min-height:72px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:var(--s-1);padding:var(--s-2) 4px;
+.nx-quick button{min-height:84px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:7px;padding:var(--s-2) 4px;
   border-radius:var(--r-2);border:1px solid var(--line);background:var(--surface);
-  color:var(--ink);font:inherit;font-size:var(--fs-xs);font-weight:700;cursor:pointer}
-.nx-quick button svg{width:20px;height:20px;color:var(--muted)}
-.nx-quick button span{line-height:1.15;text-align:center}
+  color:var(--ink);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.nx-quick button svg{width:26px;height:26px;color:var(--accent)}
+.nx-quick button span{line-height:1.25;text-align:center;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
 
 /* الانصراف الهادئ — موجود ولا ينافس الفعل */
 .nx-out{text-align:center}
@@ -1756,7 +1761,11 @@ body.floormode #view{padding:0}
   text-decoration:underline;text-underline-offset:4px;cursor:pointer}
 
 /* الاستراحة الجارية: الوقت هو الخبر، فهو أكبر ما في البطاقة */
+/* الاستراحة بطاقةٌ كهرمانية وزرُّها أخضر — لونان لا يجتمعان. الزرّ
+   يأخذ نبرة البطاقة نفسها فتُقرأ كتلةً واحدة. */
 .nx-do--brk{border:1.5px solid var(--amber);background:var(--amber-soft)}
+.nx-do--brk b,.nx-do--brk>span{color:var(--amber-ink)}
+.nx-do--brk .nx-btn{background:var(--accent);color:var(--accent-on)}
 .nx-do--brk .timer{font-variant-numeric:tabular-nums}
 
 /* مهام الإغلاق موجودة ولم يحن وقتها — سطر خبر لا تنبيه */
@@ -1801,22 +1810,25 @@ body.floormode #view{padding:0}
 .rcp-c.on{background:var(--brand);color:var(--on-brand);border-color:transparent}
 .rcp-h{font-size:var(--fs-xs);font-weight:800;color:var(--muted);
   margin:var(--s-3) 2px var(--s-2)}
-.rcp-i{display:flex;align-items:center;gap:var(--s-3);width:100%;min-height:54px;
-  padding:var(--s-2) var(--s-3);margin-bottom:6px;border-radius:var(--r-2);
-  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+.rcp-i{display:flex;align-items:center;gap:var(--s-3);width:100%;min-height:62px;
+  padding:var(--s-3);margin-bottom:7px;border-radius:var(--r-2);
+  border:1px solid var(--line);background:var(--ivory);color:var(--ink);
   font:inherit;text-align:start;cursor:pointer;
-  border-inline-start:3px solid color-mix(in srgb,var(--brand) 35%,transparent)}
-.rcp-i:active{background:var(--surface-2)}
-.rcp-n{flex:1 1 auto;min-width:0;font-size:var(--fs-sm);font-weight:700;
+  border-inline-start:4px solid var(--accent)}
+.rcp-i:active{background:var(--accent-soft)}
+.rcp-n{flex:1 1 auto;min-width:0;font-size:17px;font-weight:700;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rcp-m{flex:0 0 auto;display:flex;gap:5px}
-.rcp-m span{font-size:var(--fs-xs);color:var(--muted);border:1px solid var(--line);
-  border-radius:20px;padding:2px 8px;white-space:nowrap}
+.rcp-m span{font-size:var(--fs-xs);font-weight:700;color:var(--accent);
+  background:var(--accent-soft);border:0;
+  border-radius:20px;padding:4px 10px;white-space:nowrap}
 
 /* صفحة الصنف */
 .rcp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--s-3)}
 .rcp-chips span{font-size:var(--fs-xs);font-weight:700;color:var(--ink);
   background:var(--surface-2);border-radius:20px;padding:5px 10px}
+.rcp-h{margin:var(--s-4) 2px var(--s-2);font-size:var(--fs-sm);
+  font-weight:800;color:var(--accent)}
 .rcp-sec{display:flex;align-items:center;gap:var(--s-2);
   font-size:var(--fs-sm);font-weight:800;color:var(--ink);
   margin:var(--s-5) 0 var(--s-2);letter-spacing:.2px}
@@ -1840,22 +1852,22 @@ body.floormode #view{padding:0}
 .rcp-ir i{flex:1 1 100%;font-style:normal;font-size:var(--fs-xs);color:var(--muted)}
 .rcp-st{margin:0;padding:0;list-style:none;counter-reset:rcpstep}
 .rcp-st li{position:relative;counter-increment:rcpstep;
-  padding-block:12px;padding-inline-end:48px;padding-inline-start:var(--s-3);
-  margin-bottom:7px;min-height:52px;display:flex;align-items:center;
-  border-radius:var(--r-2);background:var(--surface-2);
-  border:1px solid transparent;
-  font-size:var(--fs-md);line-height:1.6;color:var(--ink);
+  padding-block:14px;padding-inline-end:58px;padding-inline-start:var(--s-3);
+  margin-bottom:8px;min-height:62px;display:flex;align-items:center;
+  border-radius:var(--r-2);background:var(--ivory);
+  border:1px solid var(--line);
+  font-size:17px;font-weight:600;line-height:1.65;color:var(--ink);
   cursor:pointer;-webkit-tap-highlight-color:transparent;
   transition:background .15s,border-color .15s,opacity .15s}
 .rcp-st li::before{content:counter(rcpstep);position:absolute;
-  inset-inline-end:12px;top:50%;transform:translateY(-50%);
-  width:28px;height:28px;border-radius:50%;
-  background:var(--brand);color:var(--on-brand);
-  font-size:13.5px;font-weight:800;line-height:28px;text-align:center;
+  inset-inline-end:10px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;border-radius:50%;
+  background:var(--accent);color:var(--accent-on);
+  font-size:17px;font-weight:800;line-height:34px;text-align:center;
   font-variant-numeric:tabular-nums}
 /* الخطوة تُلمَس فتُشطَب: مَن يداها مشغولتان تحتاج أن تعرف أين وصلت */
 .rcp-st li.on{background:transparent;border-color:var(--line);opacity:.55}
-.rcp-st li.on::before{content:"\2713";background:var(--green-ink);color:#fff}
+.rcp-st li.on::before{content:"\2713";background:var(--green-ink);color:#fff;font-size:19px}
 .rcp-busy,.rcp-warn,.rcp-ok{border-radius:var(--r-2);padding:var(--s-3);
   margin-bottom:var(--s-3);border:1px solid var(--line)}
 .rcp-busy b,.rcp-warn b,.rcp-ok b{display:block;font-size:var(--fs-xs);
@@ -1901,7 +1913,7 @@ body.floormode #view{padding:0}
 .rcp-tovl .tov-n{font-size:var(--fs-lg);font-weight:700;color:#EAE4D8;
   text-align:center}
 .rcp-tovl .tov-v{font-size:clamp(96px,34vw,190px);font-weight:800;line-height:1;
-  color:#FBF9F4;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+  color:#E8B877;font-variant-numeric:tabular-nums;letter-spacing:-2px}
 .rcp-tovl .tov-x{min-height:56px;min-width:180px;padding:0 var(--s-5);
   border:0;border-radius:var(--r-full);cursor:pointer;
   background:#FBF9F4;color:#16281D;
@@ -2011,8 +2023,18 @@ body.rcp-hide .sheet,body.rcp-hide #view{filter:blur(14px)}
 .kt-t b{display:block;font-size:var(--fs-sm);font-weight:700;color:var(--ink)}
 .kt-t span{display:block;font-size:var(--fs-xs);color:var(--muted)}
 .kt-s{margin-top:8px}
-.kt-s>summary{list-style:none;cursor:pointer;min-height:36px;display:flex;align-items:center;
-  font-size:var(--fs-xs);font-weight:700;color:var(--muted)}
+.kt-s>summary{list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;
+  font-size:var(--fs-sm);font-weight:800;color:var(--accent)}
 .kt-s>summary::-webkit-details-marker{display:none}
-.kt-s ol{margin:4px 0 0;padding-inline-start:20px}
-.kt-s li{font-size:var(--fs-xs);line-height:1.6;color:var(--ink);margin-bottom:4px}
+.kt-s ol{margin:6px 0 0;padding:0;list-style:none;counter-reset:ktstep}
+.kt-s li{position:relative;counter-increment:ktstep;
+  padding-block:11px;padding-inline-end:46px;padding-inline-start:var(--s-3);
+  margin-bottom:6px;min-height:50px;display:flex;align-items:center;
+  border-radius:var(--r-2);background:var(--ivory);border:1px solid var(--line);
+  font-size:var(--fs-md);font-weight:600;line-height:1.6;color:var(--ink)}
+.kt-s li::before{content:counter(ktstep);position:absolute;
+  inset-inline-end:9px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;border-radius:50%;
+  background:var(--accent);color:var(--accent-on);
+  font-size:15px;font-weight:800;line-height:28px;text-align:center}
+.kt-t b{font-size:var(--fs-md)}

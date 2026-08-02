@@ -2751,10 +2751,23 @@ function allTasksSheet(){
   /* الدوريات تصل بمسارٍ آخر (قوالب متناوبة لا مهام مُسنَدة)، فتُعرض هنا
      كي تكون هذه الورقة جواباً كاملاً لا نصف جواب. */
   var rec=(st.recurring||[]).filter(function(rt){ return rt.turn; });
-  if(rec.length){
-    h+='<div class="atk-h">دوريات جاء دورك عليها<i>'+rec.length+'</i></div>'+
-       rec.map(function(rt){ return '<div class="atk"><div class="atk-t"><b>'+esc(rt.name)+'</b>'+
-         '<span>'+(rt.every?'كل '+(+rt.every)+' أيام':'بالتناوب')+'</span></div></div>'; }).join('');
+  var recNow=rec.filter(function(rt){ return rt.due !== false; });
+  var recLater=rec.filter(function(rt){ return rt.due === false; });
+  function recRow(rt, sub){
+    return '<div class="atk"><div class="atk-t"><b>'+esc(rt.name)+'</b>'+
+      '<span>'+esc(sub)+'</span></div>'+
+      (rt.cadence_min?'<span class="atk-m">كل '+(+rt.cadence_min)+' د</span>':'')+'</div>';
+  }
+  if(recNow.length){
+    h+='<div class="atk-h">دوريات حان وقتها<i>'+recNow.length+'</i></div>'+
+       recNow.map(function(rt){ return recRow(rt, rt.area||'بالتناوب'); }).join('');
+  }
+  if(recLater.length){
+    h+='<div class="atk-h">دوريات لاحقاً<i>'+recLater.length+'</i></div>'+
+       '<div class="atk-why">لكل دورية إيقاعها. تظهر وحدها حين يحين وقتها، '+
+       'فلا تصل عشر دوريات دفعةً واحدة والمقهى ما زال هادئاً.</div>'+
+       recLater.map(function(rt){
+         return recRow(rt, (rt.area||'')+(rt.due_at?' · من '+fmtT(rt.due_at):'')); }).join('');
   }
 
   h+='<div class="atk-h">أنجزتِها اليوم<i>'+doneL.length+'</i></div>';
@@ -2788,7 +2801,7 @@ function loadKTasks(){
           '<div class="kt-t"><b>'+esc(t.title)+'</b>'+
             '<span>'+esc(KROT[t.rotation]||'')+(t.minutes?' · '+(+t.minutes)+' د':'')+'</span></div>'+
           (t.done_today
-            ? '<div class="kt-by">'+IC.check+'<span>أنجزتها '+esc(t.done_by||'—')+
+            ? '<div class="kt-by">'+IC.ready+'<span>أنجزتها '+esc(t.done_by||'—')+
                 (t.done_at?' · '+fmtT(t.done_at):'')+'</span>'+
                 (t.mine?'<button class="btn sm ghost" data-ktu="'+esc(t.id)+'">تراجع</button>':'')+
               '</div>'
@@ -2882,7 +2895,10 @@ function nowInbox(st, zone){
       '<button class="nx-in-b" data-a="hoRead" data-id="'+(+hi.id)+'">قرأتُه</button></div>');
   }
 
-  (st.recurring||[]).filter(function(rt){ return rt.turn && !rt.done; }).forEach(function(rt){
+  /* الخادم يحسب لكل دورية إيقاعها. «دورك» لا تعني «الآن»: ما لم يحن
+     وقتها يبقى في «مهامي» بساعته، ولا يملأ شاشة اللحظة. */
+  (st.recurring||[]).filter(function(rt){ return rt.turn && !rt.done && rt.due !== false; })
+    .forEach(function(rt){
     rows.push('<div class="nx-in-r">'+
       '<div class="nx-in-t"><b>'+esc(rt.name)+'</b>'+
       '<span>جاء دورك عليها'+(rt.every?' · كل '+(+rt.every)+' أيام':'')+'</span></div>'+
