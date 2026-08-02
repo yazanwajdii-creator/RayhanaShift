@@ -56,8 +56,16 @@
 .glass{background:rgba(242,244,240,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 @supports not (backdrop-filter:blur(1px)){.glass{background:var(--c-bg)}}
 /* ===== طبقة "شاشة اليوم" فقط: رفع أولوية مكوّنات النظام الجديد فوق القديم دون المساس بالشاشات الأخرى ===== */
-.today{display:flex;flex-direction:column;gap:var(--s-3);font-family:var(--f)}
+/* خطّان في تطبيق واحد يُقرآن نظامين. «الآن» تأخذ خطّ بقيّة الشاشات. */
+.today{display:flex;flex-direction:column;gap:var(--s-3);font-family:var(--font)}
 .today .card{background:var(--c-surface);border:1px solid var(--c-line);border-radius:var(--r-3);padding:var(--s-4);box-shadow:var(--sh-1)}
+/* في الداكن الظلُّ لا يُرى: الارتفاع يُصنع بالسطوع لا بالظلّ. */
+@media (prefers-color-scheme:dark){
+  .today .card,.wrap>.card{box-shadow:none;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--c-surface) 92%,#fff),var(--c-surface))}
+}
+:root[data-theme="dark"] .today .card,:root[data-theme="dark"] .wrap>.card{box-shadow:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c-surface) 92%,#fff),var(--c-surface))}
 .today .shift{padding:var(--s-4)}
 .list .row{min-height:var(--tap);padding:var(--s-3) var(--s-4);background:var(--c-surface);border-bottom:1px solid var(--c-line);flex-wrap:nowrap}
 .list .row:last-child{border-bottom:none}
@@ -136,7 +144,9 @@
   --shadow-lg:0 18px 42px rgba(0,0,0,.55);
   --hero:linear-gradient(158deg,#132019,#17281F 60%,#1D3327); --on-hero:#E5EBE6;
   --glass:rgba(23,30,24,.74);
-  --c-bg:#0E1310; --c-surface:#171E18; --c-surface-2:#212820; --c-line:#28322A; --c-line-strong:#38443A;
+  /* البطاقات كانت #171E18 على #0E1310 — فارقٌ لا تراه العين فتبدو الشاشة
+     مسطّحة. رُفعت الأسطح درجتين وقُوّي الحدّ، فصار للبطاقة جسمٌ ظاهر. */
+  --c-bg:#070A08; --c-surface:#1F2823; --c-surface-2:#26302A; --c-line:#38443C; --c-line-strong:#4A5A4E;
   --c-text-1:#E9EEE6; --c-text-2:#A7B2A8; --c-text-3:#717C73;
   --c-primary-100:#22322A; --c-primary-050:#182219; --c-success:#4FB584; --c-success-bg:#16281F;
   --c-warn:#DBA353; --c-warn-bg:#2C2415; --c-danger:#E07360; --c-danger-bg:#2E1B17; --c-info:#6BA0DC; --c-info-bg:#152030;
@@ -176,7 +186,9 @@
     --shadow-lg:0 18px 42px rgba(0,0,0,.55);
     --hero:linear-gradient(158deg,#132019,#17281F 60%,#1D3327); --on-hero:#E5EBE6; --on-hero:#E5EBE6;
     --glass:rgba(23,30,24,.74);
-    --c-bg:#0E1310; --c-surface:#171E18; --c-surface-2:#212820; --c-line:#28322A; --c-line-strong:#38443A;
+    /* البطاقات كانت #171E18 على #0E1310 — فارقٌ لا تراه العين فتبدو الشاشة
+     مسطّحة. رُفعت الأسطح درجتين وقُوّي الحدّ، فصار للبطاقة جسمٌ ظاهر. */
+  --c-bg:#070A08; --c-surface:#1F2823; --c-surface-2:#26302A; --c-line:#38443C; --c-line-strong:#4A5A4E;
     --c-text-1:#E9EEE6; --c-text-2:#A7B2A8; --c-text-3:#717C73;
     --c-primary-100:#22322A; --c-primary-050:#182219; --c-success:#4FB584; --c-success-bg:#16281F;
     --c-warn:#DBA353; --c-warn-bg:#2C2415; --c-danger:#E07360; --c-danger-bg:#2E1B17; --c-info:#6BA0DC; --c-info-bg:#152030;
@@ -1948,10 +1960,11 @@ body.floormode #view{padding:0}
   background:rgba(13,28,20,.95);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .rcp-tovl .tov-n{font-size:var(--fs-lg);font-weight:700;color:#EAE4D8;
-  text-align:center;margin-bottom:6px}
+  text-align:center;margin-bottom:22px;letter-spacing:.3px}
 .rcp-tovl .tov-v{font-size:clamp(96px,34vw,190px);font-weight:800;line-height:1;
-  /* اللون من نبرة العلامة نفسها لا كهرمانياً غريباً عنها */
-  color:#E58865;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+  /* اختير بالقياس: #F0956B يعطي ٧٫٤٤ على الحجاب — أعلى من الطين المحروق
+     الصافي، ويبقى من عائلته لا لوناً غريباً. */
+  color:#F0956B;font-variant-numeric:tabular-nums;letter-spacing:-2px}
 .rcp-tovl .tov-x{min-height:56px;min-width:180px;padding:0 var(--s-5);
   border:0;border-radius:var(--r-full);cursor:pointer;
   background:#FBF9F4;color:#16281D;

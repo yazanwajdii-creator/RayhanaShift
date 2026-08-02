@@ -2,7 +2,7 @@
    نظام تشغيل كافيه ريحانة (RKO) — ملف واحد
   قبل النشر: الصقي رابط مشروع Supabase والمفتاح anon هنا فقط
    ===================================================================== */
-var BUILD = "2026-08-03.2"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
+var BUILD = "2026-08-03.3"; /* RCOS_BUILD_ID — لا تبحثي عن رقم الإصدار بلا هذه العلامة */
 var PUSHKEY = "BMlUb37eLSD5Cj2U5UNGXr3aNIeruOwzIKeeyRflN042KTaBELUrXxeiErI3MHsOdvjgMnW0BXa2ahx3NJwMsgg";
 var CONFIG = {
   SUPABASE_URL: "https://uxwreejvcokwkbgwbrdj.supabase.co",
