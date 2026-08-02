@@ -1753,3 +1753,113 @@ body.floormode #view{padding:0}
   border:1px solid var(--line);background:var(--surface);color:var(--ink);
   font:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer}
 .wl-o.on{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+
+/* ═══════════ الوصفات ═══════════
+   لا لون سطريّاً ولا قياساً ثابتاً: كل شيء من رموز النظام، فتنقلب
+   الشاشة مع السمة الليلية والنهارية معها لا ضدّها. */
+.rcp-bar{display:flex;gap:var(--s-2);margin-bottom:var(--s-3)}
+.rcp-s{flex:1 1 auto;min-width:0;min-height:46px;border-radius:var(--r-2);
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  font:inherit;font-size:var(--fs-sm);padding:0 var(--s-3)}
+.rcp-quiz{flex:0 0 auto;min-height:46px;padding:0 var(--s-4);border-radius:var(--r-2);
+  border:1px solid transparent;background:var(--ink);color:var(--on-ink);
+  font:inherit;font-size:var(--fs-sm);font-weight:800;cursor:pointer}
+.rcp-quiz:active{filter:brightness(.94)}
+.rcp-cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:var(--s-2);
+  margin-bottom:var(--s-2);scrollbar-width:none}
+.rcp-cats::-webkit-scrollbar{display:none}
+.rcp-c{flex:0 0 auto;min-height:44px;padding:0 var(--s-3);border-radius:22px;
+  border:1px solid var(--line);background:var(--surface);color:var(--muted);
+  font:inherit;font-size:var(--fs-xs);font-weight:700;cursor:pointer;white-space:nowrap}
+.rcp-c i{font-style:normal;margin-inline-start:5px;opacity:.65;font-variant-numeric:tabular-nums}
+.rcp-c.on{background:var(--ink);color:var(--on-ink);border-color:transparent}
+.rcp-h{font-size:var(--fs-xs);font-weight:800;color:var(--muted);
+  margin:var(--s-3) 2px var(--s-2)}
+.rcp-i{display:flex;align-items:center;gap:var(--s-3);width:100%;min-height:52px;
+  padding:var(--s-2) var(--s-3);margin-bottom:6px;border-radius:var(--r-2);
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  font:inherit;text-align:start;cursor:pointer}
+.rcp-i:active{background:var(--surface-2)}
+.rcp-n{flex:1 1 auto;min-width:0;font-size:var(--fs-sm);font-weight:700;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcp-m{flex:0 0 auto;display:flex;gap:5px}
+.rcp-m span{font-size:var(--fs-xs);color:var(--muted);border:1px solid var(--line);
+  border-radius:20px;padding:2px 8px;white-space:nowrap}
+
+/* صفحة الصنف */
+.rcp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--s-3)}
+.rcp-chips span{font-size:var(--fs-xs);font-weight:700;color:var(--ink);
+  background:var(--surface-2);border-radius:20px;padding:5px 10px}
+.rcp-sec{font-size:var(--fs-xs);font-weight:800;color:var(--muted);
+  margin:var(--s-4) 0 var(--s-2)}
+.rcp-p{font-size:var(--fs-sm);line-height:1.6;color:var(--ink);margin:0 0 var(--s-2)}
+.rcp-p.muted{color:var(--muted);font-size:var(--fs-xs)}
+.rcp-ing{display:flex;flex-direction:column;gap:4px}
+.rcp-ir{display:flex;align-items:baseline;gap:var(--s-2);padding:9px var(--s-3);
+  border-radius:var(--r-2);background:var(--surface-2)}
+.rcp-ir b{flex:1 1 auto;font-size:var(--fs-sm);font-weight:700;color:var(--ink)}
+.rcp-ir span{flex:0 0 auto;font-size:var(--fs-sm);font-weight:800;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.rcp-ir i{flex:1 1 100%;font-style:normal;font-size:var(--fs-xs);color:var(--muted)}
+.rcp-st{margin:0;padding-inline-start:22px}
+.rcp-st li{font-size:var(--fs-sm);line-height:1.65;color:var(--ink);margin-bottom:6px}
+.rcp-busy,.rcp-warn,.rcp-ok{border-radius:var(--r-2);padding:var(--s-3);
+  margin-bottom:var(--s-3);border:1px solid var(--line)}
+.rcp-busy b,.rcp-warn b,.rcp-ok b{display:block;font-size:var(--fs-xs);
+  font-weight:800;margin-bottom:3px}
+.rcp-busy span,.rcp-warn span,.rcp-ok span{display:block;font-size:var(--fs-sm);line-height:1.55}
+.rcp-busy{border-color:color-mix(in srgb,var(--amber-ink) 55%,transparent);
+  background:var(--c-warn-bg,var(--surface-2))}
+.rcp-busy b,.rcp-busy span{color:var(--amber-ink)}
+.rcp-warn{border-color:color-mix(in srgb,var(--red-ink) 55%,transparent)}
+.rcp-warn b,.rcp-warn span{color:var(--red-ink)}
+.rcp-ok{border-color:color-mix(in srgb,var(--green-ink) 55%,transparent);
+  background:color-mix(in srgb,var(--green-ink) 8%,transparent)}
+.rcp-ok b{color:color-mix(in srgb,var(--green-ink) 62%,var(--ink))}
+.rcp-ok span{color:var(--ink)}
+.rcp-tn{display:flex;flex-direction:column;gap:6px}
+.rcp-tnr{padding:9px var(--s-3);border-radius:var(--r-2);background:var(--surface-2)}
+.rcp-tnr span{display:block;font-size:var(--fs-sm);line-height:1.55;color:var(--ink)}
+.rcp-tnr i{font-style:normal;font-size:var(--fs-xs);color:var(--muted)}
+.rcp-add{display:flex;gap:var(--s-2);margin-top:var(--s-2)}
+.rcp-add .f{flex:1 1 auto;min-width:0;margin:0}
+.rcp-add .btn{flex:0 0 auto;min-height:46px}
+.rcp-q{font-size:var(--fs-md);font-weight:700;line-height:1.6;color:var(--ink);
+  margin:0 0 var(--s-3)}
+.rcp-res{text-align:center;padding:var(--s-4);border-radius:var(--r-2);
+  border:1px solid var(--line);margin-bottom:var(--s-3)}
+.rcp-res b{display:block;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.rcp-res span{display:block;font-size:var(--fs-sm);margin-top:4px}
+.rcp-res.full{border-color:color-mix(in srgb,var(--green-ink) 55%,transparent)}
+.rcp-res.full b,.rcp-res.full span{color:var(--green-ink)}
+.rcp-res.near{border-color:color-mix(in srgb,var(--amber-ink) 55%,transparent)}
+.rcp-res.near b,.rcp-res.near span{color:var(--amber-ink)}
+.rcp-res.review b,.rcp-res.review span{color:var(--muted)}
+
+/* العلامة المائية: لا تمنع اللقطة — تجعلها منسوبة. شفّافة بما يكفي
+   ألّا تُعيق القراءة، وواضحة بما يكفي أن تظهر في الصورة. */
+.rcp-wm{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden;
+  display:grid;grid-template-columns:repeat(2,1fr);align-content:space-around;
+  transform:rotate(-24deg);opacity:.085}
+.rcp-wm span{font-size:12px;font-weight:800;color:var(--ink);white-space:nowrap;
+  text-align:center;letter-spacing:.3px}
+.overlay .sheet{position:relative}
+/* الخروج للخلفية يطمس الشاشة: جهازٌ متروك لا يبقى عارضاً وصفة */
+body.rcp-hide .sheet,body.rcp-hide #view{filter:blur(14px)}
+
+/* سؤال نهاية الدورة: شريطٌ واحد أعلى اللوحة، لا نافذة تعترض الإغلاق */
+.flr-ask{grid-column:1/-1;display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap;
+  padding:var(--s-3) var(--s-4);border-radius:var(--r-2);
+  border:1px solid color-mix(in srgb,var(--brand) 50%,transparent);
+  background:var(--surface);margin-bottom:var(--s-2)}
+.fa-t{flex:1 1 160px;min-width:0}
+.fa-t b{display:block;font-size:var(--fs-sm);font-weight:800;color:var(--ink)}
+.fa-t span{display:block;font-size:var(--fs-xs);color:var(--muted)}
+.fa-b{display:flex;gap:var(--s-2);flex:0 0 auto}
+.fa-b button{min-height:44px;min-width:62px;padding:0 var(--s-3);border-radius:var(--r-2);
+  border:1px solid transparent;background:var(--ink);color:var(--on-ink);
+  font:inherit;font-size:var(--fs-sm);font-weight:800;cursor:pointer}
+.fa-b button.fa-skip{background:transparent;color:var(--muted);border-color:var(--line);font-weight:700}
+.fa-b button:disabled{opacity:.5}
+.gst-big{font-size:44px;font-weight:800;line-height:1.1;color:var(--ink);
+  font-variant-numeric:tabular-nums;margin:2px 0 4px}

@@ -1,6 +1,6 @@
 /* عامل خدمة ريحانة — الشبكة أولاً للهيكل، مع نسخة احتياطية للعمل دون اتصال */
-var CACHE = 'rayhana-shift-v95';
-var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'config.js',
+var CACHE = 'rayhana-shift-v96';
+var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'config.js', 'recipes.js',
              'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', function (e) {

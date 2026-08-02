@@ -1455,6 +1455,12 @@ function drawTab(){
   else v.innerHTML=viewMore();
   wireTab(v); animIn(v);
   if(S.tab==='now'){ loadPrepCard(); loadOpsCard(); loadTablesCard(); loadVerifyCard(); loadContribCard(); loadSignalsCard(); }
+  if(S.tab==='more' && S.moreSec==='recipes')
+    modLoad('recipes', 'RCP', function(){
+      var hh=$('#rcpHost');
+      if(hh && window.RCP) window.RCP.open(hh);
+      else if(hh) hh.innerHTML='<div class="empty">تعذّر تحميل الوصفات</div>';
+    });
   /* وضع ملء الشاشة للأرضية: يختفي الرأس وشريط التنقّل فتأخذ الصالة
      الشاشة كلّها — وهو ما تحتاجه أداةٌ تُفتح عشرات المرات في الشفت. */
   document.body.classList.toggle('floormode', S.tab==='floor');
@@ -3040,7 +3046,7 @@ function loadTablesCard(){
    الآن: صفحة كاملة، واللون يقول الحالة لا الإلحاح، والإلحاح حلقةٌ حول
    البلاطة. والرؤية للجميع، والتعديل بحسب النطاق الذي يعلنه الخادم. */
 var FLR = {area:null, areas:null, data:null, sel:null, f:'all', timer:null, tick:null,
-           busy:false, skew:0, synced:0, at:0, mvFrom:null};
+           busy:false, skew:0, synced:0, at:0, mvFrom:null, ask:null};
 
 /* لون الحالة رمزُ CSS لا سُدسي ثابت، فينقلب مع السمة تلقائياً */
 var STC = {
@@ -3168,9 +3174,43 @@ function flrBoard(quiet){
     FLR.at=Date.now();
     FLR.data=res;
     flrPaint();
+    /* سؤال نهاية الدورة يُجلب مع اللوحة لا بنداءٍ ثالث */
+    sAct('tbl_students_pending',{}).then(function(sp){
+      if(!sp||!sp.ok||!$('#flrHost')) return;
+      FLR.ask=sp.pending||[]; flrAskBar();
+    }).catch(function(){});
   }).catch(function(){
     if(!FLR.data && $('#flrHost')) $('#flrHost').innerHTML='<div class="empty">تعذّر الاتصال</div>';
   });
+}
+
+/* ── سؤال نهاية دورة الطاولة ──
+   «الزبائن طالبات جامعة؟» نعم/لا فقط. ولا يعترض الإغلاق: تحت الضغط
+   لا يُوقَف فعلٌ بسؤال — تُغلق الطاولة فوراً ويبقى السؤال في شريطٍ
+   أعلى اللوحة حتى تهدأ الحركة. سؤالٌ واحد في الشريط لا قائمة، لأن
+   الجواب لحظيّ ولأن الشريط لا يجوز أن يأكل الأرضية. */
+function flrAskBar(){
+  var w=$('#flrHost'); if(!w) return;
+  var old=$('#flrAsk',w); if(old) old.remove();
+  var q=(FLR.ask||[])[0]; if(!q) return;
+  var bar=document.createElement('div');
+  bar.id='flrAsk'; bar.className='flr-ask';
+  bar.innerHTML='<div class="fa-t"><b>طاولة '+(+q.table_no)+' غادرت</b>'+
+    '<span>'+(+q.guests)+' ضيفات · '+esc(q.area||'')+' — طالبات جامعة؟</span></div>'+
+    '<div class="fa-b"><button data-sy="1">نعم</button>'+
+    '<button data-sy="0">لا</button>'+
+    '<button class="fa-skip" data-sy="x">لاحقاً</button></div>';
+  var host=$('.flrx',w)||w;
+  host.insertBefore(bar, host.firstChild);
+  $$('[data-sy]',bar).forEach(function(b){ b.addEventListener('click', function(){
+    var v=b.getAttribute('data-sy');
+    if(v==='x'){ FLR.ask=(FLR.ask||[]).slice(1); flrAskBar(); return; }
+    $$('[data-sy]',bar).forEach(function(x){ x.disabled=true; });
+    sAct('tbl_students',{session_id:q.session_id, yes:(v==='1')}, true).then(function(r){
+      if(r&&r.ok){ FLR.ask=r.pending||[]; flrAskBar(); }
+      else { $$('[data-sy]',bar).forEach(function(x){ x.disabled=false; }); }
+    });
+  }); });
 }
 
 /* مرجع العدّ: لحظة آخر جلب، ويسقط إلى «الآن» قبل أول جلب فقط */
@@ -3294,7 +3334,7 @@ function flrPaint(){
     flrSet(+b.getAttribute('data-fid'), b.getAttribute('data-fgo'), +b.getAttribute('data-fv2'), b); }); });
   var dt=$('#flrDetail',w);
   if(dt) dt.addEventListener('click', function(){ TM.admin=false; tmDetail(+dt.getAttribute('data-fid')); });
-  updateTimers(); tmTick();
+  updateTimers(); tmTick(); flrAskBar();
 }
 
 function flrSideEmpty(){
@@ -4165,6 +4205,7 @@ var MORE_SECS=[
   ['myhours','ساعاتي','ساعات عملكِ آخر ٣٠ يوماً وكيف حُسبت', IC.tasks],
   ['requests','الطلبات والإجازات','إجازة، إذن، تبديل وتغطية الشفتات', IC.shift],
   ['issues','بلاغ أو ملاحظة للإدارة','عطل، نقص مستلزمات، سلامة، أو ملاحظة', IC.bell],
+  ['recipes','الوصفات','الأصناف ومكوّناتها وخطواتها — ومراجعة سريعة', IC.tasks],
   ['settings','إعدادات العرض','السمة، حجم الخط، التثبيت', IC.more]
 ];
 function viewMore(){
@@ -4180,6 +4221,26 @@ function viewMore(){
   var back='<div class="backbar"><button data-a="moreBack">‹ رجوع</button><h2>'+esc(t)+'</h2></div>';
   return back + moreSection(S.moreSec, st);
 }
+/* جسرٌ ضيّق إلى الوحدات المُحمَّلة عند الطلب: ما تحتاجه فقط، لا نطاق
+   app.js كلّه. والملف يُطلب بترويسة الإصدار فلا يُخدَم من ذاكرة قديمة. */
+function modLoad(file, name, cb){
+  /* الجسر يُنصَّب قبل الفحص لا بعده: لو حُمّلت الوحدة بأي طريق آخر
+     (تخزين مؤقّت، حزمة اختبار) وجدت أدواتها جاهزة ولم تنكسر على ترتيب. */
+  window.__RKO = window.__RKO || {S:S, esc:esc, sheet:sheet, toast:toast, sAct:sAct,
+                                  fmtT:fmtT, fmtD:fmtD};
+  if(window[name]) return cb();
+  var sc=document.createElement('script');
+  sc.src = file+'.js?v='+(window.BUILD||'');
+  /* onload لا يعني أن الوحدة سجّلت نفسها: ملفٌّ يصل ناقصاً أو يُخدَم
+     صفحةَ خطأ يُطلق onload أيضاً. فلا نستدعي الاستدعاء إلا بعد التأكّد
+     من وجود الوحدة — وإلا انهار القسم بدل أن يقول «تعذّر». */
+  sc.onload = function(){
+    if(!window[name]){ toast('تعذّر تحميل الوحدة — أعيدي المحاولة', true); return; }
+    cb();
+  };
+  sc.onerror = function(){ toast('تعذّر تحميل الوحدة — تحقّقي من الاتصال', true); };
+  document.head.appendChild(sc);
+}
 function moreSection(sec, st){
   if(sec==='myhours') return moreHoursCard();
   if(sec==='requests') return moreReqCard(st)+
@@ -4189,6 +4250,9 @@ function moreSection(sec, st){
   /* البلاغ والملاحظة قناة واحدة: كلاهما «أريد أن تعرف الإدارة شيئاً»،
      وقناتان لغرضٍ واحد تجعلان الموظفة تتردّد أيّهما تختار. */
   if(sec==='issues') return moreIssueCard()+moreNoteCard();
+  /* الوصفات: حاوٍ فارغ، ووحدةٌ تُحمَّل عند أول فتح. ما يبقى في app.js
+     هو هذان السطران والمُحمِّل — لا ثمانون وصفة ولا شاشتها. */
+  if(sec==='recipes') return '<div id="rcpHost"><div class="empty">جارٍ التحميل…</div></div>';
   if(sec==='settings') return '<div class="card"><h3>إعدادات العرض</h3>'+
     '<div class="btnrow" style="flex-wrap:wrap"><button class="btn ghost" data-a="themeToggle">تبديل السمة (فاتح/داكن)</button>'+
     '<button class="btn ghost" data-a="fontToggle">حجم الخط: '+((function(){try{return localStorage.getItem('rko_font')==='lg';}catch(e){return false;}})()?'كبير':'عادي')+'</button>'+
@@ -4668,7 +4732,7 @@ function startAdmin(){
 }
 var SECS=[
   ['dash','','اليوم'],['board','','لوحة العمليات'],['ocdecisions','','مركز القرارات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
-  ['issues','','البلاغات'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],['roster','','جدولة تلقائية'],
+  ['issues','','البلاغات'],['kitchen','','المطبخ: الوصفات والاختبارات'],['guests','','من يزورنا؟'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],['roster','','جدولة تلقائية'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['tables','','خريطة الطاولات'],['templates','','قوالب المهام'],
   ['tasks','','مهام اليوم'],['prep','','محطة التحضير'],['ops','','الجاهزية والسلامة'],['attendance','','الحضور'],['skills','','المهارات'],
   ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
@@ -7379,6 +7443,82 @@ ADMIN.broadcast=function(v){
 };
 
 /* ---------- البلاغات (تذاكر) ---------- */
+/* «من يزورنا؟» — نسبة طالبات الجامعة من الجلسات المُجاب عنها.
+   نُظهر تغطية السؤال بجانب النسبة دائماً: نسبةٌ مبنيّة على ثلاث إجابات
+   ليست معرفة، وإخفاء التغطية يحوّل الرقم إلى ثقةٍ زائفة. */
+ADMIN.guests=function(v){
+  v.innerHTML=skel(2);
+  aAct('students_report',{}).then(function(r){
+    if(!r||!r.ok){ v.innerHTML='<div class="empty">تعذّر التحميل</div>'; return; }
+    var t=r.total||{}, cov=t.coverage_pct;
+    var pct=(t.pct==null?'—':t.pct+'٪');
+    v.innerHTML=
+      '<div class="card"><h3>طالبات الجامعة</h3>'+
+        '<div class="gst-big">'+esc(pct)+'</div>'+
+        '<div class="muted small">من '+(+t.answered||0)+' جلسة أُجيب عنها خلال ٣٠ يوماً · '+
+          (+t.students||0)+' منها طالبات.</div>'+
+        (cov!=null?'<div class="muted small" style="margin-top:6px">تغطية السؤال '+cov+'٪ من الجلسات — '+
+          (cov<60?'النسبة أعلاه مبنيّة على عيّنة صغيرة، اقرأيها بحذر.':'تغطية كافية.')+'</div>':'')+
+      '</div>'+
+      '<div class="card"><h3>الضيفات</h3>'+
+        '<div class="muted small">'+(+t.guests||0)+' ضيفة في الجلسات المحسوبة، منهنّ '+
+        (+t.guests_students||0)+' على طاولات طالبات.</div></div>'+
+      ((r.by_area||[]).length?'<div class="card"><h3>حسب المنطقة</h3>'+
+        (r.by_area||[]).map(function(a){
+          return '<div class="row" style="justify-content:space-between;padding:6px 0">'+
+            '<span>'+esc(a.area)+'</span><b>'+(a.pct==null?'—':a.pct+'٪')+
+            ' <span class="muted small">('+(+a.answered)+')</span></b></div>';
+        }).join('')+'</div>':'')+
+      ((r.by_day||[]).length?'<div class="card"><h3>آخر الأيام</h3>'+
+        (r.by_day||[]).slice(-14).reverse().map(function(d){
+          return '<div class="row" style="justify-content:space-between;padding:6px 0">'+
+            '<span class="muted small">'+esc(d.day)+'</span><b>'+(d.pct==null?'—':d.pct+'٪')+
+            ' <span class="muted small">('+(+d.answered)+')</span></b></div>';
+        }).join('')+'</div>':'');
+  });
+};
+
+/* المطبخ: ما يحتاجه المالك من قسم الوصفات — ما تعلّمه الفريق، وأي
+   صنفٍ ما زال يحتاج تدريباً. لا ترتيب موظفات ولا درجات معلنة. */
+ADMIN.kitchen=function(v){
+  v.innerHTML=skel(2);
+  Promise.all([aAct('quiz_report',{}), aAct('recipe_notes',{})]).then(function(rr){
+    var q=rr[0]||{}, n=rr[1]||{}, tt=(q.totals||{});
+    v.innerHTML=
+      '<div class="card"><h3>الاختبارات — ٣٠ يوماً</h3>'+
+        '<div class="muted small">'+(+tt.answered||0)+' إجابة · '+(+tt.full||0)+' كاملة · '+
+        (+tt.near||0)+' قريبة · '+(+tt.review||0)+' تحتاج مراجعة.</div>'+
+        '<div class="muted small" style="margin-top:6px">الاختبار تذكيرٌ لا امتحان: '+
+        'لا درجة تُنشر ولا مقارنة بين الموظفات.</div></div>'+
+      '<div class="card"><h3>أصناف تحتاج تدريباً</h3>'+
+        ((q.weak_items||[]).length
+          ? (q.weak_items||[]).map(function(w){
+              return '<div class="row" style="justify-content:space-between;padding:6px 0">'+
+                '<span>'+esc(w.item)+'</span><b>'+(+w.review)+' <span class="muted small">من '+
+                (+w.asked)+'</span></b></div>'; }).join('')
+          : '<div class="muted small">لا صنف متعثّر بعد.</div>')+'</div>'+
+      '<div class="card"><h3>ملاحظات الفريق على الأصناف</h3>'+
+        ((n.rows||[]).length
+          ? (n.rows||[]).map(function(x){
+              return '<div style="border-bottom:1px dashed var(--line);padding:8px 0">'+
+                '<b>'+esc(x.item)+'</b>'+(x.pinned?' <span class="chip green">مثبّتة</span>':'')+
+                '<div class="small">'+esc(x.text)+'</div>'+
+                '<div class="muted small">'+esc(x.who||'')+' · '+fmtD(x.ts)+'</div>'+
+                '<div class="btnrow" style="margin:6px 0 0">'+
+                  '<button class="btn sm ghost" data-pin="'+(+x.id)+'" data-v="'+(x.pinned?'0':'1')+'">'+
+                    (x.pinned?'إلغاء التثبيت':'ثبّتيها')+'</button>'+
+                  '<button class="btn sm ghost" data-rmn="'+(+x.id)+'">حذف</button></div></div>'; }).join('')
+          : '<div class="muted small">لا ملاحظات بعد.</div>')+'</div>';
+    $$('[data-pin]',v).forEach(function(b){ b.addEventListener('click', function(){
+      aAct('recipe_note_pin',{id:+b.getAttribute('data-pin'), pinned:b.getAttribute('data-v')==='1'})
+        .then(function(r){ if(r&&r.ok) ADMIN.kitchen(v); }); }); });
+    $$('[data-rmn]',v).forEach(function(b){ b.addEventListener('click', function(){
+      confirmSheet('حذف الملاحظة','ستُحذف نهائياً.','حذف', function(){
+        aAct('recipe_note_del',{id:+b.getAttribute('data-rmn')}).then(function(r){
+          if(r&&r.ok) ADMIN.kitchen(v); }); }, true); }); });
+  });
+};
+
 ADMIN.issues=function(v){
   function load(){
     aAct('issues_list',{}).then(function(res){
