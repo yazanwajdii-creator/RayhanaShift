@@ -1813,7 +1813,8 @@ body.floormode #view{padding:0}
 /* الاستراحة بطاقةٌ كهرمانية وزرُّها أخضر — لونان لا يجتمعان. الزرّ
    يأخذ نبرة البطاقة نفسها فتُقرأ كتلةً واحدة. */
 .nx-do--brk{border:1.5px solid var(--amber);background:var(--amber-soft)}
-.nx-do--brk b,.nx-do--brk>span{color:var(--amber-ink)}
+.nx-do--brk b,.nx-do--brk>span,.nx-do--brk .timer{color:var(--accent-ink)}
+.nx-do--brk{border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .nx-do--brk .nx-btn{background:var(--accent);color:var(--accent-on)}
 .nx-do--brk .timer{font-variant-numeric:tabular-nums}
 
@@ -1962,9 +1963,9 @@ body.floormode #view{padding:0}
 .rcp-tovl .tov-n{font-size:var(--fs-lg);font-weight:700;color:#EAE4D8;
   text-align:center;margin-bottom:22px;letter-spacing:.3px}
 .rcp-tovl .tov-v{font-size:clamp(96px,34vw,190px);font-weight:800;line-height:1;
-  /* اختير بالقياس: #F0956B يعطي ٧٫٤٤ على الحجاب — أعلى من الطين المحروق
-     الصافي، ويبقى من عائلته لا لوناً غريباً. */
-  color:#F0956B;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+  /* لونك أنت بالضبط. الرقم ١٣٣px — نصٌّ كبير يكفيه ٣:١ لا ٤٫٥، ولذلك
+     يجوز هنا ما لا يجوز في سطرٍ صغير. */
+  color:#C05A2E;font-variant-numeric:tabular-nums;letter-spacing:-2px}
 .rcp-tovl .tov-x{min-height:56px;min-width:180px;padding:0 var(--s-5);
   border:0;border-radius:var(--r-full);cursor:pointer;
   background:#FBF9F4;color:#16281D;
@@ -2109,4 +2110,9 @@ body.rcp-hide .sheet,body.rcp-hide #view{filter:blur(14px)}
   width:28px;height:28px;border-radius:50%;
   background:var(--accent);color:var(--accent-on);
   font-size:15px;font-weight:800;line-height:28px;text-align:center}
+/* تُلمَس فتُشطَب — أثرٌ لعينها لا سجلٌّ عليها */
+.kt-s li{cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background .15s,opacity .15s}
+.kt-s li.on{background:transparent;opacity:.55}
+.kt-s li.on::before{content:"\2713";background:var(--green-ink);color:#fff;font-size:17px}
 .kt-t b{font-size:var(--fs-md)}
