@@ -1858,12 +1858,12 @@ body.floormode #view{padding:0}
   margin-bottom:var(--s-2);scrollbar-width:none}
 .rcp-cats::-webkit-scrollbar{display:none}
 .rcp-c{flex:0 0 auto;min-height:48px;padding:0 16px;border-radius:var(--r-full);
-  cursor:pointer;border:1.5px solid color-mix(in srgb,var(--accent) 45%,transparent);
-  background:var(--accent-soft);color:var(--accent-ink);
+  cursor:pointer;border:1.5px solid color-mix(in srgb,var(--brand) 40%,transparent);
+  background:var(--green-soft);color:var(--brand);
   font:inherit;font-size:15px;font-weight:800;display:inline-flex;align-items:center;gap:7px}
 .rcp-c i{font-style:normal;font-size:13px;font-weight:800;opacity:.75;
   font-variant-numeric:tabular-nums}
-.rcp-c.on{background:var(--accent);color:var(--accent-on);border-color:transparent}
+.rcp-c.on{background:var(--brand);color:var(--on-brand);border-color:transparent}
 .rcp-h{font-size:var(--fs-xs);font-weight:800;color:var(--muted);
   margin:var(--s-3) 2px var(--s-2)}
 .rcp-i{display:flex;align-items:center;gap:var(--s-3);width:100%;min-height:62px;
@@ -1884,7 +1884,7 @@ body.floormode #view{padding:0}
 .rcp-chips span{font-size:var(--fs-xs);font-weight:700;color:var(--ink);
   background:var(--surface-2);border-radius:20px;padding:5px 10px}
 .rcp-h{margin:var(--s-4) 2px var(--s-2);font-size:var(--fs-sm);
-  font-weight:800;color:var(--accent-ink)}
+  font-weight:800;color:var(--brand)}
 .rcp-sec{display:flex;align-items:center;gap:var(--s-2);
   font-size:var(--fs-sm);font-weight:800;color:var(--ink);
   margin:var(--s-5) 0 var(--s-2);letter-spacing:.2px}

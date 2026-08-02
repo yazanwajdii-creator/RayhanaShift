@@ -1661,13 +1661,13 @@ function tmTint(x){
 function tmUrgName(x){ return x.oos?'موقوفة':(x.state==='free'?'متاحة':TMU[tmUrg(x)].ar); }
 /* الإجراء كما تقوله الموظفة، لا اسم الحالة */
 var TMACT = {
-  seated:         {t:'جلس الضيفات',          s:'تبدأ مدة الطاولة الآن'},
-  ordered:        {t:'تم أخذ الطلب',         s:''},
-  served:         {t:'تم تقديم الطلب',       s:'الطاولة مشغولة'},
+  seated:         {t:'جلسن',                 s:'تبدأ مدة الطاولة الآن'},
+  ordered:        {t:'أخذت الطلب',           s:''},
+  served:         {t:'قدّمت الطلب',          s:''},
   bill_requested: {t:'طلبن الحساب',          s:''},
-  needs_clean:    {t:'غادرن — تحتاج تنظيفا', s:''},
-  cleaning:       {t:'بدأ التنظيف',          s:''},
-  free:           {t:'تم تجهيز الطاولة',     s:'عادت متاحة'}
+  needs_clean:    {t:'غادرن',                s:''},
+  cleaning:       {t:'بدأت الترتيب',         s:''},
+  free:           {t:'جاهزة',                s:'عادت متاحة'}
 };
 
 var TM = {area:null, data:null, timer:null, tick:null, admin:false,
