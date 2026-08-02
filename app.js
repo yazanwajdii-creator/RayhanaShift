@@ -3460,6 +3460,15 @@ function flrPaint(){
       '<span class="fs-in"></span><span class="fs-out"></span></button>'+
   '</header>';
 
+  /* شريط الانتباه: ما طال وقته على الأرض — فحمٌ، تنظيفٌ ينتظر، طاولة
+     مضى على تقديمها ٤٥ د. كلٌّ منها يفتح الطاولة نفسها بضغطة، فالتنبيه
+     بابٌ لا إزعاج. */
+  var nud=(res.nudges||[]);
+  if(nud.length) h+='<div class="flrx-nud">'+nud.slice(0,6).map(function(n){
+    return '<button class="nud n-'+esc(n.kind)+'" data-nud="'+(+n.table_id)+'">'+
+      '<b>'+(+n.no)+'</b><span>'+esc(n.text)+'</span></button>';
+  }).join('')+'</div>';
+
   h+='<main class="flrx-grid-wrap">'+
      (view.length
        ? '<div class="flrx-grid">'+view.map(flrCardTile).join('')+'</div>'
@@ -3471,6 +3480,9 @@ function flrPaint(){
 
   w.innerHTML=h;
 
+  $$('[data-nud]',w).forEach(function(b){ b.addEventListener('click', function(){
+    FLR.sel=+b.getAttribute('data-nud'); flrPaint();
+  });});
   var ex=$('#flrExit',w);
   if(ex) ex.addEventListener('click', function(){
     flrLandscape(false); S.tab='now'; paintTabs(); drawTab(); });
@@ -3493,6 +3505,17 @@ function flrPaint(){
       toast('اختاري طاولة متاحة', true); return;
     }
     FLR.sel=(FLR.sel===id)?null:id; flrPaint(); }); });
+  $$('[data-fnote]',w).forEach(function(b){ b.addEventListener('click', function(){
+    var id=+b.getAttribute('data-fnote');
+    inputSheet('ملاحظة عن الطاولة','ما الذي يجب أن يُعرَف عنها؟',
+      'مثال: حساسية من المكسّرات · طلبن تخفيف الثلج','حفظ', function(txt){
+        if(!txt || txt.trim().length<3){ toast('اكتبي الملاحظة', true); return; }
+        sAct('tbl_followup',{table_id:id, note:txt.trim()}, true).then(function(r){
+          if(r&&r.ok){ toast('سُجّلت الملاحظة'); flrBoard(true); }
+          else toast((r&&r.error)||'تعذّر الحفظ', true);
+        });
+      });
+  });});
   $$('[data-fcoal]',w).forEach(function(b){ b.addEventListener('click', function(){
     sAct('tbl_coal',{table_id:+b.getAttribute('data-fcoal')}, true).then(function(r){
       if(r&&r.ok){ toast('سُجّل تغيير الفحم'); flrBoard(true); }
@@ -3564,11 +3587,18 @@ function flrSelPanel(t, ar){
     var head=next.slice(0,3), rest=next.slice(3);
     var btn=function(s, i){
       var a2=TMACT[s]||{t:(TMS[s]||{}).ar||s,s:''};
+      /* بعد التقديم لا يُعاد «تم أخذ الطلب» — الجولة الثانية طلبٌ جديد.
+         الاسم يصف ما يحدث فعلاً، فلا تظنّ الموظفة أنها كرّرت خطوة. */
+      if(k==='served' && s==='ordered') a2={t:'طلبٌ جديد', s:''};
       return '<button class="btn'+(i===0?' st':' ghost')+'" data-fgo="'+s+'" data-fid="'+t.id+'" '+
         'data-fv2="'+(+t.version)+'" style="--ac:'+stCol(s)+';--ac-on:'+stOn(s)+'">'+
         esc(a2.t)+'</button>';
     };
     h+='<div class="flr-acts">'+head.map(btn).join('')+'</div>';
+    /* ملاحظة على الطاولة: ما تقوله الضيفة ولا يدخل في أي حالة — حساسية
+       طعام، طلب خاص، شكوى. تبقى مع الطاولة وتصل الإدارة. */
+    h+='<button class="flr-note" data-fnote="'+t.id+'">'+
+       (t.has_note?'ملاحظة مسجّلة — أضيفي إليها':'أضيفي ملاحظة عن الطاولة')+'</button>';
 
     /* الأرجيلة: أهمّ فعل مؤقَّت في مقهى أراجيل. حين يكون الفحم مستحقّاً
        يصعد زرّه فوق كل شيء — لأن تأخّره أسرع ما يُفسد جلسة. */

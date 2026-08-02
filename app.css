@@ -1519,6 +1519,25 @@ body.floormode #view{padding:0}
 .flrc:active{transform:scale(.98)}
 
 /* ── لوح الإجراء ── */
+/* شريط الانتباه فوق اللوحة: صفٌّ أفقيّ يُمرَّر، كلُّ عنصر بابٌ لطاولته */
+.flrx-nud{display:flex;gap:7px;overflow-x:auto;padding:8px 12px 2px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.flrx-nud::-webkit-scrollbar{display:none}
+.flrx-nud .nud{flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  min-height:46px;padding:0 13px 0 10px;border-radius:var(--r-full);cursor:pointer;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  font:inherit;font-size:13px;font-weight:700;white-space:nowrap}
+.flrx-nud .nud b{display:inline-flex;align-items:center;justify-content:center;
+  min-width:26px;height:26px;border-radius:9px;font-size:14px;font-weight:800;
+  font-variant-numeric:tabular-nums;background:var(--accent);color:var(--accent-on)}
+.flrx-nud .n-coal{border-color:color-mix(in srgb,var(--amber-ink) 60%,transparent)}
+.flrx-nud .n-coal b{background:var(--amber-btn)}
+.flrx-nud .n-clean{border-color:color-mix(in srgb,var(--red-ink) 55%,transparent)}
+.flrx-nud .n-clean b{background:var(--red-btn,var(--red))}
+.flrx-nud .n-bill b{background:var(--brand)}
+.flr-note{display:block;width:100%;min-height:46px;margin-top:8px;
+  border:1px dashed var(--line);border-radius:var(--r-2);cursor:pointer;
+  background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:700}
 .flrx-side{padding:0 12px calc(env(safe-area-inset-bottom) + 12px)}
 .flrx-side-e{display:none}
 .flr-sel{border-radius:16px;border:1px solid var(--line);background:var(--surface);
@@ -1912,15 +1931,16 @@ body.floormode #view{padding:0}
    إلى الشاشة على بُعد ذراعين، فالرقم بحجم راحة اليد لا بحجم سطر. */
 .rcp-tovl{position:fixed;inset:0;z-index:900;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:var(--s-4);padding:var(--s-5);
+  gap:var(--s-6,26px);padding:var(--s-5);
   /* حجابٌ داكن ثابت في السمتين: الطبقة لحظةُ تركيزٍ واحدة، وقلبُها
      مع السمة يجعل الرقم يذوب في الخلفية نهاراً — قِسناه ١٫٢٩ فأصلحناه. */
   background:rgba(13,28,20,.95);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .rcp-tovl .tov-n{font-size:var(--fs-lg);font-weight:700;color:#EAE4D8;
-  text-align:center}
+  text-align:center;margin-bottom:6px}
 .rcp-tovl .tov-v{font-size:clamp(96px,34vw,190px);font-weight:800;line-height:1;
-  color:#E8B877;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+  /* اللون من نبرة العلامة نفسها لا كهرمانياً غريباً عنها */
+  color:#E58865;font-variant-numeric:tabular-nums;letter-spacing:-2px}
 .rcp-tovl .tov-x{min-height:56px;min-width:180px;padding:0 var(--s-5);
   border:0;border-radius:var(--r-full);cursor:pointer;
   background:#FBF9F4;color:#16281D;
