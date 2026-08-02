@@ -1632,13 +1632,13 @@ var TIC = (function(){
 var TMS = {
   free:           {ar:'متاحة',          sh:'متاحة',   ic:'free'},
   reserved:       {ar:'محجوزة',         sh:'محجوزة',  ic:'reserved'},
-  seated:         {ar:'جلسن — الطلب؟',  sh:'الطلب؟',  ic:'seated'},
+  seated:         {ar:'بانتظار الطلب',  sh:'الطلب؟',  ic:'seated'},
   ordered:        {ar:'تم أخذ الطلب',   sh:'أُخذ الطلب', ic:'ordered'},
   preparing:      {ar:'قيد التجهيز',    sh:'تجهيز',   ic:'preparing'},
   ready:          {ar:'جاهز للتقديم',   sh:'جاهز',    ic:'ready'},
-  served:         {ar:'يتناولن',        sh:'يتناولن', ic:'served'},
-  bill_requested: {ar:'طلبن الحساب',    sh:'الحساب',  ic:'bill'},
-  needs_clean:    {ar:'غادرن — تنظيف',  sh:'تنظيف',   ic:'clean'},
+  served:         {ar:'مشغولة',         sh:'مشغولة',  ic:'served'},
+  bill_requested: {ar:'طلب الحساب',     sh:'الحساب',  ic:'bill'},
+  needs_clean:    {ar:'تحتاج تنظيفاً',  sh:'تنظيف',   ic:'clean'},
   cleaning:       {ar:'يجري التنظيف',   sh:'يُنظَّف',  ic:'cleaning'},
   out_of_service: {ar:'خارج الخدمة',    sh:'موقوفة',  ic:'oos'}
 };

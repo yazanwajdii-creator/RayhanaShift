@@ -39,7 +39,9 @@ function paint(){
     '<div class="rcp-bar">'+
       '<input class="rcp-s" id="rcpQ" type="search" inputmode="search" '+
         'placeholder="ابحثي عن صنف" value="'+B.esc(RC.q)+'" autocomplete="off">'+
-      '<button class="rcp-quiz" id="rcpQuiz">راجعي معي</button>'+
+      /* «راجعي معي» كانت تُقرأ امتحاناً. «تذكير سريع» تصف ما يحدث فعلاً:
+   سؤالٌ واحد يُثبّت ما تعرفينه، لا اختبارٌ يُقيّمك. */
+      '<button class="rcp-quiz" id="rcpQuiz">تذكير سريع</button>'+
     '</div>'+
     '<div class="rcp-cats">'+
       '<button class="rcp-c'+(RC.cat?'':' on')+'" data-c="">الكل<i>'+RC.rows.length+'</i></button>'+
@@ -289,7 +291,7 @@ function openItem(id){
 function quizStart(){
   B.sAct('recipe_quiz_new', {}).then(function(q){
     if(!q || !q.ok) return;                       /* البوابة تُظهر الخطأ */
-    B.sheet('مراجعة سريعة',
+    B.sheet('تذكير سريع',
       '<p class="rcp-q">'+B.esc(q.q).replace(/\n/g,'<br>')+'</p>'+
       (q.kind==='ing'
         ? '<div class="rcp-p muted">اكتبي ما تتذكّرينه — الترتيب لا يهمّ.</div>'
