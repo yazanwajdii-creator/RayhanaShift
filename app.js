@@ -429,6 +429,28 @@ function inputSheet(title, label, placeholder, goLabel, onGo, optional){
     });
 }
 
+/* تصغير الصورة على الجهاز قبل الرفع: صورة هاتفٍ حديث ٤ ميغابايت، ولو
+   رُفعت كما هي لصار فتح الوصفة أبطأ من قراءتها. الحدّ الأطول 900px. */
+function shrinkImg(file, maxPx, quality, cb){
+  var fr=new FileReader();
+  fr.onerror=function(){ cb(''); };
+  fr.onload=function(){
+    var im=new Image();
+    im.onerror=function(){ cb(''); };
+    im.onload=function(){
+      var w=im.naturalWidth, h=im.naturalHeight, s=Math.min(1, maxPx/Math.max(w,h));
+      var c=document.createElement('canvas');
+      c.width=Math.round(w*s); c.height=Math.round(h*s);
+      try{
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        cb(c.toDataURL('image/jpeg', quality));
+      }catch(e){ cb(''); }
+    };
+    im.src=fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+
 /* ---------- منع الإرسال المزدوج ---------- */
 function busyWrap(btn, work){
   if(btn.classList.contains('busy')) return;
@@ -2698,10 +2720,25 @@ function allTasksSheet(){
       (sub?'<span>'+esc(sub)+'</span>':'')+'</div>'+
       (t.expected?'<span class="atk-m">'+(+t.expected)+' د</span>':'')+'</div>';
   }
+  /* من تغطّي أكثر من منطقة كانت ترى مهامها كلها كتلةً واحدة فتظنّ الكلَّ
+     مطلوباً في اللحظة نفسها. الفصل بمنطقتها أولاً ثم ما تغطّيه يعيد
+     للقائمة معناها: هذه عندكِ، وتلك حين تنتقلين. */
+  var homeL=nowL.filter(function(t){ return t.home !== false; });
+  var awayL=nowL.filter(function(t){ return t.home === false; });
   var h='';
-  h+='<div class="atk-h">مطلوبة الآن<i>'+nowL.length+'</i></div>';
-  h+= nowL.length ? nowL.map(function(t){ return row(t, PHASE[t.phase]||''); }).join('')
-                  : '<div class="atk-e">لا مهمة مطلوبة منكِ الآن</div>';
+  h+='<div class="atk-h">'+(awayL.length?'في منطقتكِ':'مطلوبة الآن')+'<i>'+homeL.length+'</i></div>';
+  h+= homeL.length ? homeL.map(function(t){ return row(t, PHASE[t.phase]||''); }).join('')
+                   : '<div class="atk-e">لا مهمة مطلوبة منكِ الآن</div>';
+  if(awayL.length){
+    var byArea={}, ord=[];
+    awayL.forEach(function(t){ var k=t.area||'—'; if(!byArea[k]){byArea[k]=[];ord.push(k);} byArea[k].push(t); });
+    h+='<div class="atk-h">مناطق تغطّينها<i>'+awayL.length+'</i></div>'+
+       '<div class="atk-why">هذه ليست مطلوبة منكِ في مكانكِ الآن — أنجزيها حين تنتقلين إلى منطقتها.</div>'+
+       ord.map(function(k){
+         return '<div class="atk-a">'+esc(k)+'</div>'+
+           byArea[k].map(function(t){ return row(t, PHASE[t.phase]||''); }).join('');
+       }).join('');
+  }
 
 
   h+='<div class="atk-h">تظهر في وقتها<i>'+laterL.length+'</i></div>';
@@ -2745,15 +2782,37 @@ function loadKTasks(){
           '<span>آخر مسحة قبل '+(+hy.mins||0)+' دقيقة.</span></div>'+
           '<button class="btn ghost" id="ktW">سجّلي مسحة</button></div>')+
       (rows.length ? rows.map(function(t){
+        /* المهمة كانت نصّاً يُقرأ ولا يُغلَق. الآن تُؤشَّر، ويُكتب اسم مَن
+           أنجزتها ووقتها — فالمناوبة التالية تعرف ما جرى بلا سؤال. */
         return '<div class="kt-i'+(t.done_today?' on':'')+'">'+
           '<div class="kt-t"><b>'+esc(t.title)+'</b>'+
             '<span>'+esc(KROT[t.rotation]||'')+(t.minutes?' · '+(+t.minutes)+' د':'')+'</span></div>'+
+          (t.done_today
+            ? '<div class="kt-by">'+IC.check+'<span>أنجزتها '+esc(t.done_by||'—')+
+                (t.done_at?' · '+fmtT(t.done_at):'')+'</span>'+
+                (t.mine?'<button class="btn sm ghost" data-ktu="'+esc(t.id)+'">تراجع</button>':'')+
+              '</div>'
+            : '<button class="btn sm" data-ktd="'+esc(t.id)+'">أنجزتها</button>')+
           ((t.steps&&t.steps.length)
             ? '<details class="kt-s"><summary>الخطوات ('+t.steps.length+')</summary><ol>'+
               t.steps.map(function(x){ return '<li>'+esc(String(x))+'</li>'; }).join('')+'</ol></details>'
             : '')+
           '</div>';
       }).join('') : '<div class="empty">لا مهام مطبخ مُفعّلة</div>');
+    $$('[data-ktd]',h).forEach(function(b){ b.addEventListener('click', function(){
+      busyWrap(b, function(){
+        return sAct('kt_done',{id:b.getAttribute('data-ktd')}, true).then(function(x){
+          if(x&&x.ok){ toast(x.msg); loadKTasks(); }
+        });
+      });
+    });});
+    $$('[data-ktu]',h).forEach(function(b){ b.addEventListener('click', function(){
+      busyWrap(b, function(){
+        return sAct('kt_undo',{id:b.getAttribute('data-ktu')}, true).then(function(x){
+          if(x&&x.ok){ toast(x.msg); loadKTasks(); }
+        });
+      });
+    });});
     var wb=$('#ktW',h);
     if(wb) wb.addEventListener('click', function(){
       busyWrap(wb, function(){
@@ -2843,7 +2902,14 @@ function nowInbox(st, zone){
     });
 
   if(!rows.length) return '';
-  return '<div class="nx-in"><div class="nx-in-h">يحتاج ردّك</div>'+rows.join('')+'</div>';
+  /* ستة صفوف متساوية الوزن تُقرأ كأنّها كلها الآن. ثلاثةٌ تكفي، والباقي
+     سطرٌ يقول إنه موجود — لا يُخفى ولا يُفزع. */
+  var more=rows.length-3;
+  return '<div class="nx-in"><div class="nx-in-h">يحتاج ردّك'+
+    (rows.length>1?'<i>'+rows.length+'</i>':'')+'</div>'+
+    rows.slice(0,3).join('')+
+    (more>0?'<button class="nx-in-more" data-a="allTasks">و'+more+' أخرى في «مهامي»</button>':'')+
+    '</div>';
 }
 
 /* الكتلة الثالثة: الفعل الواحد. محتواها يتبع المرحلة، وموضعها لا يتبعها. */
@@ -2971,7 +3037,11 @@ function viewNow(){
       if(pb!==pa) return pb-pa;
       return (order[a.phase]==null?9:order[a.phase])-(order[b.phase]==null?9:order[b.phase]);
     });
-  var due=pend.filter(dueNow);
+  /* مهمّة اللحظة تُنتقى من منطقتها التي تقف فيها. مهام المناطق التي
+     تغطّيها موجودة في «مهامي» ولا تُزاحم ما بين يديها. */
+  var dueAll=pend.filter(dueNow);
+  var dueHome=dueAll.filter(function(t){ return t.home !== false; });
+  var due=dueHome.length?dueHome:dueAll;
   var nearEnd = !!(inT && !outT && now >= endRef - 30*60000);
   var openBr=(st.breaks||[]).filter(function(b){ return !b.end; })[0];
   out.push(nowAction(st, sh, inT, outT, due, nearEnd, openBr));
@@ -7659,6 +7729,15 @@ function rcpEdit(id, after){
     sAct('recipe',{id:id}).then(function(r){
       var it=(r&&r.item)||{};
       sheet('تعديل: '+(it.name||''),
+        /* صورة الصنف: الموظفة ترى الشكل النهائي فتقيس عليه. تُصغَّر على
+           الجهاز قبل الرفع — صورةٌ بحجمها الأصلي تُثقل فتح الوصفة. */
+        '<label class="f">صورة الصنف</label>'+
+        '<div class="rcp-ph" id="rePh">'+(it.photo
+          ? '<img src="'+esc(it.photo)+'" alt="">'
+          : '<span class="muted small">لا صورة بعد</span>')+'</div>'+
+        '<div class="btnrow"><label class="btn ghost sm" style="cursor:pointer">اختر صورة'+
+          '<input type="file" id="rePf" accept="image/*" hidden></label>'+
+          (it.photo?'<button class="btn ghost sm" id="rePx">حذف الصورة</button>':'')+'</div>'+
         '<label class="f">الاسم</label><input class="f" id="reN" value="'+esc(it.name||'')+'">'+
         '<label class="f">الفئة</label><input class="f" id="reC" value="'+esc(it.cat||'')+'">'+
         '<label class="f">الكوب</label><input class="f" id="reCup" value="'+esc(it.cup||'')+'">'+
@@ -7670,12 +7749,25 @@ function rcpEdit(id, after){
         '<label class="f">علامات النجاح</label><textarea class="f" id="reS" rows="2">'+esc(it.success||'')+'</textarea>'+
         '<div class="btnrow"><button class="btn block" id="reGo">حفظ</button></div>',
         function(ov, close){
+          var photo = it.photo || '';
+          var pf=$('#rePf',ov), px=$('#rePx',ov), ph=$('#rePh',ov);
+          if(px) px.addEventListener('click', function(){
+            photo=''; ph.innerHTML='<span class="muted small">ستُحذف عند الحفظ</span>'; });
+          pf.addEventListener('change', function(){
+            var f=pf.files&&pf.files[0]; if(!f) return;
+            if(!/^image\//.test(f.type)){ toast('اختر صورة', true); return; }
+            shrinkImg(f, 900, 0.72, function(data){
+              if(!data){ toast('تعذّرت معالجة الصورة', true); return; }
+              photo=data; ph.innerHTML='<img src="'+esc(data)+'" alt="">';
+            });
+          });
           $('#reGo',ov).addEventListener('click', function(){
             busyWrap(this, function(){
               return aAct('rcp_item_save',{id:id,
                 name:$('#reN',ov).value, cat:$('#reC',ov).value, cup:$('#reCup',ov).value,
                 timer:$('#reT',ov).value, timer_label:$('#reTL',ov).value,
-                busy:$('#reB',ov).value, warn:$('#reW',ov).value, success:$('#reS',ov).value
+                busy:$('#reB',ov).value, warn:$('#reW',ov).value, success:$('#reS',ov).value,
+                photo:photo
               }).then(function(x){ if(x&&x.ok){ close(); toast(x.msg); if(after) after(); } });
             });
           });

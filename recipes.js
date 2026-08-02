@@ -174,6 +174,10 @@ function openItem(id){
     if(!r || !r.ok || !r.item){ B.toast('تعذّر فتح الصنف', true); return; }
     var it = r.item, h = '';
 
+    /* الصورة أولاً: الشكل النهائي هو المرجع الذي تقيس عليه. تُبنى بـ
+       createElement لا بنصّ داخل innerHTML — لا تُركَّب وسائط من نصّ. */
+    if(it.photo) h += '<div class="rcp-ph big" id="rcpPh"></div>';
+
     var chips = [];
     if(it.cup)  chips.push('الكوب: '+it.cup);
     if(it.ice)  chips.push('الثلج: '+it.ice);
@@ -245,6 +249,12 @@ function openItem(id){
          '<button class="btn sm" id="rcpNGo">أضيفي</button></div>';
 
     B.sheet(it.name, h, function(ov, close){
+      var phb = $('#rcpPh', ov);
+      if(phb && typeof it.photo === 'string' && /^data:image\//.test(it.photo)){
+        var im = document.createElement('img');
+        im.alt = it.name || ''; im.src = it.photo;
+        phb.appendChild(im);
+      }
       wireTimer(ov);
       /* الخطوة تُلمَس فتُشطَب: الوصفة صارت شيئاً تعملين عليه لا نصّاً
          تقرئينه. لا يُحفظ شيء في الخادم — هذا أثرٌ لعينها لا سجلّ عليها. */
