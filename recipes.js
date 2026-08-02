@@ -68,6 +68,8 @@ function paint(){
         '</button>';
     }).join('');
   }
+  /* شفافية: الموظفة تعرف أنّ فتح الوصفة مُسجَّل — والمعرفة هي الرادع، لا المفاجأة. */
+  html += '<div class="rcp-priv">الوصفات ملك الكافيه. يسجّل النظام مَن فتح كل وصفة ومتى.</div>';
   h.innerHTML = html;
 
   var qi = $('#rcpQ', h);
@@ -94,6 +96,13 @@ function wireTimer(ov){
   var box = $('#rcpTm', ov); if(!box) return;
   var total = +box.getAttribute('data-s') || 0, left = total, t = null;
   var val = $('#rcpTv', ov), btn = $('#rcpTb', ov);
+  /* الوافل مدّته تتغيّر، فالموظفة تضبطها بنصف دقيقة في كل ضغطة —
+     لا حقل رقميّ تكتب فيه ويداها مشغولتان. */
+  $$('[data-tadj]', ov).forEach(function(pb){ pb.addEventListener('click', function(){
+    if(t) return;
+    total = Math.min(1800, Math.max(30, total + (+pb.getAttribute('data-tadj'))));
+    left = total; val.textContent = fmtSec(left);
+  }); });
   function paintT(){ val.textContent = fmtSec(left); }
   function stop(){ clearInterval(t); t = null; btn.textContent = 'ابدئي'; box.classList.remove('run'); }
   function done(){
@@ -145,10 +154,17 @@ function openItem(id){
     /* المؤقّت التنازليّ: ٢٥ ثانية للفرابيه، ودقائق الوافل. يعمل داخل
        الصفحة نفسها فلا تخرج الموظفة لتطبيق ساعة وتعود. */
     var tsec = +it.timer || +it.mix_seconds || 0;
-    if(tsec) h += '<div class="rcp-tm" id="rcpTm" data-s="'+tsec+'">'+
-      '<div class="tm-l">'+B.esc(it.timer_label||'المؤقّت')+'</div>'+
-      '<div class="tm-v" id="rcpTv">'+fmtSec(tsec)+'</div>'+
-      '<button class="tm-b" id="rcpTb">ابدئي</button></div>';
+    var manual = !!it.timer_manual || (!tsec && it.blender);
+    if(tsec || manual){
+      h += '<div class="rcp-tm'+(manual&&!tsec?' man':'')+'" id="rcpTm" data-s="'+(tsec||60)+'">'+
+        '<div class="tm-l">'+B.esc(it.timer_label||(manual?'المدّة تختلف — حدّديها':'المؤقّت'))+'</div>'+
+        '<div class="tm-row">'+
+          (manual?'<button class="tm-pm" data-tadj="-30" aria-label="أنقص">−</button>':'')+
+          '<div class="tm-v" id="rcpTv">'+fmtSec(tsec||60)+'</div>'+
+          (manual?'<button class="tm-pm" data-tadj="30" aria-label="زد">+</button>':'')+
+        '</div>'+
+        '<button class="tm-b" id="rcpTb">ابدئي</button></div>';
+    }
 
     if(it.busy) h += '<div class="rcp-busy"><b>وقت الضغط</b><span>'+B.esc(it.busy)+'</span></div>';
     if(it.warn) h += '<div class="rcp-warn"><b>انتبهي</b><span>'+B.esc(it.warn)+'</span></div>';

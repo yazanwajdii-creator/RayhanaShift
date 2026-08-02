@@ -1455,6 +1455,7 @@ function drawTab(){
   else v.innerHTML=viewMore();
   wireTab(v); animIn(v);
   if(S.tab==='now'){ loadPrepCard(); loadOpsCard(); loadTablesCard(); loadVerifyCard(); loadContribCard(); loadSignalsCard(); }
+  if(S.tab==='more' && S.moreSec==='ktasks') loadKTasks();
   if(S.tab==='more' && S.moreSec==='recipes')
     modLoad('recipes', 'RCP', function(){
       var hh=$('#rcpHost');
@@ -2699,6 +2700,45 @@ function allTasksSheet(){
   sheet('كل مهامي اليوم', h);
 }
 
+/* مهام المطبخ: كانت تصل من الخادم ولا تُعرض في أي شاشة — بنيتُ الفعل
+   ونسيتُ الباب. ومعها نظافة منطقة التحضير: لا مهمّة دورية تُنسى، بل
+   تذكيرٌ يظهر في سياق عملها حين تتجاوز المدّة منذ آخر مسحة. */
+var KROT={daily:'يوميّاً', intraday:'أثناء اليوم', weekly:'أسبوعيّاً'};
+function loadKTasks(){
+  var h=$('#ktHost'); if(!h) return;
+  sAct('kitchen_tasks',{}).then(function(r){
+    if(!$('#ktHost')) return;
+    if(!r||!r.ok){ h.innerHTML='<div class="empty">'+esc((r&&r.error)||'تعذّر التحميل')+'</div>'; return; }
+    var hy=r.hygiene||{}, rows=r.rows||[];
+    h.innerHTML=
+      (hy.due
+        ? '<div class="kt-hy"><div><b>منطقة التحضير تحتاج مسحة</b>'+
+          '<span>مضى '+(+hy.mins)+' دقيقة على آخر مسحة.</span></div>'+
+          '<button class="btn" id="ktW">مسحتُها الآن</button></div>'
+        : '<div class="kt-hy ok"><div><b>منطقة التحضير نظيفة</b>'+
+          '<span>آخر مسحة قبل '+(+hy.mins||0)+' دقيقة.</span></div>'+
+          '<button class="btn ghost" id="ktW">سجّلي مسحة</button></div>')+
+      (rows.length ? rows.map(function(t){
+        return '<div class="kt-i'+(t.done_today?' on':'')+'">'+
+          '<div class="kt-t"><b>'+esc(t.title)+'</b>'+
+            '<span>'+esc(KROT[t.rotation]||'')+(t.minutes?' · '+(+t.minutes)+' د':'')+'</span></div>'+
+          ((t.steps&&t.steps.length)
+            ? '<details class="kt-s"><summary>الخطوات ('+t.steps.length+')</summary><ol>'+
+              t.steps.map(function(x){ return '<li>'+esc(String(x))+'</li>'; }).join('')+'</ol></details>'
+            : '')+
+          '</div>';
+      }).join('') : '<div class="empty">لا مهام مطبخ مُفعّلة</div>');
+    var wb=$('#ktW',h);
+    if(wb) wb.addEventListener('click', function(){
+      busyWrap(wb, function(){
+        return sAct('prep_wipe',{}, true).then(function(x){
+          if(x&&x.ok){ toast(x.msg||'سُجّلت'); loadKTasks(); }
+        });
+      });
+    });
+  }).catch(function(){ if($('#ktHost')) h.innerHTML='<div class="empty">تعذّر الاتصال</div>'; });
+}
+
 /* ── بطاقة الافتتاح ──
    ستّة بنودٍ تتكرّر كل صباح لا مكان لها في قائمة المهام: لا تُقاس، ولا
    تُقارَن بين الموظفات، ولا معنى لأن يحملها التقييم. ومع ذلك نسيان
@@ -2932,10 +2972,8 @@ function viewNow(){
     if(later) out.push('<div class="nx-later">'+later+' مهمة إغلاق تظهر تلقائياً الساعة '+
       fmtT(closingFrom)+'</div>');
   }
-  /* الباب الوحيد إلى القائمة الكاملة. وُعِدت ورقةً «تُفتح عند الحاجة»
-     ولم تُبنَ، فلم يكن للموظفة أي طريق يرى مهامها كلها. */
-  if(inT && !outT && pend.length)
-    out.push('<div class="nx-all"><button data-a="allTasks">كل مهامي اليوم ('+pend.length+')</button></div>');
+  /* القائمة الكاملة صارت أيقونة «مهامي» في الاختصارات — مقصدٌ واحد
+     في موضعٍ واحد، لا سطرٌ أسفل الشاشة وزرٌّ فوقه. */
 
   /* ── الكتلة ٤: الاختصارات الأربعة ── */
   if(inT && !outT){
@@ -2945,9 +2983,9 @@ function viewNow(){
       /* «سجّلي عملاً» لا «مهمة منجزة»: نصف عمل المقهى لا يُسنَد أصلاً —
          كبّة نفايات، زبونة طلبت شيئاً، عطل عولج في لحظته. القائمة كانت
          تعرض المسنَد فقط، فما تفعله الموظفة خارجه يضيع بلا أثر. */
-      '<button data-a="workLog">'+IC.tasks+'<span>سجّلي عملاً</span></button>'+
+      '<button data-a="allTasks">'+IC.tasks+'<span>مهامي</span></button>'+
+      '<button data-a="workLog">'+IC.more+'<span>سجّلي عملاً</span></button>'+
       '<button data-a="helpNew">'+IC.user+'<span>مساعدة</span></button>'+
-      '<button data-a="moreOpen" data-sec="requests">'+IC.shift+'<span>إجازة</span></button>'+
     '</div>');
     /* الانصراف: سطرٌ هادئ ما دام الشفت جارياً، ويصعد إلى الفعل نفسه
        في آخر نصف ساعة (انظري nowAction). */
@@ -4229,6 +4267,7 @@ var MORE_SECS=[
   ['requests','الطلبات والإجازات','إجازة، إذن، تبديل وتغطية الشفتات', IC.shift],
   ['issues','بلاغ أو ملاحظة للإدارة','عطل، نقص مستلزمات، سلامة، أو ملاحظة', IC.bell],
   ['recipes','الوصفات','الأصناف ومكوّناتها وخطواتها — ومراجعة سريعة', IC.tasks],
+  ['ktasks','مهام المطبخ','ترتيب الثلاجات، النظافة، والتجهيز الدوريّ', IC.more],
   ['settings','إعدادات العرض','السمة، حجم الخط، التثبيت', IC.more]
 ];
 function viewMore(){
@@ -4276,6 +4315,7 @@ function moreSection(sec, st){
   /* الوصفات: حاوٍ فارغ، ووحدةٌ تُحمَّل عند أول فتح. ما يبقى في app.js
      هو هذان السطران والمُحمِّل — لا ثمانون وصفة ولا شاشتها. */
   if(sec==='recipes') return '<div id="rcpHost"><div class="empty">جارٍ التحميل…</div></div>';
+  if(sec==='ktasks')  return '<div id="ktHost">'+skel(2)+'</div>';
   if(sec==='settings') return '<div class="card"><h3>إعدادات العرض</h3>'+
     '<div class="btnrow" style="flex-wrap:wrap"><button class="btn ghost" data-a="themeToggle">تبديل السمة (فاتح/داكن)</button>'+
     '<button class="btn ghost" data-a="fontToggle">حجم الخط: '+((function(){try{return localStorage.getItem('rko_font')==='lg';}catch(e){return false;}})()?'كبير':'عادي')+'</button>'+
@@ -4903,7 +4943,7 @@ function loadAssignBoard(el){
     var ae=$('#ccAuto'); if(ae) ae.textContent='الإسناد: '+auto.length+' تلقائي'+(need.length?' · '+need.length+' معلّق':'');
     if(need.length){ var hero=$('#ccHero'); if(hero && !hero.classList.contains('bad')) hero.classList.add('warn'); }
     var pct=function(x){ return x==null?'—':Math.round(x*100)+'٪'; };
-    var h='<h3 style="margin:2px 2px 8px">محرك الإسناد اليوم <span class="muted small" style="font-weight:400">يوزّع تلقائياً — تتدخّلين في الاستثناء فقط</span></h3>';
+    var h='<h3 style="margin:2px 2px 8px">محرك الإسناد اليوم <span class="muted small" style="font-weight:400">يوزّع تلقائياً — تتدخّل في الاستثناء فقط</span></h3>';
     h+='<div class="card" style="padding:12px 14px"><div class="row" style="flex-wrap:wrap;gap:6px">'+
        '<span class="chip green">أسند تلقائياً: '+auto.length+'</span>'+
        '<span class="chip'+(need.length?' orange':'')+'">ينتظر قرارك: '+need.length+'</span>'+
@@ -4955,7 +4995,7 @@ function loadAssignBoard(el){
           function(ov,close){
             $('#exGo',ov).addEventListener('click',function(){
               var r=$('#exR',ov).value.trim();
-              if(r.length<3){ toast('اكتبي سبب التدخل',true); return; }
+              if(r.length<3){ toast('اكتب سبب التدخل',true); return; }
               busyWrap(this,function(){
                 return aAct('task_reassign',{id:tid,employee_id:+$('#exE',ov).value,reason:r}).then(function(res){
                   if(!res.ok){ toast(res.error||'خطأ',true); return; }
@@ -5147,7 +5187,7 @@ function loadDash(v){
       el.innerHTML='<h3 style="margin:14px 2px 8px">مراجعة النزاهة <span class="chip orange">'+rows.length+'</span> <span class="muted small" style="font-weight:400">وقائع للمراجعة لا أحكام</span></h3>'+
         rows.slice(0,8).map(function(r){
           return '<div class="card" style="padding:10px 12px;border-inline-start:3px solid var(--amber)"><div class="row" style="justify-content:space-between"><div class="small"><b>'+esc(r.employee||'؟')+'</b> — '+esc(r.task||'دوّارة')+'</div><span class="muted small num">'+fmtT(r.ts)+'</span></div>'+
-            '<div class="muted small" style="margin-top:2px">سُجِّل إنجاز بفارق قصير جدًا عن السابق — تحقّقي من التنفيذ الفعلي.</div></div>';
+            '<div class="muted small" style="margin-top:2px">سُجِّل إنجاز بفارق قصير جدًا عن السابق — تحقّق من التنفيذ الفعلي.</div></div>';
         }).join('');
     }).catch(function(){});
     /* مرحلة التشغيل + قرارات المحرك مع إمكانية التجاوز الموثق */
@@ -5237,10 +5277,10 @@ ADMIN.ocdecisions=function(v){
       '<div class="muted small num" style="margin-top:2px">'+fmtT(x.ts)+'</div>'+acts+'</div>'; }
   function wire(scope){ $$('[data-ocd]',scope).forEach(function(b){ b.addEventListener('click',function(){
       var act=b.getAttribute('data-ocd'), id=+b.getAttribute('data-id');
-      if(act==='approve'){ confirmSheet('اعتماد التوصية','هل تعتمدين توصية المحرك كما هي؟','اعتماد',function(){ aAct('oc_decide',{id:id,act:'approve'}).then(function(r){ if(r.ok){toast('اعتُمد ✔');load();} else toast(r.error||'خطأ',true); }); }); }
+      if(act==='approve'){ confirmSheet('اعتماد التوصية','هل تعتمد توصية المحرك كما هي؟','اعتماد',function(){ aAct('oc_decide',{id:id,act:'approve'}).then(function(r){ if(r.ok){toast('اعتُمد ✔');load();} else toast(r.error||'خطأ',true); }); }); }
       else if(act==='override'){ var to=b.getAttribute('data-to')||''; inputSheet('تجاوز القرار','السبب إلزامي — يُحفظ مع القرار الأصلي'+(to?' · الحالة الناتجة: '+to:''),'مثال: أعرف ظرف الموظفة اليوم','تسجيل التجاوز',function(reason){ if(!reason){toast('السبب إلزامي',true);return;} aAct('wf_override',{id:id,reason:reason}).then(function(r){ if(r.ok){toast('سُجّل التجاوز ✔');load();} else toast(r.error||'خطأ',true); }); }); }
-      else if(act==='postpone'){ inputSheet('تأجيل القرار','حددي شرط أو وقت المراجعة','مثال: أراجعه بعد ساعة الذروة','تأجيل',function(reason){ if(!reason){toast('حددي شرط المراجعة',true);return;} aAct('oc_decide',{id:id,act:'postpone',reason:reason}).then(function(r){ if(r.ok){toast('أُجّل');load();} else toast(r.error||'خطأ',true); }); }); }
-      else if(act==='dismiss'){ confirmSheet('استبعاد القرار','هل تستبعدين هذا القرار (لم يعد ذا صلة)؟','استبعاد',function(){ aAct('oc_decide',{id:id,act:'dismiss'}).then(function(r){ if(r.ok){toast('استُبعد');load();} else toast(r.error||'خطأ',true); }); },true); }
+      else if(act==='postpone'){ inputSheet('تأجيل القرار','حدد شرط أو وقت المراجعة','مثال: أراجعه بعد ساعة الذروة','تأجيل',function(reason){ if(!reason){toast('حدد شرط المراجعة',true);return;} aAct('oc_decide',{id:id,act:'postpone',reason:reason}).then(function(r){ if(r.ok){toast('أُجّل');load();} else toast(r.error||'خطأ',true); }); }); }
+      else if(act==='dismiss'){ confirmSheet('استبعاد القرار','هل تستبعد هذا القرار (لم يعد ذا صلة)؟','استبعاد',function(){ aAct('oc_decide',{id:id,act:'dismiss'}).then(function(r){ if(r.ok){toast('استُبعد');load();} else toast(r.error||'خطأ',true); }); },true); }
     }); }); }
   function load(){
     v.innerHTML='<div id="ocdInc"></div><div id="ocdBody">'+skel(3)+'</div>';
@@ -5249,7 +5289,7 @@ ADMIN.ocdecisions=function(v){
       if(irows.length){ ie.innerHTML='<h3 style="margin:6px 2px 8px">حوادث الآن <span class="chip red">'+((inc.counts&&inc.counts.critical)||0)+' حرج</span> <span class="chip orange">'+((inc.counts&&inc.counts.warning)||0)+' تحذير</span></h3>'+irows.map(incCard).join(''); }
       else { ie.innerHTML='<div class="card center muted" style="padding:14px">لا حوادث نشطة الآن ✔</div>'; }
       var body=$('#ocdBody'), rows=(dec.rows||[]), pend=rows.filter(function(r){return r.needs_action;}), rest=rows.filter(function(r){return !r.needs_action;}), out=[];
-      out.push('<h3 style="margin:14px 2px 8px">قرارات بحاجة إليكِ '+(pend.length?'<span class="chip red">'+pend.length+'</span>':'<span class="chip green">0</span>')+'</h3>');
+      out.push('<h3 style="margin:14px 2px 8px">قرارات بحاجة إليك '+(pend.length?'<span class="chip red">'+pend.length+'</span>':'<span class="chip green">0</span>')+'</h3>');
       out.push(pend.length? pend.map(decCard).join('') : '<div class="card center muted" style="padding:12px">لا قرارات معلّقة الآن</div>');
       if(rest.length){ out.push('<details class="qa" style="margin-top:12px"><summary>قرارات المحرك الأخيرة <span class="chip">'+rest.length+'</span></summary><div class="qa-body">'+rest.map(decCard).join('')+'</div></details>'); }
       body.innerHTML=out.join(''); wire(body);
@@ -5355,7 +5395,7 @@ ADMIN.employees=function(v){
         var ub=$('#eUnbind',ov); if(ub) ub.addEventListener('click', function(){ busyWrap(this, function(){ return aAct('unbind_device',{employee_id:e.id}).then(function(r){ if(r.ok) toast('تم — تستطيع الموظفة الدخول من جهازها الجديد الآن ✔'); else toast(r.error||'خطأ',true); }); }); });
         $('#eGo',ov).addEventListener('click', function(){
           var p={name:$('#eN',ov).value.trim(), color:$('#eC',ov).value, username:$('#eU',ov).value.trim()};
-          if(!p.name){ toast('اكتبي الاسم', true); return; }
+          if(!p.name){ toast('اكتب الاسم', true); return; }
           if(e){ p.id=e.id; p.active=$('#eA',ov).checked; p.flexible=$('#eF',ov).checked; p.no_rotate=$('#eNR',ov).checked;
                  p.multi_device=$('#eMD',ov).checked; p.allow_outside=$('#eAO',ov).checked; }
           else{
@@ -5399,8 +5439,8 @@ ADMIN.types=function(v){
         function(ov, close){
           $('#tGo2',ov).addEventListener('click', function(){
             var p={name:$('#tN',ov).value.trim(), start_time:$('#tS',ov).value, end_time:$('#tE',ov).value, break_minutes:+$('#tB',ov).value, break_parts:+$('#tP',ov).value};
-            if(!p.name){ toast('اكتبي اسم النوع', true); return; }
-            if(!p.start_time || !p.end_time){ toast('حددي وقتي البداية والنهاية', true); return; }
+            if(!p.name){ toast('اكتب اسم النوع', true); return; }
+            if(!p.start_time || !p.end_time){ toast('حدد وقتي البداية والنهاية', true); return; }
             if(!(p.break_parts>=1)) p.break_parts=1;
             if(t) p.id=t.id;
             aAct('shift_type_save',p).then(function(r){ if(r.ok){close();A.types=null;ADMIN.types(v);toast('تم ✔');} else toast(r.error||'خطأ',true); });
@@ -5434,7 +5474,7 @@ ADMIN.areas=function(v){
         function(ov, close){
           $('#aGo',ov).addEventListener('click', function(){
             var p={name:$('#aN',ov).value.trim(), tables_count:+$('#aT',ov).value, requires_skill:$('#aS',ov).value, is_critical:$('#aC',ov).checked};
-            if(!p.name){ toast('اكتبي اسم المنطقة', true); return; }
+            if(!p.name){ toast('اكتب اسم المنطقة', true); return; }
             if(a){ p.id=a.id; p.active=$('#aA',ov).checked; }
             aAct('area_save',p).then(function(r){ if(r.ok){close();A.areas=null;ADMIN.areas(v);toast('تم ✔');} else toast(r.error||'خطأ',true); });
           });
@@ -5510,7 +5550,7 @@ ADMIN.shifts=function(v){
         }).join('')+'</div>'+
         '<div class="row"><div class="grow"><label class="f">بداية مخصصة (اختياري)</label><input class="f" id="sS" type="time"></div>'+
         '<div class="grow"><label class="f">نهاية مخصصة (اختياري)</label><input class="f" id="sEn" type="time"></div></div>'+
-        '<div class="muted small">اتركي الوقتين فارغين لاعتماد أوقات نوع الشفت'+(s?' (الحالي: '+fmtHM(s.start)+' → '+fmtHM(s.end)+')':'')+'.</div>'+
+        '<div class="muted small">اترك الوقتين فارغين لاعتماد أوقات نوع الشفت'+(s?' (الحالي: '+fmtHM(s.start)+' → '+fmtHM(s.end)+')':'')+'.</div>'+
         '<label class="f">دور اليوم (جملة عمل حقيقية — لا شعارات)</label><input class="f" id="sR" placeholder="مثال: اليوم تضبطين سرعة تجهيز الأراجيل تحت 6 دقائق" value="'+(s?esc(s.daily_role||''):'')+'">'+
         /* إسناد المنطقة: بدونه لا يعرف المحرك من يُنقل حين يظهر الضغط في منطقة */
         '<hr class="sep"><b>إسناد المنطقة</b>'+
@@ -5604,7 +5644,7 @@ ADMIN.shifts=function(v){
         function(ov, close){
           $('#cpGo',ov).addEventListener('click', function(){
             var src=$('#cpFrom',ov).value, dst=$('#shDay').value;
-            if(!src || src===dst){ toast('اختاري يوماً مصدراً مختلفاً', true); return; }
+            if(!src || src===dst){ toast('اختر يوماً مصدراً مختلفاً', true); return; }
             busyWrap(this, function(){
               return aAct('shifts_range',{from:src,to:src}).then(function(res){
                 var rows=(res.shifts||[]).filter(function(x){ return x.status!=='absent'; });
@@ -5658,7 +5698,7 @@ ADMIN.roster=function(v){
       out.push('<div class="card" style="padding:13px 15px">'+
         '<div class="row" style="justify-content:space-between;align-items:flex-start">'+
           '<div><b>جدولة الأسبوع تلقائياً</b><div class="muted small" style="margin-top:2px">'+
-          'يبني المحرك الجدول من التغطية والإجازات والتوافر والمهارات والإنصاف — وتراجعين الاستثناء فقط.</div></div></div>'+
+          'يبني المحرك الجدول من التغطية والإجازات والتوافر والمهارات والإنصاف — وتراجعن الاستثناء فقط.</div></div></div>'+
         '<div class="row" style="gap:8px;margin-top:10px">'+
           '<input class="f" id="rsFrom" type="date" value="'+addDays(today(),1)+'" style="margin:0">'+
           '<select class="f" id="rsDays" style="margin:0"><option value="7">٧ أيام</option><option value="14">١٤ يوماً</option></select>'+
@@ -5667,7 +5707,7 @@ ADMIN.roster=function(v){
         '</div>');
 
       if(!run){
-        out.push('<div class="empty">لا مسودّة حالياً — اضغطي «توليد» ليبني المحرك جدول الأسبوع.</div>');
+        out.push('<div class="empty">لا مسودّة حالياً — اضغط «توليد» ليبني المحرك جدول الأسبوع.</div>');
       } else {
         var st=run.stats||{}, cov=st.coverage!=null?Math.round(st.coverage*100):0;
         var unf=slots.filter(function(s){return !s.employee_id;});
@@ -5722,7 +5762,7 @@ ADMIN.roster=function(v){
                 sheet('أيام بلا قواعد تغطية',
                   '<div class="small">لم يولّد المحرك شفتات لهذه الأيام لأنها بلا قواعد:</div>'+
                   '<div style="margin:8px 0"><b>'+md.map(function(i){return DOWAR[i];}).join('، ')+'</b></div>'+
-                  '<div class="muted small">افتحي «قواعد التغطية» ثم «انسخي لكل الأيام» لتعميم قواعد يوم على الأسبوع.</div>'+
+                  '<div class="muted small">افتح «قواعد التغطية» ثم «انسخ لكل الأيام» لتعميم قواعد يوم على الأسبوع.</div>'+
                   '<div class="btnrow"><button class="btn block" id="mdGo">فتح قواعد التغطية</button></div>',
                   function(ov,close){ $('#mdGo',ov).addEventListener('click',function(){ close(); rosterRules(); }); });
               } else toast('وُلِّدت المسودّة ✔');
@@ -5745,14 +5785,14 @@ ADMIN.roster=function(v){
         var sid=+b.getAttribute('data-rsslot');
         lookups(function(){
           sheet('تعديل خانة الجدول',
-            '<label class="f">الموظفة</label><select class="f" id="rsE"><option value="">— اتركيها شاغرة —</option>'+staffOpts()+'</select>'+
+            '<label class="f">الموظفة</label><select class="f" id="rsE"><option value="">— اتركها شاغرة —</option>'+staffOpts()+'</select>'+
             '<label class="f">سبب التعديل (إلزامي)</label><input class="f" id="rsR" placeholder="مثال: طلبت التبديل معها">'+
-            '<div class="muted small">يُحفظ سببكِ بجانب اختيار المحرك ولا يُلغيه.</div>'+
+            '<div class="muted small">يُحفظ سببك بجانب اختيار المحرك ولا يُلغيه.</div>'+
             '<div class="btnrow"><button class="btn block" id="rsSave">حفظ</button></div>',
             function(ov,close){
               $('#rsSave',ov).addEventListener('click',function(){
                 var rr=$('#rsR',ov).value.trim();
-                if(rr.length<3){ toast('اكتبي سبب التعديل',true); return; }
+                if(rr.length<3){ toast('اكتب سبب التعديل',true); return; }
                 busyWrap(this,function(){
                   return aAct('roster_slot_set',{slot_id:sid, employee_id:$('#rsE',ov).value, reason:rr})
                     .then(function(r){ if(r.ok){ close(); toast('حُفظ ✔'); load(); } else toast(r.error||'خطأ',true); });
@@ -5769,7 +5809,7 @@ ADMIN.roster=function(v){
       var covered=[], missing=[];
       dem.forEach(function(d){ if(d.needed>0 && covered.indexOf(d.dow)<0) covered.push(d.dow); });
       for(var _i=0;_i<7;_i++) if(covered.indexOf(_i)<0) missing.push(_i);
-      var html='<div class="muted small" style="margin-bottom:8px">كم موظفة تحتاجين لكل نوع شفت في كل يوم؟ المحرك يبني الجدول على هذا.</div>'+
+      var html='<div class="muted small" style="margin-bottom:8px">كم موظفة تحتاج لكل نوع شفت في كل يوم؟ المحرك يبني الجدول على هذا.</div>'+
         '<label class="f">نوع الشفت</label><select class="f" id="rdT">'+typeOpts()+'</select>'+
         '<label class="f">اليوم</label><select class="f" id="rdD">'+DOWAR.map(function(n,i){return '<option value="'+i+'">'+n+'</option>';}).join('')+'</select>'+
         '<label class="f">المنطقة</label><select class="f" id="rdA">'+areaOpts()+'</select>'+
@@ -5778,10 +5818,10 @@ ADMIN.roster=function(v){
           skills.map(function(s){return '<option value="'+esc(s.code)+'">'+esc(s.name)+'</option>';}).join('')+'</select>'+
         '<div class="btnrow"><button class="btn block" id="rdSave">حفظ القاعدة</button></div>'+
         '<hr class="sep"><div class="small"><b>تعميم على الأسبوع</b></div>'+
-        '<div class="muted small">المحرك لا يولّد شفتات ليوم بلا قواعد. إن كانت التغطية متشابهة، انسخي قواعد يوم إلى بقية الأيام بضغطة.</div>'+
+        '<div class="muted small">المحرك لا يولّد شفتات ليوم بلا قواعد. إن كانت التغطية متشابهة، انسخ قواعد يوم إلى بقية الأيام بضغطة.</div>'+
         '<div class="row" style="gap:8px;margin-top:6px"><select class="f" id="rdFrom" style="margin:0">'+
           DOWAR.map(function(n,i){return '<option value="'+i+'"'+(covered.indexOf(i)>-1?'':' disabled')+'>'+n+(covered.indexOf(i)>-1?'':' (بلا قواعد)')+'</option>';}).join('')+'</select>'+
-          '<button class="btn sm" id="rdCopy" style="white-space:nowrap">انسخي لكل الأيام</button></div>'+
+          '<button class="btn sm" id="rdCopy" style="white-space:nowrap">انسخ لكل الأيام</button></div>'+
         (missing.length?'<div class="muted small" style="margin-top:6px;color:var(--amber)">أيام بلا قواعد: '+missing.map(function(i){return DOWAR[i];}).join('، ')+'</div>':'')+
         '<hr class="sep"><div class="small"><b>القواعد الحالية</b></div><div class="list" style="margin-top:6px">'+
         (dem.length?dem.map(function(d){
@@ -5842,7 +5882,7 @@ ADMIN.tables=function(v){
             '<span class="tload-v">'+r.active+'/'+r.tables+'</span></div>';
         }).join('')+'</div>';
     }
-    head+='<div class="btnrow" style="margin-bottom:12px"><button class="btn ghost grow" id="tbVfNow">أطلقي سؤال تحقق الآن</button></div>'+
+    head+='<div class="btnrow" style="margin-bottom:12px"><button class="btn ghost grow" id="tbVfNow">أطلق سؤال تحقق الآن</button></div>'+
       '<div class="muted small" style="margin-bottom:12px">سؤال التحقق يُرسل للمسؤولة عن طاولة تأخّر تحديثها: '+
         '«هل الطاولة ما زالت كذا؟» بضغطة واحدة. الاختلاف مؤشر على تأخر التحديث لا دليل تقصير، ولا يدخل تقييم أحد.</div>';
     v.innerHTML=head+as.map(function(a){
@@ -5966,7 +6006,7 @@ function tmDuty(areaId, areaName, host){
     if(!db.ok||!bd.ok){ toast('تعذر التحميل', true); return; }
     var tables=bd.tables||[], picked={};
 
-    var body='<div class="muted small" style="margin-bottom:9px">اختاري الطاولات ثم الموظفة المسؤولة عنها. '+
+    var body='<div class="muted small" style="margin-bottom:9px">اختر الطاولات ثم الموظفة المسؤولة عنها. '+
       'المسؤولة هي من يسألها النظام عند التحقق، ويظهر اسمها على الطاولة.</div>';
 
     body+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px">'+
@@ -5998,7 +6038,7 @@ function tmDuty(areaId, areaName, host){
       });
       $('#duGo',ov).addEventListener('click', function(){
         var ids=Object.keys(picked).map(Number);
-        if(!ids.length){ toast('اختاري طاولة واحدة على الأقل', true); return; }
+        if(!ids.length){ toast('اختر طاولة واحدة على الأقل', true); return; }
         var emp=$('#duEmp',ov).value;
         this.disabled=true;
         aAct('tbl_duty_set',{area_id:areaId, tables:ids, employee_id:emp||null}).then(function(r){
@@ -6018,7 +6058,7 @@ function tmEditor(areaId, areaName){
     var sel=null;
 
     function board(){
-      return '<div class="muted small" style="margin-bottom:8px">اسحبي الطاولة لتغيير موقعها، أو اضغطيها لتعديل رقمها ونوعها.</div>'+
+      return '<div class="muted small" style="margin-bottom:8px">اسحب الطاولة لتغيير موقعها، أو اضغطها لتعديل رقمها ونوعها.</div>'+
         '<div class="tm-board" id="edBoard">'+tmLandmarks(areaId)+
         T.map(function(t,i){
           return '<button class="tm-t '+esc(t.type)+' s-free" data-i="'+i+'" style="left:'+t.x+'%;top:'+t.y+'%">'+
@@ -6122,7 +6162,7 @@ ADMIN.templates=function(v){
           '<div class="grow"><label class="f">أقل فاصل بين المرات (دقيقة)</label><input class="f" id="pCd" type="number" value="'+(t?(t.cooldown_min||0):0)+'"></div></div>'+
           '<label class="f">تدوير يومي على الموظفات — عدد المكلَّفات (0 = بلا تدوير، 2 = مثل مسح الواجهة)</label><input class="f" id="pRot" type="number" min="0" value="'+(t?(t.rotate_size||0):0)+'">'+
           '<div class="muted small">يُسنِد المهمة تلقائياً لهذا العدد من الموظفات بالتناوب العادل يومياً بين الحاضرات (يستثني المستثنيات).</div>'+
-          (t?'<div class="btnrow" style="margin-top:8px"><button class="btn ghost block" type="button" id="pOrder">ترتيب دور الموظفات على هذه المهمة</button></div><div class="muted small">للمهام الدوّارة: رتّبي الموظفات يدوياً (هبه ← رؤى ← بشرى) فيمرّرها النظام بينهنّ بالترتيب. اتركيه فارغاً للتوزيع العادل التلقائي.</div>':'')+
+          (t?'<div class="btnrow" style="margin-top:8px"><button class="btn ghost block" type="button" id="pOrder">ترتيب دور الموظفات على هذه المهمة</button></div><div class="muted small">للمهام الدوّارة: رتّب الموظفات يدوياً (هبه ← رؤى ← بشرى) فيمرّرها النظام بينهنّ بالترتيب. اتركه فارغاً للتوزيع العادل التلقائي.</div>':'')+
           /* المهارة المشترطة تُحفظ بإجراء منفصل لأن له حارساً خاصاً على الخادم:
              لا يُقبل اشتراط مهارة لا تتقنها موظفات كافيات، وإلا صارت المهمة
              بلا مرشّحة فارتفع الإسناد اليدوي. لذلك لا تُدمج مع حفظ القالب. */
@@ -6132,7 +6172,7 @@ ADMIN.templates=function(v){
                var nm=s.name||s;
                return '<option value="'+esc(nm)+'"'+(t.required_skill===nm?' selected':'')+'>'+esc(nm)+'</option>';
              }).join('')+'</select>'+
-             '<div class="btnrow" style="margin-top:6px"><button class="btn ghost block" type="button" id="pSkGo">احفظي المهارة المشترطة</button></div>'+
+             '<div class="btnrow" style="margin-top:6px"><button class="btn ghost block" type="button" id="pSkGo">احفظ المهارة المشترطة</button></div>'+
              '<div class="muted small">لن يُسند النظام هذه المهمة إلا لمن تتقن المهارة. '+
                'إن لم يكن العدد كافياً سيرفض الحفظ ويخبرك — الاشتراط بلا مؤدّيات يعطّل المهمة لا يحميها.</div>':'')+
           '<label class="f">لماذا هذه المهمة مهمة</label><input class="f" id="pRe" value="'+(t?esc(t.reason||''):'')+'">'+
@@ -6156,7 +6196,7 @@ ADMIN.templates=function(v){
                 method:$('#pM',ov).value, checklist:cl, needs_photo:$('#pPhoto',ov).checked, needs_two:$('#pTwo',ov).checked,
                 needs_review:$('#pRev',ov).checked, is_core:$('#pCore',ov).checked, reason:$('#pRe',ov).value, impact:$('#pIm',ov).value,
                 recurring:$('#pRec',ov).checked, target_count:+$('#pTgt',ov).value||0, cooldown_min:+$('#pCd',ov).value||0, rotate_size:+$('#pRot',ov).value||0, all_staff:$('#pAll',ov).checked, freq:$('#pFreq',ov).value};
-              if(!p.name.trim()){ toast('اكتبي اسم المهمة', true); return; }
+              if(!p.name.trim()){ toast('اكتب اسم المهمة', true); return; }
               if(p.method==='checklist' && !cl.length){ toast('طريقة «قائمة فحص» تحتاج بنوداً — سطر لكل بند', true); return; }
               if(!(p.expected>0)){ toast('الدقائق المتوقعة يجب أن تكون أكبر من صفر', true); return; }
               if(p.method==='photo') p.needs_photo=true;
@@ -6180,12 +6220,12 @@ function taskOrderSheet(tid, name){
       function paint(){
         var inIds=order.map(function(o){return o.employee_id;});
         var avail=emps.filter(function(e){return inIds.indexOf(e.id)<0;});
-        var h='<div class="muted small" style="margin-bottom:8px">أول موظفة تبدأ، ثم التالية بعد كل تنفيذ. الغائبة تُتخطّى تلقائياً. اتركيه فارغاً للتوزيع العادل التلقائي (الأقل تنفيذاً).</div>';
+        var h='<div class="muted small" style="margin-bottom:8px">أول موظفة تبدأ، ثم التالية بعد كل تنفيذ. الغائبة تُتخطّى تلقائياً. اتركه فارغاً للتوزيع العادل التلقائي (الأقل تنفيذاً).</div>';
         h+=(order.length?order.map(function(o,i){
           return '<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:7px 0"><div><b>'+(i+1)+'.</b> '+esc(o.name)+'</div>'+
             '<span class="btnrow" style="margin:0"><button class="btn sm ghost" data-up="'+i+'"'+(i===0?' disabled':'')+'>▲</button><button class="btn sm ghost" data-dn="'+i+'"'+(i===order.length-1?' disabled':'')+'>▼</button><button class="btn sm ghost red" data-rm="'+i+'">حذف</button></span></div>';
         }).join(''):'<div class="muted small" style="padding:6px 0">لا ترتيب محدد — التوزيع عادل تلقائياً.</div>');
-        if(avail.length) h+='<label class="f" style="margin-top:10px">إضافة موظفة للترتيب</label><select class="f" id="ordAdd"><option value="">— اختاري —</option>'+avail.map(function(e){return '<option value="'+e.id+'">'+esc(e.name)+'</option>';}).join('')+'</select>';
+        if(avail.length) h+='<label class="f" style="margin-top:10px">إضافة موظفة للترتيب</label><select class="f" id="ordAdd"><option value="">— اختر —</option>'+avail.map(function(e){return '<option value="'+e.id+'">'+esc(e.name)+'</option>';}).join('')+'</select>';
         h+='<div class="btnrow" style="margin-top:12px"><button class="btn block" id="ordSave">حفظ الترتيب</button></div>';
         $('#ordWrap',ov).innerHTML=h;
         $$('[data-up]',ov).forEach(function(b){ b.addEventListener('click', function(){ var i=+b.getAttribute('data-up'); var t=order[i-1]; order[i-1]=order[i]; order[i]=t; paint(); }); });
@@ -6240,7 +6280,7 @@ ADMIN.tasks=function(v){
         });});
         var bulk=$('#tkBulk',v);
         if(bulk) bulk.addEventListener('click', function(){
-          if(!confirm('اعتماد كل المهام المنتظرة ('+review.length+')؟ راجعي الصور والأرقام أولاً.')) return;
+          if(!confirm('اعتماد كل المهام المنتظرة ('+review.length+')؟ راجع الصور والأرقام أولاً.')) return;
           busyWrap(bulk, function(){
             var chain=Promise.resolve();
             review.forEach(function(t){ chain=chain.then(function(){ return aAct('task_review',{id:t.id, decision:'approve'}); }); });
@@ -6287,9 +6327,9 @@ ADMIN.tasks=function(v){
           });
           $('#qGo',ov).addEventListener('click', function(){
             var nm=$('#qN',ov).value.trim();
-            if(!nm){ toast('اكتبي اسم المهمة', true); return; }
+            if(!nm){ toast('اكتب اسم المهمة', true); return; }
             var emp=$('#qE',ov).value, rsn=(($('#qR',ov)||{}).value||'').trim();
-            if(emp && rsn.length<3){ toast('اكتبي سبب الاختيار اليدوي', true); return; }
+            if(emp && rsn.length<3){ toast('اكتب سبب الاختيار اليدوي', true); return; }
             busyWrap(this, function(){
               var pl={day:$('#tkDay').value, name:nm, area_id:+$('#qA',ov).value,
                       expected:+$('#qX',ov).value, is_core:$('#qC',ov).checked};
@@ -6362,7 +6402,7 @@ ADMIN.attendance=function(v){
   function attEdit(r){
     if(!r.shift_id){ toast('لا يمكن التعديل — لا يوجد شفت مرتبط', true); return; }
     sheet('تعديل وقت — '+esc(r.employee),
-      '<div class="muted small">الأوقات بتوقيت عمّان. اتركي الحقل فارغاً لعدم تغييره.</div>'+
+      '<div class="muted small">الأوقات بتوقيت عمّان. اترك الحقل فارغاً لعدم تغييره.</div>'+
       '<label class="f">الحضور</label><input class="f" id="edIn" type="time" value="'+(r['in']?fmtT(r['in']):'')+'">'+
       '<label class="f">الانصراف</label><input class="f" id="edOut" type="time" value="'+(r.out?fmtT(r.out):'')+'">'+
       '<div class="btnrow"><button class="btn block" id="edGo">حفظ</button></div>',
@@ -6399,7 +6439,7 @@ ADMIN.skills=function(v){
           var txt = m ? (m.level+(m.approved?'✔':'⏳')+(m.can_train?'':'')) : '·';
           return '<td style="cursor:pointer;text-align:center" data-es="'+e.id+'-'+s.id+'">'+txt+'</td>';
         }).join('')+'</tr>';
-      }).join('')+'</table></div><div class="muted small" style="margin-top:6px">✔ معتمدة · ⏳ بانتظار الاعتماد · يحق لها التدريب — اضغطي أي خلية للتعديل</div>');
+      }).join('')+'</table></div><div class="muted small" style="margin-top:6px">✔ معتمدة · ⏳ بانتظار الاعتماد · يحق لها التدريب — اضغط أي خلية للتعديل</div>');
     v.innerHTML=out.join('');
     $$('[data-es]',v).forEach(function(td){
       td.addEventListener('click', function(){
@@ -6486,10 +6526,10 @@ ADMIN.absence=function(v){
           '<option value="extra_shift">شفت إضافي</option>'+
           '<option value="stayed_late">بقيت بعد شفتها</option></select>'+
         '<label class="f">التفاصيل</label><input class="f" id="clD" maxlength="200" placeholder="مثال: غطّت شفت ليان المسائي باتفاق هاتفي">'+
-        '<div class="btnrow"><button class="btn ghost block" id="clGo">دوّني التغطية</button></div>'+
+        '<div class="btnrow"><button class="btn ghost block" id="clGo">دوّن التغطية</button></div>'+
         '<div class="muted small">يُسجَّل في سجل التغطية ليُقرأ عند طلبات الإجازة — لا يولّد شفتاً ولا يعدّل ساعات.</div>'+
         '</div></details><div id="abOut"></div>';
-    var CVS={pending:'<span class="chip orange">بانتظار موافقتها</span>', accepted:'<span class="chip green">قبلت التغطية ✔</span>', declined:'<span class="chip red">اعتذرت — اختاري بديلة</span>'};
+    var CVS={pending:'<span class="chip orange">بانتظار موافقتها</span>', accepted:'<span class="chip green">قبلت التغطية ✔</span>', declined:'<span class="chip red">اعتذرت — اختر بديلة</span>'};
     function loadToday(){
       aAct('absences_day',{}).then(function(res){
         var rows=res.rows||[];
@@ -6502,7 +6542,7 @@ ADMIN.absence=function(v){
     loadToday();
     $('#clGo').addEventListener('click', function(){
       var det=$('#clD').value.trim();
-      if(det.length<4){ toast('اكتبي تفاصيل التغطية — السجل بلا تفصيل لا يُقرأ لاحقاً', true); return; }
+      if(det.length<4){ toast('اكتب تفاصيل التغطية — السجل بلا تفصيل لا يُقرأ لاحقاً', true); return; }
       busyWrap(this, function(){
         return aAct('coverage_log_add',{employee_id:+$('#clE').value, kind:$('#clK').value, detail:det})
           .then(function(r){
@@ -6555,7 +6595,7 @@ ADMIN.coop=function(v){
       if((res.mutual_pairs||[]).length){
         out.push('<div class="card beige"><h3>⚠ أنماط تبادل متكرر</h3>'+res.mutual_pairs.map(function(m){
           return '<div>'+esc(m.a)+' ↔ '+esc(m.b)+' — '+m.days+' أيام</div>';
-        }).join('')+'<div class="muted small">قد يكون تعاوناً حقيقياً — انظري بنفسك قبل أي استنتاج.</div></div>');
+        }).join('')+'<div class="muted small">قد يكون تعاوناً حقيقياً — انظر بنفسك قبل أي استنتاج.</div></div>');
       }
       out.push('<div class="card"><h3>التفاصيل</h3>'+((res.reasons||[]).map(function(r){
         return '<div class="small" style="padding:4px 0;border-bottom:1px dashed var(--line)">'+fmtD(r.day)+': <b>'+esc(r.by)+'</b> اختارت <b>'+esc(r.employee)+'</b> — '+esc(r.reason||'')+(r.note?' («'+esc(r.note)+'»)':'')+'</div>';
@@ -6664,13 +6704,13 @@ ADMIN.contrib=function(v){
       '<input class="f" id="cbMin" type="number" min="0" max="480" value="'+(+r.minutes||0)+'">'+
       '<label class="f">'+(isNo?'سبب الرفض (إلزامي — يصلها نصاً)':'ملاحظة للموظفة (اختياري)')+'</label>'+
       '<textarea class="f" id="cbNote" style="min-height:80px" placeholder="'+
-        (isNo?'اشرحي لماذا لم تُعتمد — حقها أن تعرف':'مثال: تغطية حقيقية وفّرت افتتاحاً متأخراً')+'"></textarea>'+
+        (isNo?'اشرح لماذا لم تُعتمد — حقها أن تعرف':'مثال: تغطية حقيقية وفّرت افتتاحاً متأخراً')+'"></textarea>'+
       '<div class="btnrow"><button class="btn block'+(isNo?' ghost red':'')+'" id="cbGo">'+
       (isNo?'تأكيد الرفض':'اعتماد المساهمة')+'</button></div>',
       function(ov, close){
         $('#cbGo',ov).addEventListener('click', function(){
           var note=$('#cbNote',ov).value.trim();
-          if(isNo && !note){ toast('اكتبي سبب الرفض — سيصل للموظفة نصاً', true); return; }
+          if(isNo && !note){ toast('اكتب سبب الرفض — سيصل للموظفة نصاً', true); return; }
           busyWrap(this, function(){
             return aAct('contrib_decide',{id:r.id, decision:dec, minutes:$('#cbMin',ov).value, note:note})
               .then(function(x){
@@ -6713,7 +6753,7 @@ ADMIN.evals=function(v){
         'يُفتح بعد ثلاثين يوماً من بدء التشغيل الفعلي في المقهى، فيكون أول تقييم '+
         'مبنيّاً على عمل حقيقي لا على أرقامٍ ناقصة.</div>'+
         '<div class="muted small" style="margin-top:8px">لا شيء حُذف — الشاشة وحساباتها '+
-        'وسجلّها كما هي، وتُفتح من الإعدادات متى قرّرتِ.</div></div>';
+        'وسجلّها كما هي، وتُفتح من الإعدادات متى قرّرت.</div></div>';
       return;
     }
     evalsRun(v);
@@ -6794,7 +6834,7 @@ ADMIN.awards=function(v){
       '<label class="f">المكافأة (اختياري)</label><input class="f" id="awW">'+
       '<div class="btnrow"><button class="btn orange block" id="awGo">حفظ الجائزة</button></div></div><div id="awList"></div>';
     $('#rgGo').addEventListener('click', function(){
-      var t=$('#rgT').value.trim(); if(!t){toast('اكتبي نصاً محدداً',true);return;}
+      var t=$('#rgT').value.trim(); if(!t){toast('اكتب نصاً محدداً',true);return;}
       var btn=this;
       busyWrap(btn, function(){
         return aAct('recognition_send',{employee_id:+$('#rgE').value, text:t}).then(function(r){
@@ -6803,7 +6843,7 @@ ADMIN.awards=function(v){
       });
     });
     $('#awGo').addEventListener('click', function(){
-      if(!$('#awM').value){ toast('حددي الشهر', true); return; }
+      if(!$('#awM').value){ toast('حدد الشهر', true); return; }
       var btn=this;
       busyWrap(btn, function(){
         return aAct('award_save',{month:$('#awM').value, employee_id:+$('#awE').value, category:$('#awC').value, public_title:$('#awT').value, private_reason:$('#awR').value, reward:$('#awW').value})
@@ -6957,7 +6997,7 @@ ADMIN.pulse=function(v){
     out.push('<div class="statgrid"><div class="stat"><div class="v">'+(res.today_avg!=null?res.today_avg:'—')+'</div><div class="l">مزاج اليوم /5</div></div>'+
       '<div class="stat"><div class="v">'+(res.today_count||0)+'</div><div class="l">شاركن اليوم</div></div>'+
       '<div class="stat'+((res.low_streak||0)>=3?' bad':'')+'"><div class="v">'+(res.low_streak||0)+'</div><div class="l">أيام منخفضة (7)</div></div></div>');
-    if((res.low_streak||0)>=3) out.push('<div class="alert high">مؤشر إرهاق: مزاج الفريق منخفض عدة أيام — بادري بالتخفيف والتقدير.</div>');
+    if((res.low_streak||0)>=3) out.push('<div class="alert high">مؤشر إرهاق: مزاج الفريق منخفض عدة أيام — بادر بالتخفيف والتقدير.</div>');
     var tr=res.trend||[]; if(tr.length){
       var mx=5, bars=tr.map(function(t){ var h=Math.round((t.avg/mx)*60); return '<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px"><div style="width:70%;height:'+h+'px;background:linear-gradient(180deg,var(--amber-2),var(--amber));border-radius:4px"></div><div class="muted" style="font-size:9px">'+(''+t.day).slice(8)+'</div></div>'; }).join('');
       out.push('<div class="card"><h3>اتجاه المزاج (أسبوعان)</h3><div style="display:flex;gap:4px;height:80px;align-items:flex-end">'+bars+'</div></div>');
@@ -6972,16 +7012,16 @@ var ADMCAST={recording:false,t0:0};
 function admCastStart(btn){
   if(ADMCAST.recording) return;
   if(!recSupported()){ toast('التسجيل غير مدعوم هنا',true); return; }
-  ADMCAST.recording=true; ADMCAST.t0=Date.now(); btn.classList.add('rec'); btn.textContent='يسجّل… أفلتي للإرسال'; recOverlay(true);
+  ADMCAST.recording=true; ADMCAST.t0=Date.now(); btn.classList.add('rec'); btn.textContent='يسجّل… أفلت للإرسال'; recOverlay(true);
   clearTimeout(ADMCAST._max); ADMCAST._max=setTimeout(function(){ if(ADMCAST.recording) admCastStop(btn); }, 15000);
   recStart().then(function(){ if(!ADMCAST.recording){ recStop(); recOverlay(false); } })
-   .catch(function(){ ADMCAST.recording=false; recOverlay(false); btn.classList.remove('rec'); btn.textContent='اضغطي مع الاستمرار للبثّ الصوتي'; toast('اسمحي بالوصول للميكروفون',true); });
+   .catch(function(){ ADMCAST.recording=false; recOverlay(false); btn.classList.remove('rec'); btn.textContent='اضغط مع الاستمرار للبثّ الصوتي'; toast('اسمح بالوصول للميكروفون',true); });
 }
 function admCastStop(btn){
   if(!ADMCAST.recording) return;
   ADMCAST.recording=false; clearTimeout(ADMCAST._max); btn.classList.remove('rec'); recOverlay(false);
   var dur=(Date.now()-ADMCAST.t0)/1000; var wav=recStop();
-  var reset=function(){ btn.textContent='اضغطي مع الاستمرار للبثّ الصوتي'; };
+  var reset=function(){ btn.textContent='اضغط مع الاستمرار للبثّ الصوتي'; };
   if(!wav || dur<0.35){ reset(); return; }
   if(wav.length>420000){ toast('المقطع طويل — أبقيه أقصر',true); reset(); return; }
   btn.textContent='… يُرسل';
@@ -7002,7 +7042,7 @@ ADMIN.heat=function(v){
       cells.forEach(function(c){ if(areas.indexOf(c.area)<0) areas.push(c.area); hset[c.hour]=1; if(c.count>maxc) maxc=c.count; key[c.area+'|'+c.hour]=c; });
       var hours=Object.keys(hset).map(Number).sort(function(a,b2){return a-b2;});
       var h0=hours[0], h1=hours[hours.length-1], allH=[]; for(var h=h0;h<=h1;h++) allH.push(h);
-      var html='<div class="card soft" style="padding:9px 12px"><div class="muted small">خريطة مبنية من أحداث حقيقية (مهام، متكررة، نداءات، ضغط، تحضير، حضور/انصراف) — كل خلية: منطقة×ساعة، الأغمق = نشاط أكثر. اضغطي أي خلية للتفاصيل. كلما ربطتِ الشفتات بالمناطق صارت أدق.</div></div>';
+      var html='<div class="card soft" style="padding:9px 12px"><div class="muted small">خريطة مبنية من أحداث حقيقية (مهام، متكررة، نداءات، ضغط، تحضير، حضور/انصراف) — كل خلية: منطقة×ساعة، الأغمق = نشاط أكثر. اضغط أي خلية للتفاصيل. كلما ربطت الشفتات بالمناطق صارت أدق.</div></div>';
       html+='<div class="scrollx"><table class="tbl" style="min-width:'+(90+allH.length*44)+'px"><tr><th>المنطقة</th>'+allH.map(function(h){return '<th style="text-align:center">'+h+'</th>';}).join('')+'</tr>';
       areas.forEach(function(a){
         html+='<tr><td style="white-space:nowrap"><b>'+esc(a)+'</b></td>'+allH.map(function(h){
@@ -7038,7 +7078,7 @@ ADMIN.ops=function(v){
     aAct('ops_overview',{day:today()}).then(function(r){
       var out='', temps=r.temps||[];
       out+='<h3>سلامة الغذاء — الحرارة</h3>';
-      if(!temps.length) out+='<div class="card muted small">لا أجهزة تبريد مُعرّفة بعد — أضيفيها من «أجهزة التبريد».</div>';
+      if(!temps.length) out+='<div class="card muted small">لا أجهزة تبريد مُعرّفة بعد — أضِفها من «أجهزة التبريد».</div>';
       temps.forEach(function(t){
         var last=t.last, cls=(t.today_out>0)?'red':(t.overdue?'orange':'green');
         out+='<div class="card" style="padding:11px 13px"><div class="row" style="justify-content:space-between"><b>'+esc(t.name)+'</b>'+
@@ -7096,7 +7136,7 @@ function opsReadyConfig(after){
             '<div class="btnrow"><button class="btn block" id="riGo">حفظ</button></div>',
             function(ov2, close2){
               $('#riGo',ov2).addEventListener('click', function(){
-                var lbl=$('#riLabel',ov2).value.trim(); if(!lbl){toast('اكتبي البند',true);return;}
+                var lbl=$('#riLabel',ov2).value.trim(); if(!lbl){toast('اكتب البند',true);return;}
                 busyWrap(this, function(){ return aAct('readiness_item_save',{id:it.id||'', phase:$('#riPhase',ov2).value, label:lbl,
                   area_id:$('#riArea',ov2).value, shift_type_id:$('#riType',ov2).value,
                   critical:$('#riCrit',ov2).checked, active:$('#riAct',ov2).checked, sort:+$('#riSort',ov2).value||0}).then(function(res){
@@ -7134,7 +7174,7 @@ function opsTempConfig(after){
             '<div class="btnrow"><button class="btn block" id="taGo">حفظ</button></div>',
             function(ov2, close2){
               $('#taGo',ov2).addEventListener('click', function(){
-                var nm=$('#taName',ov2).value.trim(); if(!nm){toast('اكتبي الاسم',true);return;}
+                var nm=$('#taName',ov2).value.trim(); if(!nm){toast('اكتب الاسم',true);return;}
                 busyWrap(this, function(){ return aAct('temp_asset_save',{id:it.id||'', name:nm, area_id:$('#taArea',ov2).value,
                   min:$('#taMin',ov2).value, max:$('#taMax',ov2).value, interval:+$('#taInt',ov2).value||240, active:$('#taAct',ov2).checked}).then(function(res){
                   if(res.ok){ close2(); close(); opsTempConfig(after); } else toast(res.error||'خطأ',true);
@@ -7182,12 +7222,12 @@ ADMIN.prep=function(v){
       // سجل الهدر
       var waste=ov.waste||[];
       if(waste.length){
-        out.push('<div class="card"><h3>سجل الهدر (14 يوماً)</h3><div class="muted small" style="margin-bottom:4px">تكرار الإتلاف يعني كمية التحضير أكبر من الحاجة — قلّليها.</div>'+
+        out.push('<div class="card"><h3>سجل الهدر (14 يوماً)</h3><div class="muted small" style="margin-bottom:4px">تكرار الإتلاف يعني كمية التحضير أكبر من الحاجة — قلّلها.</div>'+
           waste.map(function(wx){ return '<div class="row" style="justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--line)"><span>'+esc(wx.item)+'</span><span class="chip red">'+wx.count+' مرة</span></div>'; }).join('')+'</div>');
       }
       // الأصناف
       out.push('<div class="row" style="justify-content:space-between;margin-top:12px"><h3 style="margin:0">الأصناف</h3><button class="btn sm" id="ppNew">+ صنف</button></div>');
-      if(!items.length) out.push('<div class="muted small" style="margin:6px 2px">أضيفي أول صنف (مثال: عصير ليمون — 72 ساعة)</div>');
+      if(!items.length) out.push('<div class="muted small" style="margin:6px 2px">أضِف أول صنف (مثال: عصير ليمون — 72 ساعة)</div>');
       items.forEach(function(it){
         out.push('<div class="card" style="padding:9px 12px'+(it.active?'':';opacity:.5')+'"><div class="row" style="justify-content:space-between"><div><b>'+esc(it.name)+'</b><div class="muted small">صلاحية '+(it.shelf_hours>=48? (Math.round(it.shelf_hours/24))+' أيام' : it.shelf_hours+' ساعة')+' · '+esc(it.area||'يراها الجميع')+' · طازج الآن: '+(it.fresh||0)+'</div></div>'+
           '<button class="btn sm ghost" data-pped="'+it.id+'">تعديل</button></div></div>');
@@ -7206,7 +7246,7 @@ ADMIN.prep=function(v){
             if(it){ $('#pfDel',ovv).addEventListener('click', function(){ if(!confirm('حذف الصنف وكل شافاته؟')) return;
               busyWrap(this, function(){ return aAct('prep_item_delete',{id:it.id}).then(function(){ close(); ADMIN.prep(v); }); }); }); }
             $('#pfGo',ovv).addEventListener('click', function(){
-              var nm=$('#pfN',ovv).value.trim(); if(!nm){ toast('اكتبي اسم الصنف',true); return; }
+              var nm=$('#pfN',ovv).value.trim(); if(!nm){ toast('اكتب اسم الصنف',true); return; }
               var p={name:nm, shelf_hours:Math.max(1, Math.round((+$('#pfD',ovv).value||3)*24)), unit:$('#pfU',ovv).value, area_id:$('#pfA',ovv).value||null};
               if(it){ p.id=it.id; p.active=$('#pfAct',ovv).checked; }
               busyWrap(this, function(){ return aAct('prep_item_save',p).then(function(r){ if(r.ok){ close(); ADMIN.prep(v); toast('تم ✔'); } else toast(r.error||'خطأ',true); }); });
@@ -7225,7 +7265,7 @@ ADMIN.cover=function(v){
     v.innerHTML=skel(2);
     aAct('cover_pending',{}).then(function(res){
       var rows=res.rows||[];
-      var out=['<div class="card soft" style="padding:10px 12px"><div class="muted small">طلبات التغطية والتبديل بانتظار اعتمادكِ. الاعتماد يعيد إسناد الشفت تلقائياً ويُشعر الطرفين.</div></div>'];
+      var out=['<div class="card soft" style="padding:10px 12px"><div class="muted small">طلبات التغطية والتبديل بانتظار اعتمادك. الاعتماد يعيد إسناد الشفت تلقائياً ويُشعر الطرفين.</div></div>'];
       if(!rows.length) out.push('<div class="empty">لا طلبات معلّقة</div>');
       rows.forEach(function(c){
         out.push('<div class="card" style="padding:10px 12px"><b>'+esc(c.requester)+'</b> '+(c.kind==='swap'?'<span class="chip">تبديل</span>':'<span class="chip">تغطية</span>')+
@@ -7249,7 +7289,7 @@ ADMIN.ptt=function(v){
     aAct('ptt_log',{}).then(function(r){
       if(!r.ok){ v.innerHTML='<div class="empty">'+esc(r.error||'خطأ')+'</div>'; return; }
       var cl=r.clips||[];
-      var out=['<div class="card"><h3>بثّ صوتي للفريق</h3><div class="muted small" style="margin-bottom:8px">اضغطي مع الاستمرار وتحدّثي، وعند الإفلات يصل صوتك فوراً لكل من على الشفت الآن (ويصلهن إشعار إن كان التطبيق مغلقاً).</div><button id="admCast" class="btn block" style="touch-action:none;user-select:none">اضغطي مع الاستمرار للبثّ الصوتي</button></div>',
+      var out=['<div class="card"><h3>بثّ صوتي للفريق</h3><div class="muted small" style="margin-bottom:8px">اضغط مع الاستمرار وتحدّث، وعند الإفلات يصل صوتك فوراً لكل من على الشفت الآن (ويصلهن إشعار إن كان التطبيق مغلقاً).</div><button id="admCast" class="btn block" style="touch-action:none;user-select:none">اضغط مع الاستمرار للبثّ الصوتي</button></div>',
         '<div class="card soft" style="padding:10px 12px"><div class="muted small">كل النداءات الصوتية (بين الموظفات ومن الإدارة) محفوظة هنا 24 ساعة فقط ثم تُحذف تلقائياً.</div></div>'];
       if(!cl.length) out.push('<div class="empty">لا نداءات في آخر 24 ساعة</div>');
       cl.forEach(function(c){
@@ -7347,7 +7387,7 @@ ADMIN.sops=function(v){
       var rows=res.rows||[];
       var out=['<div class="card soft" style="padding:10px 12px"><div class="muted small">أدلة العمل هي خطوات الإجراءات القياسية (SOP) التي تراها كل موظفة داخل شفتها — طريقة تنظيف الآلة، خطوات الإغلاق، معايير الخدمة. مرجع موحّد يضمن نفس الجودة من الجميع.</div></div>',
         '<div class="btnrow" style="margin:10px 0"><button class="btn sm" id="spNew">+ دليل جديد</button></div>'];
-      if(!rows.length) out.push('<div class="empty">لا أدلة بعد — أضيفي أول دليل لتوحيد طريقة العمل.</div>');
+      if(!rows.length) out.push('<div class="empty">لا أدلة بعد — أضِف أول دليل لتوحيد طريقة العمل.</div>');
       var byc={}; rows.forEach(function(r){ (byc[r.category]=byc[r.category]||[]).push(r); });
       SOP_CATS.forEach(function(c){
         var g=byc[c[0]]; if(!g||!g.length) return;
@@ -7397,8 +7437,8 @@ ADMIN.sops=function(v){
             $('#spGo',ov).addEventListener('click', function(){
               var steps=$('#spS',ov).value.split('\n').map(function(x){return x.trim();}).filter(Boolean);
               var title=$('#spT',ov).value.trim();
-              if(!title){ toast('اكتبي عنوان الدليل', true); return; }
-              if(!steps.length){ toast('أضيفي خطوة واحدة على الأقل', true); return; }
+              if(!title){ toast('اكتب عنوان الدليل', true); return; }
+              if(!steps.length){ toast('أضِف خطوة واحدة على الأقل', true); return; }
               var p={title:title, category:$('#spC',ov).value, area_id:$('#spA',ov).value||null, steps:steps,
                      photo:photo, photo_key:photoKey, sort:+$('#spSort',ov).value||99};
               if(s){ p.id=s.id; p.active=$('#spAct',ov).checked; }
@@ -7448,7 +7488,7 @@ ADMIN.broadcast=function(v){
     $('#bcScope').addEventListener('change', function(){ $('#bcEmpWrap').style.display=this.value==='employee'?'block':'none'; });
     var bp=$('#bcPush'); if(bp) bp.addEventListener('click', function(){ enablePush(PUSHKEY,function(){}); });
     $('#bcGo').addEventListener('click', function(){
-      var t=$('#bcTitle').value.trim(); if(!t){ toast('اكتبي العنوان', true); return; }
+      var t=$('#bcTitle').value.trim(); if(!t){ toast('اكتب العنوان', true); return; }
       var p={scope:$('#bcScope').value, title:t, body:$('#bcBody').value, days:+$('#bcDays').value||1};
       if(p.scope==='employee') p.employee_id=+$('#bcEmp').value;
       busyWrap(this, function(){ return aAct('broadcast',p).then(function(r){ if(r.ok){toast(r.msg||'أُرسل');$('#bcTitle').value='';$('#bcBody').value='';loadBL();} else toast(r.error||'خطأ',true); }); });
@@ -7490,7 +7530,7 @@ ADMIN.guests=function(v){
         '<div class="muted small">من '+(+t.answered||0)+' جلسة أُجيب عنها خلال ٣٠ يوماً · '+
           (+t.students||0)+' منها طالبات.</div>'+
         (cov!=null?'<div class="muted small" style="margin-top:6px">تغطية السؤال '+cov+'٪ من الجلسات — '+
-          (cov<60?'النسبة أعلاه مبنيّة على عيّنة صغيرة، اقرأيها بحذر.':'تغطية كافية.')+'</div>':'')+
+          (cov<60?'النسبة أعلاه مبنيّة على عيّنة صغيرة، اقرأها بحذر.':'تغطية كافية.')+'</div>':'')+
       '</div>'+
       '<div class="card"><h3>الضيفات</h3>'+
         '<div class="muted small">'+(+t.guests||0)+' ضيفة في الجلسات المحسوبة، منهنّ '+
@@ -7515,12 +7555,34 @@ ADMIN.guests=function(v){
 /* الوصفات من جهة الإدارة: تعديل صنف · إخفاؤه · إخفاء فئة كاملة.
    «الشاي غير مهم» تُنفَّذ بضغطة على الفئة لا بحذف ثمانية أصناف — والحذف
    لا يُستعمل أصلاً: الإخفاء يُبقي الوصفة إن عادت الحاجة. */
+/* سجلّ فتح الوصفات: لا يكشف لقطة الشاشة — لكنه يجعل دائرة من اطّلع على
+   وصفةٍ بعينها معروفةً ومحدودة. هذا هو الرادع الحقيقي، لا كشفٌ نتظاهر به. */
+function rcpViews(vw){
+  var rows=(vw&&vw.rows)||[], items=(vw&&vw.items)||[];
+  if(!rows.length) return '<div class="card soft"><h3>سجلّ الاطّلاع</h3>'+
+    '<div class="muted small">لم تُفتح أي وصفة خلال ١٤ يوماً. يسجّل النظام من فتح أي وصفة ومتى — '+
+    'لتضييق الدائرة إن تسرّبت وصفة، لا لمراقبة أحد.</div></div>';
+  return '<div class="card"><h3>سجلّ الاطّلاع — ١٤ يوماً</h3>'+
+    '<div class="muted small" style="margin-bottom:8px">من فتح وصفةً ومتى. '+
+    'لا يكشف النظام لقطات الشاشة (لا متصفّح يتيح ذلك) — لكنه يعرف من اطّلع.</div>'+
+    rows.map(function(x){
+      return '<div class="row" style="justify-content:space-between;padding:6px 0;gap:8px;'+
+        'border-bottom:1px dashed var(--line)">'+
+        '<span>'+esc(x.who||'—')+'</span>'+
+        '<span class="muted small">'+(+x.n)+' فتحة · '+(+x.items)+' صنف · آخرها '+fmtD(x.last)+'</span></div>';
+    }).join('')+
+    (items.length?'<div class="muted small" style="margin-top:9px">الأكثر مراجعةً: '+
+      items.map(function(i){ return esc(i.name)+' ('+(+i.n)+')'; }).join(' · ')+'</div>':'')+
+    '</div>';
+}
 ADMIN.recipes=function(v){
   v.innerHTML=skel(2);
-  aAct('rcp_admin_list',{}).then(function(r){
+  Promise.all([aAct('rcp_admin_list',{}), aAct('rcp_views',{})]).then(function(rr){
+    var r=rr[0], vw=rr[1]||{};
     if(!r||!r.ok){ v.innerHTML='<div class="empty">تعذّر التحميل</div>'; return; }
     var cats=r.cats||[], rows=r.rows||[];
     v.innerHTML=
+      rcpViews(vw)+
       '<div class="card"><h3>الفئات</h3>'+
         '<div class="muted small">إخفاء الفئة يُخفي أصنافها كلها عن شاشة الموظفات — ولا يحذف شيئاً.</div>'+
         cats.map(function(c){
@@ -7528,10 +7590,10 @@ ADMIN.recipes=function(v){
           return '<div class="row" style="justify-content:space-between;padding:7px 0;gap:8px">'+
             '<span>'+esc(c.cat)+' <span class="muted small">('+(+c.active)+' من '+(+c.total)+')</span></span>'+
             '<button class="btn sm '+(off?'':'ghost')+'" data-ct="'+esc(c.cat)+'" data-on="'+(off?'1':'0')+'">'+
-              (off?'أعيديها':'أخفيها')+'</button></div>';
+              (off?'أعِدها':'أخفِها')+'</button></div>';
         }).join('')+'</div>'+
       '<div class="card"><h3>الأصناف ('+rows.length+')</h3>'+
-        '<input class="f" id="rcpF" placeholder="ابحثي بالاسم">'+
+        '<input class="f" id="rcpF" placeholder="ابحث بالاسم">'+
         '<div id="rcpL">'+rcpRows(rows)+'</div></div>';
     function rcpRows(list){
       return list.map(function(x){
@@ -7573,11 +7635,11 @@ function rcpEdit(id, after){
         '<label class="f">الاسم</label><input class="f" id="reN" value="'+esc(it.name||'')+'">'+
         '<label class="f">الفئة</label><input class="f" id="reC" value="'+esc(it.cat||'')+'">'+
         '<label class="f">الكوب</label><input class="f" id="reCup" value="'+esc(it.cup||'')+'">'+
-        '<label class="f">مؤقّت تنازليّ (بالثواني — اتركيه فارغاً إن لا حاجة)</label>'+
+        '<label class="f">مؤقّت تنازليّ (بالثواني — اتركه فارغاً إن لا حاجة)</label>'+
         '<input class="f" id="reT" type="number" inputmode="numeric" value="'+(it.timer||'')+'">'+
         '<label class="f">اسم المؤقّت</label><input class="f" id="reTL" placeholder="خلط الفرابيه · خبز الوافل" value="'+esc(it.timer_label||'')+'">'+
         '<label class="f">ملاحظة وقت الضغط</label><textarea class="f" id="reB" rows="2">'+esc(it.busy||'')+'</textarea>'+
-        '<label class="f">انتبهي (تحذير يظهر بالأحمر)</label><textarea class="f" id="reW" rows="2">'+esc(it.warn||'')+'</textarea>'+
+        '<label class="f">تحذير «انتبهي» — يظهر للموظفة بالأحمر</label><textarea class="f" id="reW" rows="2">'+esc(it.warn||'')+'</textarea>'+
         '<label class="f">علامات النجاح</label><textarea class="f" id="reS" rows="2">'+esc(it.success||'')+'</textarea>'+
         '<div class="btnrow"><button class="btn block" id="reGo">حفظ</button></div>',
         function(ov, close){
@@ -7623,7 +7685,7 @@ ADMIN.kitchen=function(v){
                 return '<button class="btn sm '+(t.rotation===k?'':'ghost')+'" data-rot="'+esc(t.id)+'" data-v="'+k+'">'+
                   ROT[k]+'</button>'; }).join('')+
               '<button class="btn sm ghost" data-kon="'+esc(t.id)+'" data-v="'+(t.on?'0':'1')+'">'+
-                (t.on?'أطفئيها':'شغّليها')+'</button></div></div>';
+                (t.on?'أطفئها':'شغّلها')+'</button></div></div>';
         }).join('') : '<div class="muted small">لا مهام مطبخ.</div>')+'</div>'+
       '<div class="card"><h3>سجلّ الافتتاح — للتتبّع فقط</h3>'+
         ((op.rows||[]).length ? (op.rows||[]).slice(0,10).map(function(o){
@@ -7640,7 +7702,7 @@ ADMIN.kitchen=function(v){
                 '<div class="muted small">'+esc(x.who||'')+' · '+fmtD(x.ts)+'</div>'+
                 '<div class="btnrow" style="margin:6px 0 0">'+
                   '<button class="btn sm ghost" data-pin="'+(+x.id)+'" data-v="'+(x.pinned?'0':'1')+'">'+
-                    (x.pinned?'إلغاء التثبيت':'ثبّتيها')+'</button>'+
+                    (x.pinned?'إلغاء التثبيت':'ثبّتها')+'</button>'+
                   '<button class="btn sm ghost" data-rmn="'+(+x.id)+'">حذف</button></div></div>'; }).join('')
           : '<div class="muted small">لا ملاحظات بعد.</div>')+'</div>';
     $$('[data-rot]',v).forEach(function(b){ b.addEventListener('click', function(){
@@ -7776,7 +7838,7 @@ ADMIN.live=function(v){
       aAct('presence_map',{}).then(function(pm){
         var w=$('#locMapWrap'); if(!w||!pm.ok) return;
         var g=pm.center||{}, prows=(pm.rows||[]).filter(function(r){return r.last;});
-        if(!g.lat || !prows.length){ w.innerHTML='<div class="card"><h3>خريطة المواقع أثناء الشفت</h3><div class="muted small">تظهر مواقع الموظفات أثناء شفتهن بعد أول نبضة (حدّدي موقع الكافيه من الإعدادات).</div></div>'; return; }
+        if(!g.lat || !prows.length){ w.innerHTML='<div class="card"><h3>خريطة المواقع أثناء الشفت</h3><div class="muted small">تظهر مواقع الموظفات أثناء شفتهن بعد أول نبضة (حدّد موقع الكافيه من الإعدادات).</div></div>'; return; }
         var rad=(g.radius_m||250), mLat=111320, mLng=111320*Math.cos(g.lat*Math.PI/180);
         var W=320,H=220, cx=W/2, cy=H/2, span=rad*1.6;
         function px(la,ln){ return [cx+((ln-g.lng)*mLng)/span*(W/2), cy-((la-g.lat)*mLat)/span*(H/2)]; }
@@ -7869,19 +7931,19 @@ ADMIN.hours=function(v){
 ADMIN.devices=function(v){
   aAct('devices_list',{}).then(function(res){
     var rows=res.rows||[];
-    v.innerHTML='<div class="muted small" style="margin-bottom:8px">أنشئي حساباً لكل جهاز في الكافيه (تابلت الصالة مثلاً) وفعّليه من شاشة الدخول على الجهاز نفسه. مع «الوضع الصارم» في الإعدادات لا يُقبل دخول ولا حضور إلا من جهاز مفعّل.</div>'+
+    v.innerHTML='<div class="muted small" style="margin-bottom:8px">أنشئ حساباً لكل جهاز في الكافيه (تابلت الصالة مثلاً) وفعّله من شاشة الدخول على الجهاز نفسه. مع «الوضع الصارم» في الإعدادات لا يُقبل دخول ولا حضور إلا من جهاز مفعّل.</div>'+
       '<div class="btnrow" style="margin-bottom:10px"><button class="btn sm" id="dvNew">+ جهاز جديد</button></div>'+
       (rows.map(function(d){
         return '<div class="card" style="padding:10px 12px'+(d.active?'':';opacity:.55')+'"><div class="row" style="justify-content:space-between">'+
           '<div><b>'+esc(d.label||'جهاز')+'</b> <span class="chip" style="direction:ltr">'+esc(d.username)+'</span>'+(d.active?'':' <span class="chip red">موقوف</span>')+
           '<div class="muted small">آخر استخدام: '+(d.last_seen?(fmtD(d.last_seen)+' '+fmtT(d.last_seen)):'لم يُستخدم بعد')+'</div></div>'+
           '<button class="btn sm ghost" data-dved="'+d.id+'">تعديل</button></div></div>';
-      }).join('')||'<div class="empty">لا أجهزة بعد — أنشئي حساب الجهاز الأول</div>');
+      }).join('')||'<div class="empty">لا أجهزة بعد — أنشئ حساب الجهاز الأول</div>');
     function form(d){
       sheet(d?'تعديل جهاز — '+(d.label||''):'جهاز جديد',
         '<label class="f">اسم الجهاز (وصفي)</label><input class="f" id="dL" value="'+(d?esc(d.label):'تابلت الكافيه')+'">'+
         (d?'':'<label class="f">اسم المستخدم</label><input class="f" id="dU" autocapitalize="none" spellcheck="false" placeholder="مثال: tablet1">')+
-        '<label class="f">كلمة السر'+(d?' (اتركيها فارغة للإبقاء عليها)':'')+'</label><input class="f" id="dP" type="password">'+
+        '<label class="f">كلمة السر'+(d?' (اتركها فارغة للإبقاء عليها)':'')+'</label><input class="f" id="dP" type="password">'+
         (d?'<div class="check"><input type="checkbox" id="dA" '+(d.active?'checked':'')+'><span>مفعّل</span></div>'+
            '<div class="check"><input type="checkbox" id="dR"><span>إبطال التفعيلات السابقة — يعيد طلب التفعيل على الجهاز</span></div>':'')+
         '<div class="btnrow"><button class="btn block" id="dGo">حفظ</button></div>',
@@ -7926,7 +7988,7 @@ ADMIN.settings=function(v){
       '<div class="row"><div class="grow"><label class="f">كل (دقيقة) تقريباً</label><input class="f" id="agScEvery" type="number" value="'+(sc.every_min||45)+'"></div>'+
       '<div class="grow"><label class="f">تفاوت عشوائي ±</label><input class="f" id="agScJit" type="number" value="'+(sc.jitter_min||20)+'"></div>'+
       '<div class="grow"><label class="f">مهلة الرد (دقيقة)</label><input class="f" id="agScWin" type="number" value="'+(sc.window_min||8)+'"></div></div>'+
-      '<div class="small muted" style="margin-top:4px">موقع الكافيه: '+(guard.lat?('محدد ('+guard.lat+', '+guard.lng+')'):'<b>غير محدد — حدديه من داخل الكافيه</b>')+'</div>'+
+      '<div class="small muted" style="margin-top:4px">موقع الكافيه: '+(guard.lat?('محدد ('+guard.lat+', '+guard.lng+')'):'<b>غير محدد — حدده من داخل الكافيه</b>')+'</div>'+
       '<div class="btnrow">'+
         '<button class="btn sm" id="agLoc">اعتماد موقعي الحالي</button>'+
         '<button class="btn sm orange" id="agSave">حفظ إعدادات الحماية</button></div>'+
@@ -7945,7 +8007,7 @@ ADMIN.settings=function(v){
       '<label class="f">كلمة سر الإدارة (للتأكيد)</label><input class="f" id="rsPw" type="password" autocomplete="off">'+
       '<div class="btnrow"><button class="btn red block" id="rsGo">تصفير البيانات المحددة نهائياً</button></div></div>';
     v.innerHTML=guardCard+resetCard+
-      '<div class="muted small" style="margin:12px 0 8px">إعدادات متقدمة (JSON) — عدّلي بحذر ثم احفظي.</div>'+
+      '<div class="muted small" style="margin:12px 0 8px">إعدادات متقدمة (JSON) — عدّل بحذر ثم احفظ.</div>'+
       Object.keys(st).filter(function(k){return k!=='attendance_guard'&&k!=='trusted_devices'&&k!=='spotcheck';}).map(function(k){
         return '<div class="card" style="padding:10px 12px"><b>'+esc(labels[k]||k)+'</b> <span class="chip">'+esc(k)+'</span>'+
           '<textarea class="f stg" data-k="'+esc(k)+'" style="margin-top:6px;direction:ltr;text-align:left;font-size:12.5px">'+esc(JSON.stringify(st[k],null,1))+'</textarea>'+
@@ -7968,7 +8030,7 @@ ADMIN.settings=function(v){
       busyWrap(this, function(){
         return new Promise(function(resolve){
           getGeo(function(geo){
-            if(!geo){ toast('تعذر تحديد الموقع — فعّلي إذن الموقع وحاولي داخل الكافيه', true); resolve(); return; }
+            if(!geo){ toast('تعذر تحديد الموقع — فعّل إذن الموقع وحاول داخل الكافيه', true); resolve(); return; }
             saveGuard({lat:geo.lat, lng:geo.lng}).then(resolve, resolve);
           });
         });
@@ -7981,9 +8043,9 @@ ADMIN.settings=function(v){
     });});
     $('#rsGo',v).addEventListener('click', function(){
       var scopes={ops:$('#rsOps',v).checked, requests:$('#rsReq',v).checked, recognition:$('#rsRec',v).checked, training:$('#rsTr',v).checked, audit:$('#rsAud',v).checked};
-      if(!scopes.ops && !scopes.requests && !scopes.recognition && !scopes.training && !scopes.audit){ toast('حددي ما تريدين تصفيره', true); return; }
+      if(!scopes.ops && !scopes.requests && !scopes.recognition && !scopes.training && !scopes.audit){ toast('حدد ما تريد تصفيره', true); return; }
       var pw=$('#rsPw',v).value;
-      if(!pw){ toast('أدخلي كلمة سر الإدارة للتأكيد', true); return; }
+      if(!pw){ toast('أدخل كلمة سر الإدارة للتأكيد', true); return; }
       if(!confirm('تأكيد نهائي: ستُحذف السجلات المحددة ولا يمكن استرجاعها. متابعة؟')) return;
       busyWrap(this, function(){
         return aAct('data_reset', Object.assign({password:pw}, scopes)).then(function(r){
@@ -8014,7 +8076,7 @@ ADMIN.flags=function(v){
   aAct('flags_list',{}).then(function(res){
     var FK={fast_task:'مهمة أُنجزت أسرع من المعقول', photo_reuse:'صورة توثيق مكررة', forget_repeat:'نسيان متكرر للتسجيل', mutual_votes:'تبادل ترشيحات متكرر',
       unscheduled_checkin:'حضور بدون شفت مجدول', geo_missing:'تسجيل حضور/انصراف بدون موقع', geo_far:'تسجيل من موقع بعيد عن الكافيه', untrusted_device:'تسجيل من جهاز غير معتمد'};
-    v.innerHTML='<div class="muted small" style="margin-bottom:8px">أنماط رصدها الخادم — <b>لا عقوبة تلقائية أبداً</b>. انظري وتحدثي ثم قرري.</div>'+
+    v.innerHTML='<div class="muted small" style="margin-bottom:8px">أنماط رصدها الخادم — <b>لا عقوبة تلقائية أبداً</b>. انظر وتحدّث ثم قرّر.</div>'+
       ((res.rows||[]).map(function(f){
         return '<div class="card" style="padding:10px 12px'+(f.status!=='open'?';opacity:.55':'')+'"><b>'+esc(f.employee||'—')+'</b>: '+esc(FK[f.kind]||f.kind)+
           '<div class="small muted" style="direction:ltr;text-align:left">'+esc(JSON.stringify(f.detail||{}))+'</div>'+
@@ -8056,7 +8118,7 @@ ADMIN.assignkpi=function(v){
       '</div>'+
       '<div class="card" style="padding:13px">'+
         bar('إسناد يدوي', k.manual_assignment_rate, k.manual_assignment_target, true,
-            'ارتفاعه يعني أن المحرّك لا يجد مرشّحة — راجعي المهارات والتغطية')+
+            'ارتفاعه يعني أن المحرّك لا يجد مرشّحة — راجع المهارات والتغطية')+
         bar('نجاح التلقائي', k.auto_assignment_success_rate, 0.85, false)+
         bar('تجاوز الإدارة', k.owner_override_rate, 0.1, true, 'تصحيح متكرر = قاعدة ناقصة لا موظفة مخطئة')+
         bar('إعادة إسناد', k.reassignment_rate, 0.1, true)+
@@ -8069,10 +8131,10 @@ ADMIN.assignkpi=function(v){
       (k.manual_rate_breached
         ? '<div class="card" style="padding:11px 12px;margin-top:10px;border:1.5px solid var(--amber)">'+
           '<b>الإسناد اليدوي فوق هدفه</b><div class="muted small" style="margin-top:4px">'+
-          'المعنى العملي: المحرّك لا يجد من يصلح للمهمة فتتدخّلين أنتِ. '+
+          'المعنى العملي: المحرّك لا يجد من يصلح للمهمة فتتدخّل أنت. '+
           'الأثر يظهر عادةً من مهارة مشترطة لا تتقنها موظفات كافيات، أو تغطية ناقصة في نوع شفت.'+
           '</div></div>' : '')+
-      '<div class="btnrow" style="margin-top:12px"><button class="btn ghost block" id="akRun">شغّلي الإسناد التلقائي الآن</button></div>'+
+      '<div class="btnrow" style="margin-top:12px"><button class="btn ghost block" id="akRun">شغّل الإسناد التلقائي الآن</button></div>'+
       '<div class="muted small" style="margin-top:6px">يُشغّل دورة إسناد فوراً للمهام المعلّقة بدل انتظار الدورة المجدولة. '+
         'لا يُلغي إسناداً قائماً ولا يتجاوز تثبيت الإدارة.</div>'+
       /* سياسة الأدوار: مَن يحقّ له أداء أيّ نوع مهمة. تُملكها الإدارة لأن
@@ -8081,7 +8143,7 @@ ADMIN.assignkpi=function(v){
         '<div class="muted small" style="margin-bottom:10px">لكل نوع مهمة قائمة أدوار مرتّبة: '+
           '<b>الأول صاحب الدور الأصلي</b> ومَن بعده مساندة. المحرّك يمنع من ليست في القائمة، '+
           'ويُقدّم الأصلي على المساند. الموظفة التي لا دور معلن لها على شفتها لا تُمنع — '+
-          'فالسياسة تعمل حيث أسندتِ الأدوار.</div>'+
+          'فالسياسة تعمل حيث أسندت الأدوار.</div>'+
         '<div id="rmBox">'+skel(2)+'</div></div>';
     /* محرّر مصفوفة الأدوار */
     var RMT={table_service:'خدمة الطاولات',bussing:'تبويس وترتيب',cashier:'الكاش',
@@ -8145,7 +8207,7 @@ ADMIN.availability=function(v){
                 (st==='unavailable'?'لا':(st==='preferred'?'يُفضّل':'متاحة'))+'</span></button>';
             }).join('')+'</div></div>';
         }).join('')+
-        '<div class="muted small" style="margin-top:8px">اضغطي اليوم لتتبدّل حالته: متاحة ← تفضّل ← غير متاحة.</div>';
+        '<div class="muted small" style="margin-top:8px">اضغط اليوم لتتبدّل حالته: متاحة ← تفضّل ← غير متاحة.</div>';
       $$('[data-av]',v).forEach(function(b){ b.addEventListener('click', function(){
         var cur=b.getAttribute('data-st');
         var order=['available','preferred','unavailable'];
@@ -8193,8 +8255,8 @@ ADMIN.openshifts=function(v){
       }).join('');
     $$('[data-fc]',v).forEach(function(b){ b.addEventListener('click', function(){
       var sid=+b.getAttribute('data-fc'), who=b.getAttribute('data-who');
-      confirmSheet('إغلاق شفت '+who, 'سيُسجَّل الانصراف على نهاية الشفت المخطّطة، ويظهر الإجراء باسمك في سجل التدقيق. تابعي؟',
-        'أغلقي الشفت', function(){
+      confirmSheet('إغلاق شفت '+who, 'سيُسجَّل الانصراف على نهاية الشفت المخطّطة، ويظهر الإجراء باسمك في سجل التدقيق. تابع؟',
+        'أغلق الشفت', function(){
           aAct('force_checkout',{shift_id:sid}).then(function(r){
             if(r.ok){ toast('أُغلق الشفت ✔'); ADMIN.openshifts(v); } else toast(r.error||'تعذّر الإغلاق', true);
           });
@@ -8242,10 +8304,10 @@ ADMIN.dayphase=function(v){
           ' · دوام الخدمة '+esc((d.service||{}).open||'—')+'–'+esc((d.service||{}).close||'—')+
           (d.override?' · التجاوز ساري':'')+'</div>'+
       '</div>'+
-      '<div class="btnrow" style="margin:4px 0 12px"><button class="btn ghost grow" id="dpTick">أعيدي الحساب الآن</button>'+
-        '<button class="btn grow" id="dpDec">أعلني مرحلة</button></div>'+
+      '<div class="btnrow" style="margin:4px 0 12px"><button class="btn ghost grow" id="dpTick">أعِد الحساب الآن</button>'+
+        '<button class="btn grow" id="dpDec">أعلن مرحلة</button></div>'+
       '<div class="muted small">إعادة الحساب تُشغّل المحرّك فوراً بدل انتظار الدورة. الإعلان يتجاوز المحرّك '+
-        'لمدة تحدّدينها بسبب مكتوب، ثم يعود المحرّك تلقائياً — لا تجاوز دائم.</div>';
+        'لمدة تحدّدنها بسبب مكتوب، ثم يعود المحرّك تلقائياً — لا تجاوز دائم.</div>';
 
     $('#dpTick',v).addEventListener('click', function(){
       busyWrap(this, function(){
@@ -8264,11 +8326,11 @@ ADMIN.dayphase=function(v){
         '</select>'+
         '<label class="f">السبب (يظهر للفريق وفي السجل)</label>'+
         '<textarea class="f" id="dpR" rows="2" placeholder="مثال: عطل في مكيّف الصالة من ٧ إلى ٩"></textarea>'+
-        '<div class="btnrow"><button class="btn block" id="dpGo">أعلني</button></div>',
+        '<div class="btnrow"><button class="btn block" id="dpGo">أعلن</button></div>',
         function(ov, close){
           $('#dpGo',ov).addEventListener('click', function(){
             var reason=$('#dpR',ov).value.trim();
-            if(reason.length<4){ toast('اكتبي سبباً واضحاً — الفريق سيقرأه', true); return; }
+            if(reason.length<4){ toast('اكتب سبباً واضحاً — الفريق سيقرأه', true); return; }
             var btn=this;
             busyWrap(btn, function(){
               return aAct('day_override',{phase:$('#dpP',ov).value, minutes:+$('#dpM',ov).value, reason:reason})
@@ -8320,7 +8382,7 @@ ADMIN.errors=function(v){
     v.innerHTML='<div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">'+
         '<span class="chip'+((res.last_24h||0)>0?' orange':' green')+'">آخر ٢٤ ساعة: '+(res.last_24h||0)+'</span>'+
         '<span class="chip">الإجمالي: '+(res.total||0)+'</span></div>'+
-      '<div class="muted small" style="margin-bottom:10px">إذا أعطى النظام موظفةً رقماً مرجعياً، ابحثي عنه هنا. '+
+      '<div class="muted small" style="margin-bottom:10px">إذا أعطى النظام موظفةً رقماً مرجعياً، ابحث عنه هنا. '+
         'الموظفة لا ترى تفاصيل تقنية أبداً — ترى رسالة عربية ورقماً فقط.</div>'+
       (rows.length
         ? '<div class="scrollx"><table class="tbl"><tr><th>#</th><th>الوقت</th><th>الإجراء</th><th>من</th><th>الرمز</th><th>الرسالة</th></tr>'+
@@ -8346,7 +8408,7 @@ ADMIN.geo=function(v){
     v.innerHTML='<div class="muted small" style="margin-bottom:10px">'+
         'قرارات قبول أو رفض تسجيل الحضور والانصراف بحسب الموقع. '+
         '<b>الموقع لا يمنع التلاعب تماماً</b> — دقّة الهاتف تتفاوت، ولذلك يُسجَّل مستوى ثقة ومخاطرة لكل قرار '+
-        'بدل الاكتفاء بنعم/لا. اقرئي العمود الأخير قبل أي حديث مع موظفة.</div>'+
+        'بدل الاكتفاء بنعم/لا. اقرأ العمود الأخير قبل أي حديث مع موظفة.</div>'+
       (rows.length
         ? '<div class="scrollx"><table class="tbl"><tr><th>الوقت</th><th>من</th><th>النوع</th><th>القرار</th>'+
           '<th>المسافة</th><th>الدقّة</th><th>الثقة</th><th>المخاطرة</th></tr>'+
@@ -8419,7 +8481,7 @@ function boot(){
     document.body.className='no-nav';
     APP.innerHTML='<div class="login-hero"><div class="logo">ر</div><h1 style="font-size:24px;margin:0">ريحانة</h1><div style="opacity:.75;font-size:13.5px">إعداد أول مرة</div></div>'+
       '<div class="wrap"><div class="card" style="margin-top:14px"><h3>ربط قاعدة البيانات</h3>'+
-      '<div class="small muted">من Supabase: Settings ← API ← انسخي مفتاح <b>anon public</b> والصقيه هنا. يُحفظ على هذا الجهاز فقط ولا يُطلب مرة أخرى.</div>'+
+      '<div class="small muted">من Supabase: Settings ← API ← انسخ مفتاح <b>anon public</b> والصقه هنا. يُحفظ على هذا الجهاز فقط ولا يُطلب مرة أخرى.</div>'+
       '<label class="f">مفتاح anon</label><textarea class="f" id="setKey" style="direction:ltr;text-align:left;font-size:12px"></textarea>'+
       '<div class="btnrow"><button class="btn block" id="setGo">حفظ وبدء التشغيل</button></div></div></div>';
     $('#setGo').addEventListener('click', function(){
