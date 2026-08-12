@@ -9212,32 +9212,74 @@ ADMIN.geo=function(v){
 })();
 var deferredPrompt=null;
 window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferredPrompt=e; });
-/* تحديث تلقائي للجميع: يسحب أحدث نسخة فور نشرها دون تدخل من المستخدم */
-var _upBusy=false;
+/* ===== التحديث التلقائي: لكل جهاز، وبلا أن يقطع عملا جاريا =====
+   الآلية كانت تسحب النسخة الجديدة فعلا، لكن بثلاث مخاطر ظهرت بمراجعتها:
+
+   (١) كانت تعيد التحميل في أي لحظة. والموظفة قد تكون تكتب ملاحظة إنهاء
+       أو الكاميرا مفتوحة للتوثيق — فيضيع ما كتبته بلا سبب مفهوم لها.
+       الآن: يُنتظر أول لحظة هادئة. التحديث ليس أهم من عملها.
+
+   (٢) كانت تمسح كل الكاش ثم تعيد التحميل. لو انقطعت الشبكة بين المسح
+       والتحميل بقيت أمامها شاشة فارغة بلا نسخة احتياطية — أسوأ ما يقع
+       في مقهى شبكته ضعيفة. والمسح لا لزوم له أصلا: عامل الخدمة يحذف
+       الكاش القديم باسمه عند التفعيل، والملفات مرقّمة بالإصدار. الآن:
+       يُنتظر أن يثبّت العامل الجديد نسخته أولا، ثم يعاد التحميل.
+
+   (٣) لم يكن ثمة حارس ضد الدوران: لو اختلف version.json عن المنشور
+       فعلا دارت الأجهزة في حلقة إعادة تحميل — وفي الذروة كارثة. */
+var _upBusy=false, _upPending=null;
+
+/* لحظة غير مناسبة: ما يضيع فيه عمل الموظفة إن أعيد التحميل الآن */
+function upBusyNow(){
+  if(document.querySelector('.overlay')) return true;          /* نموذج أو كاميرا مفتوحة */
+  var a=document.activeElement;
+  if(a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && (a.value||'').length) return true;
+  return false;
+}
+
+/* يمهّد العامل الجديد قبل إعادة التحميل، فلا تُفتح الصفحة على فراغ */
+function swRefresh(){
+  if(!('serviceWorker' in navigator)) return Promise.resolve();
+  return navigator.serviceWorker.getRegistration().then(function(reg){
+    if(!reg) return;
+    return reg.update().then(function(){
+      var w = reg.installing || reg.waiting;
+      if(!w) return;
+      return new Promise(function(res){
+        var t=setTimeout(res, 8000);                            /* لا ننتظر إلى الأبد */
+        w.addEventListener('statechange', function(){
+          if(w.state==='installed'||w.state==='activated'||w.state==='redundant'){ clearTimeout(t); res(); }
+        });
+      });
+    });
+  }).catch(function(){});
+}
+
+function applyUpdate(){
+  if(!_upPending) return;
+  try{
+    var prev=JSON.parse(sessionStorage.getItem('rko_upto')||'null');
+    if(prev && prev.b===_upPending && Date.now()-prev.t < 60000) return;   /* حارس الدوران */
+  }catch(e){}
+  if(upBusyNow()) return;                    /* تُعاد المحاولة أول ما تهدأ */
+  try{ localStorage.removeItem('rko_state'); }catch(e){}
+  try{ sessionStorage.setItem('rko_upto', JSON.stringify({b:_upPending, t:Date.now()})); }catch(e){}
+  swRefresh().then(function(){ location.reload(); });
+}
+
 function checkUpdate(){
   if(_upBusy) return; _upBusy=true;
   try{
     fetch('version.json?t='+Date.now(), {cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(function(j){
       _upBusy=false;
-      if(j && j.build && j.build!==BUILD){
-        try{ localStorage.removeItem('rko_state'); }catch(e){}
-        // لا يكفي حذف الكاش: عامل الخدمة القديم يبقى مسيطرا ويعيد تقديم النسخة القديمة
-        var swDone = ('serviceWorker' in navigator)
-          ? navigator.serviceWorker.getRegistrations()
-              .then(function(rs){ return Promise.all(rs.map(function(r){ return r.update().catch(function(){}); })); })
-              .catch(function(){})
-          : Promise.resolve();
-        var cacheDone = ('caches' in window)
-          ? caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).catch(function(){})
-          : Promise.resolve();
-        Promise.all([swDone, cacheDone]).then(function(){ location.reload(true); });
-      }
+      if(j && j.build && j.build!==BUILD){ _upPending=j.build; applyUpdate(); }
     }).catch(function(){ _upBusy=false; });
   }catch(e){ _upBusy=false; }
 }
 setInterval(checkUpdate, 150000);
-document.addEventListener('visibilitychange', function(){ if(!document.hidden) checkUpdate(); });
-window.addEventListener('focus', checkUpdate);
+setInterval(applyUpdate, 5000);              /* المؤجَّل ينفَّذ أول لحظة هادئة */
+document.addEventListener('visibilitychange', function(){ if(!document.hidden){ checkUpdate(); applyUpdate(); } });
+window.addEventListener('focus', function(){ checkUpdate(); applyUpdate(); });
 function applyFont(){ try{ document.documentElement.classList.toggle('font-lg', localStorage.getItem('rko_font')==='lg'); }catch(e){} }
 function boot(){
   applyTheme(); applyFont();
