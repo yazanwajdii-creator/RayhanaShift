@@ -4281,7 +4281,7 @@ function coopSheet(){
         var es=$$('.co-e',ov), rs=$$('.co-r',ov), ns=$$('.co-n',ov), choices=[];
         for(var i=0;i<es.length;i++){ if(es[i].value) choices.push({employee_id:+es[i].value, reason:rs[i].value, note:ns[i].value}); }
         if(!choices.length){ toast('اختاري موظفة واحدة على الأقل', true); return; }
-        sAct('coop_vote',{choices:choices}, false).then(function(res){
+        sAct('coop_vote',{choices:choices}, true).then(function(res){
           if(res.ok){ close(); toast('شكرا — وصل للإدارة بسرية'); refresh(); }
           else toast(res.error||'خطأ', true);
         });
@@ -4925,12 +4925,19 @@ function wireTab(v){
       }
       /* بطاقة المزاج أزيلت بقرار سابق، فلم يبق في الواجهة أي data-a="mood".
          حذف المعالج معها كي لا يبقى فرع ميت يوهم بوجود الميزة. */
-      else if(a==='covAccept') sAct('coverage_respond',{id:id, accept:true}, false).then(function(res){ if(res.ok) toast(res.msg||'شكرا لك'); else toast(res.error||'خطأ',true); refresh(); });
+      else if(a==='covAccept') sAct('coverage_respond',{id:id, accept:true}, true).then(function(res){ if(res.ok) toast(res.msg||'شكرا لك'); else toast(res.error||'خطأ',true); refresh(); });
       else if(a==='covDecline'){
         confirmSheet('الاعتذار عن التغطية','هل تؤكدين الاعتذار عن تغطية الغياب اليوم؟ الاعتذار حقك ولن يحسب ضدك.','أعتذر اليوم',function(){
-          sAct('coverage_respond',{id:id, accept:false}, false).then(function(res){ if(res.ok) toast(res.msg||'سجّل اعتذارك'); else toast(res.error||'خطأ',true); refresh(); });
+          sAct('coverage_respond',{id:id, accept:false}, true).then(function(res){ if(res.ok) toast(res.msg||'سجّل اعتذارك'); else toast(res.error||'خطأ',true); refresh(); });
         }, true);
       }
+      /* لا تُوضع في الطابور عمدا — وهذا ليس سهوا.
+         الطابور يعيد الإرسال عند عودة الشبكة، والخادم يختم بوقت الاستلام.
+         فاستراحةٌ بدأت ٤:٠٠ وأُرسلت ٤:٣٠ تُسجَّل ٤:٣٠: نصف ساعة تُحسب
+         عملا وهي راحة. فقدان العملية ظاهر للموظفة فتعيدها؛ أما وقتٌ خاطئ
+         فيدخل السجل بصمت — وهو ما عالجناه للتو في الانصراف.
+         نفس المنطق يسري على spotcheck_answer و zone_observe: كلاهما
+         ملاحظة عن لحظتها، ووصولها متأخرة يجعلها كذبا لا تأخيرا. */
       else if(a==='brStart') sAct('break_start',{},false).then(function(res){ if(res.ok){toast('استراحة هنية');refresh();} else toast(res.error||'خطأ',true); });
       else if(a==='brEnd') sAct('break_end',{},true).then(function(res){ if(res.ok) toast('أهلا بعودتك'); else toast(res.error||'خطأ',true); refresh(); });
       else if(a==='brPost') sAct('break_postpone',{reason:'ضغط في المنطقة'},true).then(function(res){ toast(res.msg||'سجّل التأجيل'); refresh(); });
@@ -4958,7 +4965,7 @@ function wireTab(v){
         var ty=$('#rqType').value;
         if(!det && !rqd){ toast('اكتبي تفاصيل الطلب أو حددي التاريخ', true); return; }
         if(ty==='إجازة' && !rqd){ toast('حددي تاريخ الإجازة حتى يفحص النظام التعارض مع الزميلات', true); return; }
-        sAct('request_send',{type:ty, details:det, date:rqd||null}, false).then(function(res){
+        sAct('request_send',{type:ty, details:det, date:rqd||null}, true).then(function(res){
           if(res.ok){ toast(res.msg||'أرسل — سيصلك الرد في «طلباتي السابقة»'); $('#rqDet').value=''; if($('#rqDate'))$('#rqDate').value=''; }
           else toast(res.error||'خطأ', true);
         });
@@ -5007,8 +5014,8 @@ function wireTab(v){
       else if(a==='recDone'){
         recurringDone(id, b.getAttribute('data-photo')==='1', b.getAttribute('data-name'));
       }
-      else if(a==='recClaim'){ sAct('recur_claim',{template_id:id},false).then(function(res){ if(res.ok) refresh(); else toast(res.error||'خطأ',true); }); }
-      else if(a==='recRelease'){ sAct('recur_release',{template_id:id},false).then(function(){ refresh(); }); }
+      else if(a==='recClaim'){ sAct('recur_claim',{template_id:id},true).then(function(res){ if(res.ok) refresh(); else toast(res.error||'خطأ',true); }); }
+      else if(a==='recRelease'){ sAct('recur_release',{template_id:id},true).then(function(){ refresh(); }); }
       else if(a==='coverOpen') openCover();
       else if(a==='sopOpen') sAct('sops_list',{}).then(function(res){
         var rows=(res&&res.rows)||[];
