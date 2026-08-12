@@ -2150,3 +2150,20 @@ body.rcp-hide .sheet,body.rcp-hide #view{filter:blur(14px)}
          color:#000 !important; padding:1px 5px !important; }
   .stat b{ font-size:13pt; }
 }
+
+/* ===== أبواب التشغيل اليومية =====
+   ستّة أبواب كبيرة تفتح الشاشة عليها، وكل ما عداها خلف «كل الأقسام».
+   أكبر من أزرار الأقسام وأوضح تباينا: هذه ما يُلمس كل يوم تحت الضغط،
+   لا ما يُتصفَّح. عمودان لا ثلاثة كي يتّسع الاسم كاملا بلا قصّ. */
+.adm-daily{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:12px}
+.adm-daily button{background:var(--surface);border:1px solid var(--line);
+  border-inline-start:3px solid var(--brand);border-radius:14px;
+  padding:14px 12px;font-family:inherit;font-size:14px;font-weight:800;
+  color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:9px;
+  min-height:60px;text-align:start;line-height:1.35}
+.adm-daily button .ic{color:var(--brand);display:flex;flex:0 0 auto}
+.adm-daily button .ic svg{width:22px;height:22px}
+.adm-daily button:active{background:var(--surface-2)}
+/* «كل الأقسام»: مطويّ افتراضيا، ولا يحمل حشو البطاقة مرتين */
+#admAll > .acc-body{background:transparent}
+#admAll .acc{margin-top:8px}

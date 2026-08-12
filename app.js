@@ -777,6 +777,7 @@ var MI={
   _def: svgi('<circle cx="12" cy="12" r="8"/>'),
   monitor: svgi('<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M6.5 12.5l3-3 2.5 2.5 4-4.5"/>'),
   pwa: svgi('<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="m9.5 13 2 2 3.5-4"/>'),
+  timesheet: svgi('<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="M7.5 13h4M7.5 16.5h9"/>'),
   dayphase: svgi('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/><path d="M12 12l3.5-2"/>'),
   openshifts: svgi('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3.5 2"/><path d="M19 5l2-2"/>'),
   bottleneck: svgi('<path d="M5 4h14l-5 7v6l-4 2v-8L5 4Z"/>'),
@@ -5050,6 +5051,9 @@ function startAdmin(){
 }
 var SECS=[
   ['monitor','','شاشة التشغيل الآن'],
+  /* سجل الحضور كان تبويباً داخل «سجل الساعات» داخل مجموعة فرعية — أي
+     ثلاث خطوات لأكثر تقرير يُطلب. صار باباً مستقلاً يفتح على تبويبه. */
+  ['timesheet','','سجل الحضور والدوام'],
   ['dash','','اليوم'],['board','','لوحة العمليات'],['ocdecisions','','مركز القرارات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
   ['issues','','البلاغات'],['kitchen','','المطبخ: المهام والمراجعة'],['recipes','','الوصفات — تعديل وإخفاء'],['guests','','من يزورنا؟'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],['roster','','جدولة تلقائية'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['tables','','خريطة الطاولات'],['templates','','قوالب المهام'],
@@ -5067,7 +5071,8 @@ var AGROUPS=[
   /* «شاشة التشغيل الآن» أول ما يُرى: هي جواب سؤال المدير الأول، وبقيّة
      الشاشات تفصيلٌ يُطلب عند الحاجة لا يُعرض ابتداءً. */
   ['تشغيل اليوم','g1',['monitor','board','dayphase','ocdecisions','live','tables','bottleneck','heat','roster','shifts','tasks','prep','ops','attendance','openshifts','cover','absence','handovers','issues','logbook','timeline','ptt']],
-  ['التواصل والتحليل','g2',['ocanalytics','digest','broadcast','analytics','hours','assignkpi','requests','reports']],
+  ['التقارير','g2',['timesheet','hours','reports','digest','analytics','ocanalytics','assignkpi']],
+  ['التواصل','g2',['broadcast','requests']],
   ['الفريق','g2',['employees','availability','skills','training','coop','contrib','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
   ['النظام','g4',['devices','settings','pwa','audit','geo','errors']]
@@ -5076,18 +5081,36 @@ function drawAdmin(){
   var v=$('#view'); if(!v) return;
   clearInterval(dashT);
   if(!S.adminSec){
-    // خمس مجموعات مطوية بدل شبكة أزرار ضخمة — الأولى مفتوحة افتراضيا
-    var menuHtml='<h3 style="margin:16px 2px 8px;font-size:14px;color:var(--muted)">الأقسام</h3>'+AGROUPS.map(function(g,gi){
-      return '<details class="acc"'+(gi===0?' open':'')+'><summary>'+g[0]+'<span class="chev">‹</span></summary><div class="acc-body">'+
+    // خمس مجموعات مطوية — كلها مغلقة الآن لأنها صارت داخل «كل الأقسام»
+    var menuHtml=AGROUPS.map(function(g){
+      return '<details class="acc"><summary>'+g[0]+'<span class="chev">‹</span></summary><div class="acc-body">'+
         g[2].map(function(k){
           var s=null; SECS.forEach(function(x){ if(x[0]===k) s=x; });
           if(!s) return '';
           return '<button data-sec="'+s[0]+'"><span class="ic">'+(MI[s[0]]||MI._def)+'</span>'+s[2]+'</button>';
         }).join('')+'</div></details>';
     }).join('');
+    /* ===== فصل «التشغيل الآن» عن الأدوات المتقدّمة =====
+       كانت الصفحة تفتح على خمسين قسماً في خمس مجموعات فوق لوحة اليوم:
+       كلّها متاح، ولا شيء منها بارز. والمدير لا يفتح النظام ليتصفّح
+       أقساماً — يفتحه ليعرف ما الذي يحتاج تدخّله الآن.
+       الآن: ستّة أبواب يوميّة كبيرة، وكل ما عداها خلف باب واحد يُفتح
+       عند الحاجة. لم يُحذف شيء ولم يُنقَل شيء — تغيّر ما يراه أولاً. */
+    var DAILY=[['monitor','شاشة التشغيل الآن'],['attendance','الحضور'],['shifts','الشفتات'],
+               ['timesheet','سجل الحضور'],['issues','البلاغات'],['requests','الطلبات']];
+    var dailyHtml='<div class="adm-daily">'+DAILY.map(function(d){
+      var s=null; SECS.forEach(function(x){ if(x[0]===d[0]) s=x; });
+      if(!s) return '';
+      return '<button data-sec="'+d[0]+'"><span class="ic">'+(MI[d[0]]||MI._def)+'</span>'+esc(d[1])+'</button>';
+    }).join('')+'</div>';
+
     v.innerHTML='<div class="row" style="margin-bottom:10px"><input class="f grow" id="admQ" placeholder="بحث سريع: موظفة، شفت، طلب، بلاغ، مهمة، قسم..." autocomplete="off"></div><div id="admQR"></div>'+
-      '<div id="dashTop">'+skel(2)+'</div>'+menuHtml;
-    $$('.acc-body button',v).forEach(function(b){ b.addEventListener('click', function(){ S.adminSec=b.getAttribute('data-sec'); drawAdmin(); }); });
+      '<div id="dashTop">'+skel(2)+'</div>'+
+      dailyHtml+
+      '<details class="acc" id="admAll" style="margin-top:12px"><summary>كل الأقسام<span class="chev">‹</span></summary>'+
+        '<div class="acc-body" style="display:block;padding:0">'+menuHtml+'</div></details>'+
+      '<div class="muted small center" style="margin:14px 0 4px;opacity:.7">إصدار '+esc(BUILD)+'</div>';
+    $$('[data-sec]',v).forEach(function(b){ b.addEventListener('click', function(){ S.adminSec=b.getAttribute('data-sec'); drawAdmin(); }); });
     // البحث الشامل — نتائج مجمّعة، النقر يفتح القسم المناسب
     (function(){
       var qEl=$('#admQ'), qr=$('#admQR'), qt=null;
@@ -8519,6 +8542,11 @@ ADMIN.live=function(v){
 };
 
 /* ---------- سجل الساعات ---------- */
+/* باب مستقلّ يفتح على سجل الحضور مباشرة — مصدر واحد للمنطق، لا نسخة ثانية */
+ADMIN.timesheet=function(v){
+  ADMIN.hours(v);
+  var b=$('[data-hv="sheet"]',v); if(b) b.click();
+};
 ADMIN.hours=function(v){
   var d28=addDays(today(),-27);
   v.innerHTML='<div class="row"><input class="f grow" id="hrFrom" type="date" value="'+d28+'"><input class="f grow" id="hrTo" type="date" value="'+today()+'"><button class="btn sm" id="hrGo">عرض</button></div>'+
