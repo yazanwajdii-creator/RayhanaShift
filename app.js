@@ -778,6 +778,7 @@ var MI={
   monitor: svgi('<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M6.5 12.5l3-3 2.5 2.5 4-4.5"/>'),
   pwa: svgi('<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="m9.5 13 2 2 3.5-4"/>'),
   timesheet: svgi('<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="M7.5 13h4M7.5 16.5h9"/>'),
+  empwork: svgi('<circle cx="9" cy="7.5" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5"/><path d="m15.5 10.5 2 2 4-4.5"/>'),
   dayphase: svgi('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/><path d="M12 12l3.5-2"/>'),
   openshifts: svgi('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3.5 2"/><path d="M19 5l2-2"/>'),
   bottleneck: svgi('<path d="M5 4h14l-5 7v6l-4 2v-8L5 4Z"/>'),
@@ -5054,6 +5055,7 @@ var SECS=[
   /* سجل الحضور كان تبويباً داخل «سجل الساعات» داخل مجموعة فرعية — أي
      ثلاث خطوات لأكثر تقرير يُطلب. صار باباً مستقلاً يفتح على تبويبه. */
   ['timesheet','','سجل الحضور والدوام'],
+  ['empwork','','سجل عمل الموظفة'],
   ['dash','','اليوم'],['board','','لوحة العمليات'],['ocdecisions','','مركز القرارات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
   ['issues','','البلاغات'],['kitchen','','المطبخ: المهام والمراجعة'],['recipes','','الوصفات — تعديل وإخفاء'],['guests','','من يزورنا؟'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],['roster','','جدولة تلقائية'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['tables','','خريطة الطاولات'],['templates','','قوالب المهام'],
@@ -5071,7 +5073,7 @@ var AGROUPS=[
   /* «شاشة التشغيل الآن» أول ما يُرى: هي جواب سؤال المدير الأول، وبقيّة
      الشاشات تفصيلٌ يُطلب عند الحاجة لا يُعرض ابتداءً. */
   ['تشغيل اليوم','g1',['monitor','board','dayphase','ocdecisions','live','tables','bottleneck','heat','roster','shifts','tasks','prep','ops','attendance','openshifts','cover','absence','handovers','issues','logbook','timeline','ptt']],
-  ['التقارير','g2',['timesheet','hours','reports','digest','analytics','ocanalytics','assignkpi']],
+  ['التقارير','g2',['timesheet','empwork','hours','reports','digest','analytics','ocanalytics','assignkpi']],
   ['التواصل','g2',['broadcast','requests']],
   ['الفريق','g2',['employees','availability','skills','training','coop','contrib','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
@@ -6710,7 +6712,11 @@ ADMIN.templates=function(v){
         ts.map(function(t){
           return '<div class="card" style="padding:10px 12px'+(t.active?'':';opacity:.5')+'"><div class="row" style="justify-content:space-between">'+
             '<div><b>'+esc(t.name)+'</b> '+(t.is_core?'<span class="chip orange">أساسية</span>':'')+
-            '<div class="muted small">'+esc(t.area||'')+' · '+(t.recurring?'متكررة'+(t.target_count?' ('+t.target_count+')':''):PHASE[t.phase])+' · '+mins(t.expected)+(t.needs_photo?' · صورة':'')+'</div></div>'+
+            '<div class="muted small">'+esc(t.area||'')+' · '+(t.recurring?'متكررة'+(t.target_count?' ('+t.target_count+')':''):PHASE[t.phase])+' · '+mins(t.expected)+(t.needs_photo?' · صورة':'')+
+              /* الوقت أول ما يُبحث عنه في قائمة القوالب بعد أن صار المحرّك
+                 يبني عليه قراره — فيُعرض هنا لا داخل النموذج وحده. */
+              (t.due_from&&t.due_to?' · <b>'+esc(String(t.due_from).slice(0,5))+'–'+esc(String(t.due_to).slice(0,5))+'</b>':' · <span style="opacity:.6">وقت المرحلة</span>')+
+              (t.cadence_min?' · كل '+(+t.cadence_min)+' د':'')+'</div></div>'+
             '<button class="btn sm ghost" data-ed="'+t.id+'">تعديل</button></div></div>';
         }).join('');
       $('#tpNew').addEventListener('click', function(){ form(null); });
@@ -6721,6 +6727,14 @@ ADMIN.templates=function(v){
           '<label class="f">المنطقة</label><select class="f" id="pA">'+areaOpts(t?t.area_id:null)+'</select>'+
           '<div class="row"><div class="grow"><label class="f">المرحلة</label><select class="f" id="pPh">'+['opening','during','closing'].map(function(p){return '<option value="'+p+'"'+(t&&t.phase===p?' selected':'')+'>'+PHASE[p]+'</option>';}).join('')+'</select></div>'+
           '<div class="grow"><label class="f">الدقائق المتوقعة</label><input class="f" id="pX" type="number" value="'+(t?t.expected:10)+'"></div></div>'+
+          /* نافذة التنفيذ — كانت غائبة عن النموذج بينما المحرّك يبني عليها
+             قراره كله: متى تُسند، ومتى تُعدّ متأخرة، ومتى تظهر للموظفة.
+             بلا وقت صريح تُشتقّ من المرحلة (الافتتاح ٠٩:٠٠ · أثناء الدوام
+             من الافتتاح · الإغلاق قبل النهاية) — وهو تقريب يصلح لأغلب
+             المهام ولا يصلح لمهمّة لها موعدها: «شطف الساحة ١٠:٣٠». */
+          '<label class="f">نافذة التنفيذ <span class="muted small">(اتركها فارغة لتُشتقّ من المرحلة)</span></label>'+
+          '<div class="row"><div class="grow"><input class="f" id="pDF" type="time" value="'+(t&&t.due_from?esc(String(t.due_from).slice(0,5)):'')+'"><div class="muted small">تبدأ</div></div>'+
+          '<div class="grow"><input class="f" id="pDT" type="time" value="'+(t&&t.due_to?esc(String(t.due_to).slice(0,5)):'')+'"><div class="muted small">تنتهي</div></div></div>'+
           '<label class="f">طريقة الإكمال</label><select class="f" id="pM">'+[['confirm','تأكيد'],['checklist','قائمة فحص'],['number','رقم/كمية'],['photo','صورة'],['two_person','موظفتان'],['review','مراجعة إدارة']].map(function(m){return '<option value="'+m[0]+'"'+(t&&t.method===m[0]?' selected':'')+'>'+m[1]+'</option>';}).join('')+'</select>'+
           '<label class="f">بنود القائمة (سطر لكل بند)</label><textarea class="f" id="pC">'+(t&&t.checklist?esc((t.checklist||[]).join('\n')):'')+'</textarea>'+
           '<div class="check"><input type="checkbox" id="pPhoto" '+(t&&t.needs_photo?'checked':'')+'><span>تحتاج صورة</span></div>'+
@@ -6732,6 +6746,10 @@ ADMIN.templates=function(v){
           '<label class="f">تكرار المهمة</label><select class="f" id="pFreq">'+[['daily','يومي'],['3day','كل 3 أيام'],['weekly','أسبوعي']].map(function(f){return '<option value="'+f[0]+'"'+(((t&&t.freq===f[0])||(!t&&f[0]==='daily'))?' selected':'')+'>'+f[1]+'</option>';}).join('')+'</select>'+
           '<div class="row"><div class="grow"><label class="f">العدد المطلوب يوميّا (0 = بلا سقف)</label><input class="f" id="pTgt" type="number" value="'+(t?(t.target_count||0):0)+'"></div>'+
           '<div class="grow"><label class="f">أقل فاصل بين المرات (دقيقة)</label><input class="f" id="pCd" type="number" value="'+(t?(t.cooldown_min||0):0)+'"></div></div>'+
+          /* الإيقاع يحكم متى «يحين» دور الدورية داخل اليوم: بلا إيقاع تصل
+             إحدى عشرة دورية دفعةً واحدة والمقهى ما زال فارغاً. */
+          '<label class="f">إيقاع الدورية بالدقائق <span class="muted small">(كل كم دقيقة تتكرر — فارغ = بلا إيقاع)</span></label>'+
+          '<input class="f" id="pCad" type="number" min="0" value="'+(t&&t.cadence_min?t.cadence_min:'')+'">'+
           '<label class="f">تدوير يومي على الموظفات — عدد المكلّفات (0 = بلا تدوير، 2 = مثل مسح الواجهة)</label><input class="f" id="pRot" type="number" min="0" value="'+(t?(t.rotate_size||0):0)+'">'+
           '<div class="muted small">يسند المهمة تلقائيا لهذا العدد من الموظفات بالتناوب العادل يوميّا بين الحاضرات (يستثني المستثنيات).</div>'+
           (t?'<div class="btnrow" style="margin-top:8px"><button class="btn ghost block" type="button" id="pOrder">ترتيب دور الموظفات على هذه المهمة</button></div><div class="muted small">للمهام الدوّارة: رتّب الموظفات يدويا (هبه ← رؤى ← بشرى) فيمرّرها النظام بينهنّ بالترتيب. اتركه فارغا للتوزيع العادل التلقائي.</div>':'')+
@@ -6767,8 +6785,13 @@ ADMIN.templates=function(v){
               var p={name:$('#pN',ov).value, area_id:+$('#pA',ov).value, phase:$('#pPh',ov).value, expected:+$('#pX',ov).value,
                 method:$('#pM',ov).value, checklist:cl, needs_photo:$('#pPhoto',ov).checked, needs_two:$('#pTwo',ov).checked,
                 needs_review:$('#pRev',ov).checked, is_core:$('#pCore',ov).checked, reason:$('#pRe',ov).value, impact:$('#pIm',ov).value,
-                recurring:$('#pRec',ov).checked, target_count:+$('#pTgt',ov).value||0, cooldown_min:+$('#pCd',ov).value||0, rotate_size:+$('#pRot',ov).value||0, all_staff:$('#pAll',ov).checked, freq:$('#pFreq',ov).value};
+                recurring:$('#pRec',ov).checked, target_count:+$('#pTgt',ov).value||0, cooldown_min:+$('#pCd',ov).value||0, rotate_size:+$('#pRot',ov).value||0, all_staff:$('#pAll',ov).checked, freq:$('#pFreq',ov).value,
+                due_from:$('#pDF',ov).value, due_to:$('#pDT',ov).value, cadence_min:$('#pCad',ov).value};
               if(!p.name.trim()){ toast('اكتب اسم المهمة', true); return; }
+              /* نصف نافذة لا معنى له: بداية بلا نهاية تجعل المهمة مستحقة
+                 إلى الأبد، ونهاية بلا بداية تجعلها متأخرة منذ الفجر. */
+              if((p.due_from && !p.due_to) || (!p.due_from && p.due_to)){
+                toast('نافذة التنفيذ تحتاج بداية ونهاية معا — أو اتركيهما فارغتين', true); return; }
               if(p.method==='checklist' && !cl.length){ toast('طريقة «قائمة فحص» تحتاج بنودا — سطر لكل بند', true); return; }
               if(!(p.expected>0)){ toast('الدقائق المتوقعة يجب أن تكون أكبر من صفر', true); return; }
               if(p.method==='photo') p.needs_photo=true;
@@ -8542,6 +8565,88 @@ ADMIN.live=function(v){
 };
 
 /* ---------- سجل الساعات ---------- */
+/* ================= سجلّ عمل الموظفة =================
+   العمل المنجز كان مرتَّباً باليوم وحده: «مهام اليوم» ليوم بعينه. فسؤال
+   «ماذا أنجزت سدرة هذا الأسبوع؟ وأين صور توثيقها؟» لا جواب له إلا
+   بتصفّح كل يوم على حدة — ولهذا شعر المالك أن المنجز غير منتظم؛ لم يكن
+   مبعثراً بل كان بلا محور. هذه الشاشة تقلب المحور: الموظفة أولاً، ثم
+   الزمن، ثم التوثيق بجانب كل مهمة لا في شاشة أخرى. */
+ADMIN.empwork=function(v){
+  var d29=addDays(today(),-29);
+  v.innerHTML='<div class="row" style="gap:6px"><select class="f grow" id="ewEmp"></select></div>'+
+    '<div class="row" style="gap:6px;margin-top:6px"><input class="f grow" id="ewFrom" type="date" value="'+d29+'">'+
+      '<input class="f grow" id="ewTo" type="date" value="'+today()+'">'+
+      '<button class="btn sm" id="ewGo">عرض</button></div>'+
+    '<div id="ewB" style="margin-top:10px">'+skel(3)+'</div>';
+
+  lookups(function(){
+    var emps=(A.emps||[]).filter(function(e){ return e.role!=='admin'; });
+    $('#ewEmp',v).innerHTML='<option value="">اختاري الموظفة</option>'+
+      emps.map(function(e){ return '<option value="'+e.id+'">'+esc(e.name)+(e.active?'':' — موقوفة')+'</option>'; }).join('');
+    $('#ewB',v).innerHTML='<div class="empty">اختاري موظفة لعرض سجلّ عملها</div>';
+  });
+
+  function load(){
+    var eid=$('#ewEmp',v).value;
+    if(!eid){ $('#ewB',v).innerHTML='<div class="empty">اختاري موظفة أولا</div>'; return; }
+    $('#ewB',v).innerHTML=skel(3);
+    aAct('emp_work',{employee_id:eid, from:$('#ewFrom',v).value, to:$('#ewTo',v).value}).then(function(r){
+      if(!r||!r.ok){ $('#ewB',v).innerHTML='<div class="empty">'+esc((r&&r.error)||'تعذّر التحميل')+'</div>'; return; }
+      var rows=r.rows||[], t=r.totals||{}, rec=r.recurring||[];
+      if(!rows.length && !rec.length){ $('#ewB',v).innerHTML='<div class="empty">لا عمل منجز في هذا المدى</div>'; return; }
+
+      var byDay={}, ord=[];
+      rows.forEach(function(x){ if(!byDay[x.day]){ byDay[x.day]=[]; ord.push(x.day); } byDay[x.day].push(x); });
+
+      $('#ewB',v).innerHTML=
+        '<div class="statrow" style="margin-bottom:8px">'+
+          '<div class="stat"><b>'+(t.done||0)+'</b><span>مهمة منجزة</span></div>'+
+          '<div class="stat"><b>'+(t.verified||0)+'</b><span>متحقّق منها</span></div>'+
+          '<div class="stat"><b>'+(t.with_photo||0)+'</b><span>بصورة</span></div>'+
+        '</div>'+
+        '<div class="statrow" style="margin-bottom:10px">'+
+          '<div class="stat"><b>'+(t.on_time||0)+'</b><span>في وقتها</span></div>'+
+          '<div class="stat"><b>'+(t.late||0)+'</b><span>بعد وقتها</span></div>'+
+          '<div class="stat"><b>'+(t.avg_minutes!=null?t.avg_minutes:'—')+'</b><span>متوسط الدقائق</span></div>'+
+        '</div>'+
+        ord.map(function(d){
+          return '<h3 style="margin:14px 2px 6px">'+esc(fmtD(d))+'</h3>'+
+            byDay[d].map(function(x){
+              /* الصورة بجانب مهمتها لا في نافذة أخرى: التوثيق يُقرأ مع ما
+                 يوثّقه أو لا يُقرأ. مصغّرة تُفتح بلمسة عند الحاجة. */
+              var ph = x.photo ? mediaSlot('img', x.photo, 'width:100%;max-width:120px;border-radius:10px;display:block') : '';
+              return '<div class="card" style="padding:10px 12px;margin-bottom:7px">'+
+                '<div class="row" style="justify-content:space-between;gap:8px">'+
+                  '<b style="min-width:0">'+esc(x.name)+'</b>'+
+                  '<span class="chip '+(x.verified?'green':'')+'">'+(x.verified?'متحقّق':(TSTAT[x.status]||x.status))+'</span></div>'+
+                '<div class="muted small" style="margin-top:3px">'+esc(x.area||'—')+
+                  ' · بدأت '+(x.started_at?fmtT(x.started_at):'—')+
+                  ' · أنهت '+(x.finished_at?fmtT(x.finished_at):'—')+
+                  ' · '+monDur(x.net_seconds)+
+                  (x.on_time?'':' <span class="chip orange">بعد وقتها</span>')+'</div>'+
+                '<div class="muted small" style="margin-top:2px">تحقّق: '+esc(x.verify_method)+
+                  (x.confirmed_by?' · أكّدتها '+esc(x.confirmed_by):'')+
+                  (x.first_starter && x.first_starter!==r.employee?' · بدأتها '+esc(x.first_starter):'')+'</div>'+
+                (x.note?'<div class="small" style="margin-top:4px">'+esc(x.note)+'</div>':'')+
+                (ph?'<div style="margin-top:8px">'+ph+'</div>':'')+
+              '</div>';
+            }).join('');
+        }).join('')+
+        (rec.length?'<h3 style="margin:16px 2px 6px">الدوريات المسجّلة ('+rec.length+')</h3><div class="list">'+
+          rec.map(function(x){
+            return '<div class="row"><div class="row__body"><div class="row__title">'+esc(x.name||'—')+'</div>'+
+              '<div class="row__sub">'+esc(fmtD(x.day))+' · '+fmtT(x.ts)+' · '+esc(x.area||'')+
+              (x.verdict==='suspicious'?' · <span style="color:var(--amber)">تحتاج نظرة</span>':'')+'</div></div>'+
+              (x.photo?'<span style="width:52px">'+mediaSlot('img', x.photo, 'width:100%;border-radius:8px;display:block')+'</span>':'')+
+            '</div>';
+          }).join('')+'</div>':'');
+      mediaFill();
+    });
+  }
+  $('#ewGo',v).addEventListener('click', load);
+  $('#ewEmp',v).addEventListener('change', load);
+};
+
 /* باب مستقلّ يفتح على سجل الحضور مباشرة — مصدر واحد للمنطق، لا نسخة ثانية */
 ADMIN.timesheet=function(v){
   ADMIN.hours(v);
@@ -8601,6 +8706,19 @@ ADMIN.hours=function(v){
         '<div class="btnrow" style="margin-bottom:8px">'+
           '<button class="btn sm ghost" id="tsPrint">طباعة / PDF</button>'+
           '<button class="btn sm ghost" id="tsCsv">تصدير CSV</button></div>'+
+        /* خلاصة لكل موظفة قبل التفصيل: هذا ما يُقرأ عند احتساب الرواتب
+           أو الحوار مع موظفة، والتفصيل تحته لمن أراد يوماً بعينه. */
+        (!TSF.emp && emps.length>1
+          ? '<div class="scrollx" style="margin-bottom:12px"><table class="tbl">'+
+            '<tr><th>الموظفة</th><th>أيام</th><th>ساعات</th><th>تأخير(د)</th><th>غياب</th><th>إجازة</th><th>ناقص(س)</th></tr>'+
+            emps.map(function(x){
+              return '<tr><td><b>'+esc(x.name)+'</b></td><td>'+(x.worked_days||0)+'</td>'+
+                '<td><b>'+(x.worked_hours||0)+'</b></td><td>'+(x.late_minutes||0)+'</td>'+
+                '<td>'+((x.absent_days||0)>0?'<span class="chip red">'+x.absent_days+'</span>':'—')+'</td>'+
+                '<td>'+((x.leave_days||0)>0?x.leave_days:'—')+'</td>'+
+                '<td>'+((x.shortfall_hours||0)>0?x.shortfall_hours:'—')+'</td></tr>';
+            }).join('')+'</table></div>'
+          : '')+
         '<div class="scrollx" id="tsTbl"><table class="tbl">'+
           '<tr><th>الموظفة</th><th>التاريخ</th><th>الشفت</th><th>دخول</th><th>خروج</th>'+
           '<th>ساعات</th><th>تأخير</th><th>خروج مبكر</th><th>الحالة</th></tr>'+
