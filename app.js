@@ -6635,9 +6635,13 @@ function tmEditor(areaId, areaName){
       return '<div class="muted small" style="margin-bottom:8px">اسحب الطاولة لتغيير موقعها، أو اضغطها لتعديل رقمها ونوعها.</div>'+
         '<div class="tm-board" id="edBoard">'+tmLandmarks(areaId)+
         T.map(function(t,i){
-          return '<button class="tm-t '+esc(t.type)+' s-free" data-i="'+i+'" style="left:'+t.x+'%;top:'+t.y+'%">'+
+          return '<button class="tm-t '+esc(t.type)+' s-free'+(t.is_active?'':' oos')+'" data-i="'+i+'" style="left:'+t.x+'%;top:'+t.y+'%">'+
                  '<span class="tm-box">'+(+t.no)+'</span></button>';
         }).join('')+'</div>'+
+        /* إضافة طاولة كانت مستحيلة من اللوحة: الخادم يقبلها منذ البداية
+           (صفٌّ بلا id يُدرَج)، والواجهة وحدها بلا زر. فكل طاولة جديدة في
+           المقهى كانت تحتاج مطوّرا — وهو ما لا يجوز في أمر بهذه البساطة. */
+        '<div class="btnrow" style="margin-top:8px"><button class="btn sm ghost block" id="edAdd">+ أضيفي طاولة</button></div>'+
         '<div class="muted small" style="margin-top:8px">عدد الطاولات النشطة: <b id="edN">'+T.filter(function(t){return t.is_active;}).length+'</b></div>'+
         '<label class="f">سبب التغيير (إلزامي إذا اختلف العدد المعتمد)</label><input class="f" id="edNote">'+
         '<div class="btnrow"><button class="btn block" id="edSave">حفظ نسخة تخطيط جديدة</button></div>';
@@ -6645,6 +6649,18 @@ function tmEditor(areaId, areaName){
 
     sheet('تعديل خريطة — '+areaName, board(), function(ov, close){
       var bd=$('#edBoard',ov);
+
+      /* الطاولة الجديدة تُرسم في وسط الصالة برقم يلي أكبر رقم موجود،
+         ثم تُسحب لمكانها. لا تُحفظ حتى تُحفظ النسخة كلها. */
+      $('#edAdd',ov).addEventListener('click', function(){
+        var mx=0; T.forEach(function(t){ if(+t.no>mx) mx=+t.no; });
+        T.push({id:null, no:mx+1, type:'standalone', seats:4, x:50, y:50, is_active:true});
+        bd.insertAdjacentHTML('beforeend',
+          '<button class="tm-t standalone s-free" data-i="'+(T.length-1)+'" style="left:50%;top:50%">'+
+          '<span class="tm-box">'+(mx+1)+'</span></button>');
+        redraw();
+        toast('أُضيفت طاولة '+(mx+1)+' — اسحبيها لمكانها ثم احفظي');
+      });
 
       function redraw(){
         $$('.tm-t',bd).forEach(function(b){
@@ -6681,13 +6697,20 @@ function tmEditor(areaId, areaName){
               .map(function(o){ return '<option value="'+o[0]+'"'+(t.type===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+
           '</select>'+
           '<label class="f">عدد المقاعد</label><input class="f" id="etS" type="number" value="'+(+t.seats)+'">'+
-          '<div class="check"><input type="checkbox" id="etA" '+(t.is_active?'checked':'')+'><span>نشطة</span></div>'+
-          '<div class="btnrow"><button class="btn block" id="etOk">حفظ</button></div>',
+          '<div class="check"><input type="checkbox" id="etA" '+(t.is_active?'checked':'')+'><span>نشطة — أزيلي العلامة لسحبها من الخدمة</span></div>'+
+          '<div class="muted small">الطاولة المسحوبة لا تُحذف: جلساتها وأحداثها تاريخٌ مرتبط بها.</div>'+
+          '<div class="btnrow"><button class="btn block" id="etOk">حفظ</button></div>'+
+          (t.id?'':'<div class="btnrow"><button class="btn ghost block red" id="etDel">احذفي هذه الطاولة الجديدة</button></div>'),
           function(ov2, close2){
             $('#etOk',ov2).addEventListener('click', function(){
               t.no=+$('#etNo',ov2).value||t.no; t.type=$('#etTy',ov2).value;
               t.seats=+$('#etS',ov2).value||t.seats; t.is_active=$('#etA',ov2).checked;
               close2(); redraw();
+            });
+            /* الجديدة التي لم تُحفظ بعد تُحذف فعلا — لا تاريخ لها يُحفظ */
+            var dl=$('#etDel',ov2);
+            if(dl) dl.addEventListener('click', function(){
+              T.splice(i,1); close2(); close(); tmEditor(areaId, areaName);
             });
           });
       }
