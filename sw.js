@@ -3,9 +3,21 @@ var CACHE = 'rayhana-shift-v109';
 var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'config.js', 'recipes.js',
              'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
+/* التثبيت: كان cache.addAll(SHELL) — وهي عملية ذرّية ترفض كلّها إن فشل
+   عنوان واحد. أي تعثّر لحظيّ في ملف واحد أثناء النشر كان يُسقط تثبيت
+   العامل بالكامل: لا عامل ⇒ لا شرط تثبيت للتطبيق ⇒ لا إشعارات، بصمت.
+   الآن: الهيكل الأدنى (الصفحة ومنطقها) شرطٌ للنجاح، وما عداه يُحاوَل
+   ولا يُسقط التثبيت إن غاب. */
+var CORE = ['./', 'index.html', 'app.css', 'app.js', 'config.js'];
+
 self.addEventListener('install', function (e) {
   e.waitUntil(
-    caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); })
+    caches.open(CACHE).then(function (c) {
+      return c.addAll(CORE).then(function () {
+        return Promise.all(SHELL.filter(function (u) { return CORE.indexOf(u) < 0; })
+          .map(function (u) { return c.add(u).catch(function () { }); }));
+      });
+    }).then(function () { return self.skipWaiting(); })
   );
 });
 
@@ -49,8 +61,13 @@ self.addEventListener('fetch', function (e) {
   // الشبكة أولاً حتى تصل التحديثات فوراً، والكاش عند انقطاع الاتصال
   e.respondWith(
     fetch(e.request).then(function (res) {
-      var copy = res.clone();
-      caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      /* كان يخزّن أي ردّ — بما فيه 404 و500. فلو تعثّر النشر لحظة واحدة
+         خُزّن الخطأ في الكاش وبقي يُقدَّم دون اتصال إلى الأبد. الآن لا
+         يُخزَّن إلا ردّ سليم من أصلنا. */
+      if (res && res.ok && res.type === 'basic') {
+        var copy = res.clone();
+        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      }
       return res;
     }).catch(function () {
       return caches.match(e.request, { ignoreSearch: true }).then(function (m) {

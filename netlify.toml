@@ -10,6 +10,34 @@
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
+    # نطاق العامل: بلا هذا لا يستطيع عامل في الجذر التحكّم بغيره — وهو
+    # هنا في الجذر أصلاً، لكن التصريح يمنع أي التباس عند تغيّر النشر.
+    Service-Worker-Allowed = "/"
+
+# نوع محتوى بيان التطبيق.
+# Netlify يقدّم ملفات .json كـ application/json، والمواصفة تحدّد
+# application/manifest+json. متصفّح Chrome يتساهل، وبعض إصدارات
+# Samsung Internet لا تتساهل: ترفض البيان فيسقط شرط التثبيت، فيظهر
+# «إضافة إلى الشاشة الرئيسية» كاختصار عاديّ — أو يُرفض التثبيت.
+# التصريح هنا هو الشكل الصحيح بالمواصفة، ولا يضرّ المتصفّحات المتساهلة.
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Content-Type = "application/manifest+json; charset=utf-8"
+    Cache-Control = "no-cache"
+
+# الأيقونات: نوعها الصريح يمنع أي تخمين من الخادم أو المتصفّح
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Content-Type = "image/png"
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/icon.svg"
+  [headers.values]
+    Content-Type = "image/svg+xml"
+    Cache-Control = "public, max-age=604800"
 
 # app.js و app.css يحملان ?v=BUILD في العنوان، فالمتصفح يجلب نسخة جديدة عند
 # كل إصدار. لذا يُسمح بتخزين طويل: لا يخدم نسخة قديمة لأن العنوان نفسه يتغيّر.

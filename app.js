@@ -776,6 +776,7 @@ function moodFace(lvl, sz){ sz=sz||26; var m=MOOD_MOUTH[lvl]||MOOD_MOUTH[3];
 var MI={
   _def: svgi('<circle cx="12" cy="12" r="8"/>'),
   monitor: svgi('<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M6.5 12.5l3-3 2.5 2.5 4-4.5"/>'),
+  pwa: svgi('<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="m9.5 13 2 2 3.5-4"/>'),
   dayphase: svgi('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/><path d="M12 12l3.5-2"/>'),
   openshifts: svgi('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3.5 2"/><path d="M19 5l2-2"/>'),
   bottleneck: svgi('<path d="M5 4h14l-5 7v6l-4 2v-8L5 4Z"/>'),
@@ -5056,7 +5057,7 @@ var SECS=[
   ['training','','التدريب'],['sops','','أدلة العمل'],['cover','','تبديل وتغطية'],['absence','','الغياب والتغطية'],['coop','','التعاون'],
   ['contrib','','المساهمات الإضافية'],['evals','','التقييم الشهري'],['awards','','التقدير'],['requests','','الطلبات'],
   ['handovers','','التسليمات'],['reports','','التقارير'],['devices','','الأجهزة'],['settings','','الإعدادات'],
-  ['audit','','سجل التدقيق'],['flags','','إشارات المراجعة'],
+  ['audit','','سجل التدقيق'],['flags','','إشارات المراجعة'],['pwa','','فحص التثبيت'],
   ['dayphase','','مرحلة اليوم'],['openshifts','','شفتات لم تقفل'],['bottleneck','','عنق الزجاجة'],
   ['geo','','قرارات الموقع'],['errors','','أخطاء تقنية'],
   ['assignkpi','','كفاءة الإسناد'],['availability','','توفّر الموظفات']
@@ -5069,7 +5070,7 @@ var AGROUPS=[
   ['التواصل والتحليل','g2',['ocanalytics','digest','broadcast','analytics','hours','assignkpi','requests','reports']],
   ['الفريق','g2',['employees','availability','skills','training','coop','contrib','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
-  ['النظام','g4',['devices','settings','audit','geo','errors']]
+  ['النظام','g4',['devices','settings','pwa','audit','geo','errors']]
 ];
 function drawAdmin(){
   var v=$('#view'); if(!v) return;
@@ -5502,6 +5503,117 @@ function loadDash(v){
 function mapAction(a){ return {absence:'absence',pressure:'reports',skills:'skills',breaks:'attendance',tasks:'tasks',handovers:'handovers',requests:'requests',attendance:'attendance',training:'training',flags:'flags',coverage:'absence'}[a]||'dash'; }
 
 var ADMIN={};
+
+/* ================= فحص التثبيت (PWA) — يُشغَّل على الجهاز نفسه =========
+   شكوى التثبيت على أجهزة Samsung لا تُحلّ بالتخمين من الخادم: شروط
+   التثبيت يقيسها المتصفّح على الجهاز، وردّ Samsung Internet يختلف عن
+   Chrome. هذه الشاشة تفتح على الجهاز الذي ظهر عليه التحذير وتقيس كل
+   شرط فعليّاً — البيان ونوع محتواه، والعامل ونطاقه، والأيقونات
+   بأبعادها الحقيقية، وهل أطلق المتصفّح حدث التثبيت — ثم تقول أين
+   ينكسر الشرط بالضبط بدل أن نخمّن. */
+function pwaRow(ok, label, detail){
+  return '<div class="row" style="justify-content:space-between;gap:8px;padding:7px 0;'+
+    'border-bottom:1px dashed var(--line)"><div style="min-width:0"><b>'+esc(label)+'</b>'+
+    (detail?'<div class="muted small">'+esc(detail)+'</div>':'')+'</div>'+
+    '<span class="chip '+(ok===true?'green':ok===false?'red':'orange')+'">'+
+      (ok===true?'سليم':ok===false?'مشكلة':'غير مؤكّد')+'</span></div>';
+}
+ADMIN.pwa=function(v){
+  v.innerHTML='<div class="card"><h3>فحص التثبيت على هذا الجهاز</h3>'+
+    '<div class="muted small">افتحي هذه الشاشة من الجهاز الذي ظهر عليه التحذير '+
+    '— من Samsung Internet ومن Chrome — وقارني النتيجتين.</div>'+
+    '<div id="pwaB" style="margin-top:10px">'+skel(4)+'</div></div>';
+
+  var out=[], ua=navigator.userAgent||'';
+  var isSam=/SamsungBrowser/i.test(ua);
+  var samVer=(ua.match(/SamsungBrowser\/([\d.]+)/)||[])[1]||'';
+  var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches)
+                   || navigator.standalone === true;
+
+  function done(){ $('#pwaB',v).innerHTML=out.join(''); }
+
+  out.push(pwaRow(true,'المتصفّح',
+    (isSam?('Samsung Internet '+(samVer||'')):(/Chrome/i.test(ua)?'Chrome':'متصفّح آخر'))));
+  out.push(pwaRow(!!window.isSecureContext,'اتصال آمن (HTTPS)',
+    location.protocol+'//'+location.host));
+  out.push(pwaRow(standalone?true:null, standalone?'التطبيق مثبّت ويعمل مستقلاً'
+    :'وضع العرض', standalone?'يعمل الآن كتطبيق':'يعمل داخل المتصفّح'));
+  /* حدث beforeinstallprompt هو الحكم النهائي: إن أطلقه المتصفّح فكل
+     الشروط تحقّقت عنده. غيابه على Samsung مع تحقّقه على Chrome يعني
+     أن السبب في سياسة المتصفّح لا في التطبيق — وهذا ما نريد إثباته. */
+  out.push(pwaRow(deferredPrompt?true:null,'عرض التثبيت من المتصفّح',
+    deferredPrompt?'المتصفّح أعلن أن التطبيق قابل للتثبيت'
+      :'لم يصل حدث التثبيت بعد — قد يحتاج زيارة ثانية أو لا يدعمه المتصفّح'));
+  done();
+
+  var pend=3;
+  function step(){ if(--pend<=0) done(); }
+
+  /* (١) البيان: نوع المحتوى أولاً — وهو أكثر ما يسقط على Samsung */
+  fetch('manifest.json', {cache:'no-store'}).then(function(r){
+    var ct=(r.headers.get('content-type')||'').toLowerCase();
+    var okCt = ct.indexOf('application/manifest+json')>=0;
+    out.push(pwaRow(r.ok,'تحميل البيان (manifest.json)','الحالة '+r.status));
+    out.push(pwaRow(okCt || (ct.indexOf('application/json')>=0 ? null : false),
+      'نوع محتوى البيان', ct||'غير معلن'));
+    return r.json().then(function(m){
+      out.push(pwaRow(!!(m.name&&m.short_name),'الاسم والاسم المختصر', (m.name||'')+' · '+(m.short_name||'')));
+      out.push(pwaRow(m.display==='standalone','وضع العرض في البيان', m.display||'—'));
+      out.push(pwaRow(!!m.start_url && !!m.scope,'نقطة البدء والنطاق',
+        (m.start_url||'—')+' داخل '+(m.scope||'—')));
+      var png=(m.icons||[]).filter(function(i){ return /png/i.test(i.type||''); });
+      var has192=png.some(function(i){ return /(^|\D)192x192/.test(i.sizes||''); });
+      var has512=png.some(function(i){ return /(^|\D)512x512/.test(i.sizes||''); });
+      out.push(pwaRow(has192&&has512,'أيقونات PNG المطلوبة',
+        '١٩٢: '+(has192?'موجودة':'ناقصة')+' · ٥١٢: '+(has512?'موجودة':'ناقصة')));
+      /* أبعاد الأيقونة الحقيقية لا المعلنة: بيانٌ يعلن ٥١٢ وملفٌّ ٢٥٦
+         يُسقط شرط التثبيت بلا رسالة مفهومة. */
+      return Promise.all(png.map(function(i){
+        return new Promise(function(res){
+          var im=new Image();
+          im.onload=function(){ res({s:i.sizes, w:im.naturalWidth, h:im.naturalHeight, ok:true}); };
+          im.onerror=function(){ res({s:i.sizes, ok:false}); };
+          im.src=i.src;
+        });
+      })).then(function(list){
+        list.forEach(function(x){
+          var match = x.ok && (x.w+'x'+x.h)===x.s;
+          out.push(pwaRow(x.ok ? (match?true:false) : false, 'أيقونة '+x.s,
+            x.ok ? ('الملف فعليّاً '+x.w+'×'+x.h+(match?'':' — لا يطابق المعلن')) : 'تعذّر تحميلها'));
+        });
+      });
+    });
+  }).catch(function(e){
+    out.push(pwaRow(false,'تحميل البيان', String(e&&e.message||e)));
+  }).then(step);
+
+  /* (٢) عامل الخدمة: شرطٌ لا غنى عنه للتثبيت وللإشعارات */
+  (function(){
+    if(!('serviceWorker' in navigator)){
+      out.push(pwaRow(false,'عامل الخدمة','المتصفّح لا يدعمه')); step(); return;
+    }
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      if(!reg){ out.push(pwaRow(false,'عامل الخدمة','غير مسجّل على هذا الجهاز')); return; }
+      out.push(pwaRow(!!reg.active,'عامل الخدمة',
+        (reg.active?'نشط':reg.installing?'قيد التثبيت':'ينتظر')+' · النطاق '+reg.scope));
+      out.push(pwaRow(!!navigator.serviceWorker.controller,'الصفحة تحت سيطرة العامل',
+        navigator.serviceWorker.controller?'نعم':'لا — أعيدي فتح الصفحة'));
+    }).catch(function(e){
+      out.push(pwaRow(false,'عامل الخدمة', String(e&&e.message||e)));
+    }).then(step);
+  })();
+
+  /* (٣) الكاش: هل الهيكل مخزَّن فعلاً حتى يعمل دون اتصال */
+  (function(){
+    if(!('caches' in window)){ out.push(pwaRow(null,'التخزين المؤقّت','غير مدعوم')); step(); return; }
+    caches.keys().then(function(ks){
+      if(!ks.length){ out.push(pwaRow(false,'التخزين المؤقّت','لا نسخة محفوظة بعد')); return; }
+      return caches.open(ks[0]).then(function(c){ return c.keys(); }).then(function(items){
+        out.push(pwaRow(items.length>0,'التخزين المؤقّت', ks[0]+' · '+items.length+' ملفاً'));
+      });
+    }).catch(function(){ out.push(pwaRow(null,'التخزين المؤقّت','تعذّر الفحص')); }).then(step);
+  })();
+};
 
 /* ================= شاشة التشغيل — Live Operations Monitor =================
    سؤال المدير واحد: «ماذا يحدث الآن داخل المقهى؟ ما الذي تأخر؟ من يعمل
