@@ -775,6 +775,7 @@ function moodFace(lvl, sz){ sz=sz||26; var m=MOOD_MOUTH[lvl]||MOOD_MOUTH[3];
     '<circle cx="12" cy="12" r="9"/><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="'+m+'"/></svg>'; }
 var MI={
   _def: svgi('<circle cx="12" cy="12" r="8"/>'),
+  monitor: svgi('<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M6.5 12.5l3-3 2.5 2.5 4-4.5"/>'),
   dayphase: svgi('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/><path d="M12 12l3.5-2"/>'),
   openshifts: svgi('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3.5 2"/><path d="M19 5l2-2"/>'),
   bottleneck: svgi('<path d="M5 4h14l-5 7v6l-4 2v-8L5 4Z"/>'),
@@ -841,7 +842,21 @@ function skel(n){ var s=''; for(var i=0;i<(n||3);i++) s+='<div class="skel"></di
 /* ---------- ترجمة مصطلحات ---------- */
 var PHASE={opening:'الافتتاح', during:'أثناء الدوام', closing:'الإغلاق', adhoc:'مهمة إضافية'};
 var TSTAT={open:'لم تبدأ', running:'قيد التنفيذ', paused:'موقوفة مؤقتا', done:'منجزة', approved:'معتمدة', returned:'معادة للتنفيذ', carried:'رحّلت للغد', cancelled:'ألغيت',
-  claimed_done:'قيد القبول التلقائي', accepted:'مقبولة', verified:'متحقّق منها', review_required:'تحتاج مراجعة', reopened:'أعيد فتحها', blocked:'موقوفة بمانع'};
+  claimed_done:'قيد القبول التلقائي', accepted:'مقبولة', verified:'متحقّق منها', review_required:'تحتاج مراجعة', reopened:'أعيد فتحها', blocked:'موقوفة بمانع',
+  stalled:'عالقة — تنتظر قرارا'};
+
+/* ===== تعريف واحد لمعنى «منجزة» =====
+   كانت كل شاشة تعرّفها بنفسها بـ done|approved فقط، بينما دورة الحياة
+   المفعّلة على الخادم تكتب claimed_done ثم accepted. فالمهمة التي أنهتها
+   الموظفة لم تكن تُحسب منجزة: تبقى في قائمة «المطلوب الآن»، وحلقة
+   الإنجاز تقف على صفر بالمئة مهما عملت. تعريف واحد هنا يمنع تكرار
+   الخطأ في كل شاشة جديدة. */
+var TS_DONE   = ['done','approved','claimed_done','accepted','verified'];
+var TS_CLOSED = TS_DONE.concat(['carried','cancelled']);
+var TS_ACTIVE = ['open','returned','running','paused','stalled','blocked','review_required','reopened'];
+function tIsDone(t){   return TS_DONE.indexOf(t && t.status) >= 0; }
+function tIsClosed(t){ return TS_CLOSED.indexOf(t && t.status) >= 0; }
+function tIsOpen(t){   return !tIsClosed(t); }
 var WFPH={pre_shift:'قبل الافتتاح', opening:'الافتتاح', normal:'تشغيل طبيعي', peak:'ذروة', recovery:'تعاف', closing:'إغلاق', finalized:'أقفل اليوم'};
 var WAIT={none:'لا انتظار', low:'انتظار خفيف', high:'انتظار مرتفع'};
 var REQSTAT={pending:'قيد المراجعة', approved:'مقبول', rejected:'مرفوض'};
@@ -2577,8 +2592,9 @@ function dashOps(mode){
 }
 /* بطاقة «المهمة الحالية» — بطاقة رئيسية بزرّ أساسي واحد حسب الحالة */
 function heroTaskCard(t){
-  var stTxt={open:'لم تبدأ',running:'قيد التنفيذ الآن',paused:'متوقفة مؤقتا',returned:'معادة من الإدارة'}[t.status]||TSTAT[t.status]||'';
-  var stCls={open:'',running:'green',paused:'orange',returned:'red'}[t.status]||'';
+  var stTxt={open:'لم تبدأ',running:'قيد التنفيذ الآن',paused:'متوقفة مؤقتا',returned:'معادة من الإدارة',
+             stalled:'بدأتِها ولم تُنهَ — ما زالت باسمك'}[t.status]||TSTAT[t.status]||'';
+  var stCls={open:'',running:'green',paused:'orange',returned:'red',stalled:'orange'}[t.status]||'';
   if(t.status==='paused'&&t.blocked){ stTxt='متوقفة — يوجد مانع'; stCls='red'; }
   /* فرق جوهري: توقّف اختارته الموظفة، وتأجيل قرّره المحرّك لأن الصالة
      مضغوطة. الثاني كان يظهر بنفس صورة الأول مع زرّ «استئناف» بلا سبب —
@@ -2598,6 +2614,8 @@ function heroTaskCard(t){
   else if(t.status==='paused'&&t.blocked){ prim='<button class="btn block" data-a="tUnblock" data-id="'+t.id+'">أزيل المانع واستأنف</button>'; }
   else if(deferred){ prim='<button class="btn block ghost" data-a="tResume" data-id="'+t.id+'">أستأنفها الآن على أي حال</button>'; }
   else if(t.status==='paused'){ prim='<button class="btn block" data-a="tResume" data-id="'+t.id+'">استئناف</button>'; }
+  /* عادت إليها بعد انقطاع: تُكمل على ما سبق — وقت بدئها الأول محفوظ */
+  else if(t.status==='stalled'){ prim='<button class="btn block" data-a="tStart" data-id="'+t.id+'">أكملها — ما زالت باسمك</button>'; }
   else { prim='<button class="btn block" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>'; }
   var needs=[]; if(t.needs_photo||t.method==='photo') needs.push('تحتاج صورة'); if(t.needs_two||t.method==='two_person') needs.push('موظفتان'); if(t.method==='checklist') needs.push('قائمة تحقق'); if(t.needs_review||t.method==='review') needs.push('مراجعة إدارة');
   return '<div class="hero-task">'+
@@ -2708,8 +2726,8 @@ function allTasksSheet(){
   var e0=tsOrNull(sh&&sh.end), endRef=(e0!==null?e0:ca.getTime());
   var openFrom=endRef-60*60000, inClosing=Date.now()>=openFrom;
   var all=st.tasks||[];
-  var doneL=all.filter(function(t){ return t.status==='done'||t.status==='approved'; });
-  var pend=all.filter(function(t){ return ['done','approved','carried','cancelled'].indexOf(t.status)<0; });
+  var doneL=all.filter(tIsDone);
+  var pend=all.filter(tIsOpen);
   /* الخادم يحسب لكل مهمة متى تبدأ نافذتها. هنا نحترم حسابه بدل تخمين
      العميل: مهمّة الإغلاق ٢٢:١٥ لا تزاحم مهمة افتتاح في التاسعة. */
   var nowL=pend.filter(function(t){ return t.ready !== false; });
@@ -3074,7 +3092,7 @@ function viewNow(){
      إغلاق ٢٢:١٥ فصاعدا) أو وقت صريح كشطف الساحة ١٠:٣٠. لا تخفى —
      تبقى في «مهامي» ويمكن إنجازها مبكرا — لكنها لا تزاحم وقتها. */
   function dueNow(t){ return t.ready !== false; }
-  var pend=(st.tasks||[]).filter(function(t){return ['done','approved','carried','cancelled'].indexOf(t.status)<0;})
+  var pend=(st.tasks||[]).filter(tIsOpen)
     .sort(function(a,b){
       var da=dueNow(a)?0:1, db=dueNow(b)?0:1;
       if(da!==db) return da-db;
@@ -3922,7 +3940,7 @@ function viewTasks(){
   var st=S.state, tasks=st.tasks||[], out=[];
   var hasChores=(st.recurring||[]).length>0;
   if(!tasks.length && !hasChores) return '<div class="empty">لا مهام لليوم — تولّد تلقائيا عند وجود شفت ومنطقة</div>';
-  var doneL=tasks.filter(function(t){return t.status==='done'||t.status==='approved';});
+  var doneL=tasks.filter(tIsDone);
   var pct=tasks.length?Math.round(100*doneL.length/tasks.length):0;
   if(tasks.length){ var dash=(97.4*pct/100).toFixed(1);
     out.push('<div class="card"><div class="tdone-hero">'+
@@ -3931,18 +3949,22 @@ function viewTasks(){
       '<div class="muted small" style="margin-top:2px">'+(pct===100?'اكتمل اليوم — أحسنت ✔':((tasks.length-doneL.length)+' مهمة متبقية'))+'</div></div>'+
       '<span class="chip '+(pct===100?'green':pct>=50?'':'orange')+'" style="align-self:flex-start;font-weight:800">'+pct+'٪</span></div></div>');
   }
-  // قسمة سياقية: الإغلاق «قادم» حتى آخر 75 دقيقة من الشفت
-  var sh=st.shift, nearEnd = sh ? (Date.now() >= new Date(sh.end).getTime() - 75*60000) : true;
-  var pend=tasks.filter(function(t){return ['done','approved','carried','cancelled'].indexOf(t.status)<0;});
-  var nowL=pend.filter(function(t){return nearEnd || t.phase!=='closing';});
-  var laterL=pend.filter(function(t){return !nearEnd && t.phase==='closing';});
+  /* كانت القسمة هنا تخمينا من العميل: «كل ما ليس إغلاقا مطلوب الآن».
+     فتفتح الموظفة النظام العاشرة صباحا فترى مهام اليوم كلها دفعة واحدة
+     — بما فيها ما موعده بعد ساعات — وهو ما اشتُكي منه. الخادم يحسب لكل
+     مهمة نافذتها (due_at/until_at) ويرسل ready، وشاشة «الآن» تحترمه
+     أصلا؛ هذه الشاشة كانت وحدها تتجاهله. تعريف واحد للوقت في الشاشتين. */
+  var pend=tasks.filter(tIsOpen);
+  var nowL=pend.filter(function(t){ return t.ready !== false; });
+  var laterL=pend.filter(function(t){ return t.ready === false; });
+  laterL.sort(function(a,b){ return tsOrNull(a.due_at)-tsOrNull(b.due_at); });
   out.push('<h3 style="margin:14px 2px 8px">الآن</h3>');
   if(nowL.length) nowL.forEach(function(t){ out.push(taskCard(t)); });
   else if(!hasChores) out.push('<div class="card muted small center">لا مهام مطلوبة الآن</div>');
   if(hasChores) out.push(dashOps('chores'));
   if(laterL.length){
-    out.push('<h3 style="margin:14px 2px 8px">قادمة</h3><div class="list">'+laterL.map(function(t){
-      return '<div class="row"><div class="row__body"><div class="row__title">'+esc(t.name)+'</div><div class="row__sub">'+esc(PHASE[t.phase]||'')+' · '+mins(t.expected)+(t.is_core?' · أساسية':'')+'</div></div><span class="badge badge--muted">في وقتها</span></div>';
+    out.push('<h3 style="margin:14px 2px 8px">تظهر في وقتها</h3><div class="list">'+laterL.map(function(t){
+      return '<div class="row"><div class="row__body"><div class="row__title">'+esc(t.name)+'</div><div class="row__sub">'+esc(PHASE[t.phase]||'')+' · '+mins(t.expected)+(t.is_core?' · أساسية':'')+'</div></div><span class="badge badge--muted">'+(t.due_at?esc(fmtT(t.due_at)):'في وقتها')+'</span></div>';
     }).join('')+'</div>');
   }
   if(doneL.length){
@@ -3954,7 +3976,8 @@ function viewTasks(){
 }
 function taskCard(t){
   var stChip = {open:'',running:'green',paused:'orange',done:'green',approved:'green',returned:'red',
-    claimed_done:'',accepted:'green',verified:'green',review_required:'orange',reopened:'red',blocked:'red'}[t.status]||'';
+    claimed_done:'',accepted:'green',verified:'green',review_required:'orange',reopened:'red',blocked:'red',
+    stalled:'orange'}[t.status]||'';
   var stLbl = TSTAT[t.status];
   if(t.status==='paused'&&t.blocked){ stChip='red'; stLbl='مانع — موقوفة'; }
   var deferred = (t.status==='paused' && !t.blocked && !!t.defer_reason);
@@ -3963,7 +3986,7 @@ function taskCard(t){
   var CLS={live:{t:'خدمة',c:'amber'},support:{t:'دعم',c:'brand'},maintenance:{t:'صيانة',c:'muted'}};
   var cl=CLS[t.op_class]||CLS.support;
   var prog=(running && t.expected)?'<div class="pbar" style="margin-top:9px"><i style="width:'+Math.min(100,Math.round(((t.net||0)/60)/t.expected*100))+'%"></i></div>':'';
-  var html='<div class="task'+(t.is_core?' core':'')+(t.status==='done'||t.status==='approved'?' done':'')+'" data-task="'+t.id+'">'+
+  var html='<div class="task'+(t.is_core?' core':'')+(tIsDone(t)?' done':'')+'" data-task="'+t.id+'">'+
     '<div class="t-h"><div style="min-width:0"><span class="name">'+esc(t.name)+'</span> <span class="tclass '+cl.c+'">'+cl.t+'</span>'+(t.is_core?' <span class="chip orange">أساسية</span>':'')+(t.phase==='adhoc'?' <span class="chip ink">من الإدارة</span>':'')+
     '<div class="muted small" style="margin-top:3px">متوقعة '+mins(t.expected)+' · صافي <span class="timer" data-net="'+(t.net||0)+'" data-run="'+(running?1:0)+'" data-since="'+Date.now()+'">'+secFmt(t.net)+'</span></div></div>'+
     '<span class="chip '+stChip+'">'+stLbl+'</span></div>'+prog;
@@ -3976,6 +3999,9 @@ function taskCard(t){
      إنجازا. الآن الإنهاء سحب في كل مكان. */
   html+='<div class="btnrow">';
   if(t.status==='open'||t.status==='returned') html+='<button class="btn sm" data-a="tStart" data-id="'+t.id+'">بدأت التنفيذ</button>';
+  /* مهمة بدأتها ثم انقطع عنها العمل: تعود إليها هي أولا — لم تُنقل لأحد
+     ولم يضع وقت بدئها. استئنافها يكمل على ما سبق لا يبدأ من الصفر. */
+  else if(t.status==='stalled') html+='<button class="btn sm" data-a="tStart" data-id="'+t.id+'">أكملها — ما زالت باسمك</button>';
   if(running) html+='<button class="btn sm ghost" data-a="tPause" data-id="'+t.id+'">إيقاف مؤقت (خدمة ضيف)</button>';
   if(t.status==='paused'&&t.blocked) html+='<button class="btn sm" data-a="tUnblock" data-id="'+t.id+'">أزيل المانع واستأنف</button>';
   else if(deferred) html+='<button class="btn sm ghost" data-a="tResume" data-id="'+t.id+'">أستأنفها الآن على أي حال</button>';
@@ -4004,8 +4030,9 @@ function findTask(id){ var f=null; (S.state.tasks||[]).forEach(function(t){ if(t
 function recurringDone(tid, needPhoto, nm){
   function send(extra){
     var rp={template_id:tid}; for(var rk in (extra||{})) rp[rk]=extra[rk];
-    sAct('recurring_done', rp, false).then(function(res){
-      if(res && res.ok){ toast(res.msg||'سجّلت'); refresh(); }
+    /* الدورية أيضا: مفتاح عملية وطابور — لا تضيع بانقطاع ولا تتكرر ببطء */
+    sAct('recurring_done', rp, true).then(function(res){
+      if(res && res.ok){ toast(res.queued ? 'سجّلت — سترسل عند عودة الاتصال' : (res.msg||'سجّلت')); refresh(); }
       else toast((res&&res.error)||'خطأ', true);
     });
   }
@@ -4151,11 +4178,17 @@ function completeFlow(t){
       }
       if(t.needs_two){ p.confirm_id=+$('#tCoId',ov).value; p.confirm_password=$('#tCoPw',ov).value; }
       var note=$('#tNote',ov).value; if(note) p.note=note;
+      /* كان الإنهاء يُرسل بلا op_id وبلا طابور (mut=false): على شبكة ضعيفة
+         يضيع الإنجاز كأنه لم يكن، وعلى شبكة بطيئة تضغط الموظفة مرتين
+         فيُسجَّل مرتين أو يردّ الخادم بخطأ مربك. الآن: مفتاح عملية واحد
+         يحفظه الخادم، فالإرسال المكرر يعيد نفس النتيجة، والانقطاع يحفظ
+         العملية في الطابور وترسل وحدها عند عودة الاتصال. */
       busyWrap(this, function(){
-        return sAct('task_complete', p, false).then(function(res){
+        return sAct('task_complete', p, true).then(function(res){
           if(!res.ok){ toast(res.error||'خطأ', true); return; }
           close();
-          toast(res.needs_review ? 'سجّل إنجازك — بانتظار مراجعة الإدارة'
+          toast(res.queued ? 'سجّلت — سترسل تلقائيا عند عودة الاتصال'
+              : res.needs_review ? 'سجّل إنجازك — بانتظار مراجعة الإدارة'
               : res.claimed ? ('سجّل إنجازك، والنتيجة قيد القبول التلقائي خلال '+(res.accept_min||20)+' د')
               : 'سجّل إنجازك ✔');
           refresh();
@@ -4892,7 +4925,7 @@ function wireTab(v){
       else if(a==='helpNew') sAct('help_request',{},true).then(function(res){ if(res.ok) toast('أرسل النداء لزميلاتك والإدارة'); else toast(res.error||'خطأ',true); refresh(); });
       else if(a==='helpClose') sAct('help_close',{id:id},true).then(function(){ refresh(); });
       else if(a==='tStart') sAct('task_start',{id:id},true).then(refresh);
-      else if(a==='tPause') sAct('task_pause',{id:id,reason:'خدمة ضيف'},false).then(function(res){ if(!res.ok)toast(res.error||'خطأ',true); refresh(); });
+      else if(a==='tPause') sAct('task_pause',{id:id,reason:'خدمة ضيف'},true).then(function(res){ if(!res.ok)toast(res.error||'خطأ',true); refresh(); });
       else if(a==='tResume') sAct('task_resume',{id:id},true).then(refresh);
       else if(a==='tDone'){ var t=findTask(id); if(t) completeFlow(t); }
       else if(a==='hoNew') handoverSheet();
@@ -5015,6 +5048,7 @@ function startAdmin(){
   updateDot(); S.adminSec=null; drawAdmin();
 }
 var SECS=[
+  ['monitor','','شاشة التشغيل الآن'],
   ['dash','','اليوم'],['board','','لوحة العمليات'],['ocdecisions','','مركز القرارات'],['live','','المتابعة الحية'],['heat','','خريطة النشاط'],['broadcast','','الإعلانات'],
   ['issues','','البلاغات'],['kitchen','','المطبخ: المهام والمراجعة'],['recipes','','الوصفات — تعديل وإخفاء'],['guests','','من يزورنا؟'],['logbook','','سجل الشفت'],['timeline','','قصة اليوم'],['ptt','','التخاطب الصوتي'],['digest','','تقرير إغلاق اليوم'],['ocanalytics','','مركز التحليلات'],['analytics','','التحليلات'],['hours','','سجل الساعات'],['employees','','الموظفات'],['shifts','','الشفتات'],['roster','','جدولة تلقائية'],
   ['types','','أنواع الشفتات'],['areas','','المناطق'],['tables','','خريطة الطاولات'],['templates','','قوالب المهام'],
@@ -5029,7 +5063,9 @@ var SECS=[
 ];
 function secTitle(k){ var t=''; SECS.forEach(function(s){ if(s[0]===k) t=s[2]; }); return t; }
 var AGROUPS=[
-  ['تشغيل اليوم','g1',['board','dayphase','ocdecisions','live','tables','bottleneck','heat','roster','shifts','tasks','prep','ops','attendance','openshifts','cover','absence','handovers','issues','logbook','timeline','ptt']],
+  /* «شاشة التشغيل الآن» أول ما يُرى: هي جواب سؤال المدير الأول، وبقيّة
+     الشاشات تفصيلٌ يُطلب عند الحاجة لا يُعرض ابتداءً. */
+  ['تشغيل اليوم','g1',['monitor','board','dayphase','ocdecisions','live','tables','bottleneck','heat','roster','shifts','tasks','prep','ops','attendance','openshifts','cover','absence','handovers','issues','logbook','timeline','ptt']],
   ['التواصل والتحليل','g2',['ocanalytics','digest','broadcast','analytics','hours','assignkpi','requests','reports']],
   ['الفريق','g2',['employees','availability','skills','training','coop','contrib','evals','awards']],
   ['الإعداد والجودة','g3',['types','areas','templates','sops','flags']],
@@ -5228,7 +5264,7 @@ function loadDash(v){
     var out=[];
     var onshift=res.onshift||[], inN=onshift.filter(function(o){return o['in']&&!o.out;}).length;
     var notIn=onshift.filter(function(o){return !o['in'];}).length;
-    var doneN=tks.filter(function(t){return t.status==='done'||t.status==='approved';}).length;
+    var doneN=tks.filter(tIsDone).length;
     var highN=(res.alerts||[]).filter(function(a){return a.sev==='high';}).length;
     var alN=(res.alerts||[]).length;
     var SVG_PPL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c1-3.2 3.4-4.6 6-4.6s5 1.4 6 4.6" stroke-linecap="round"/></svg>';
@@ -5466,6 +5502,195 @@ function loadDash(v){
 function mapAction(a){ return {absence:'absence',pressure:'reports',skills:'skills',breaks:'attendance',tasks:'tasks',handovers:'handovers',requests:'requests',attendance:'attendance',training:'training',flags:'flags',coverage:'absence'}[a]||'dash'; }
 
 var ADMIN={};
+
+/* ================= شاشة التشغيل — Live Operations Monitor =================
+   سؤال المدير واحد: «ماذا يحدث الآن داخل المقهى؟ ما الذي تأخر؟ من يعمل
+   على ماذا؟ وما الذي يحتاج تدخلي؟» — وكان جوابه موزّعا على أربع شاشات.
+   هنا شاشة واحدة: الصفوف مرتّبة بما يستدعي قرارا أولا (عالقة، ثم قيد
+   التنفيذ، ثم متأخرة)، وكل صف يحمل ما يكفي للقرار بلا فتحه. الفتح
+   للتاريخ والتدخل. لا رسوم ولا أرقام تزيينية. */
+var MON={ data:null, f:{bucket:'', emp:'', area:'', q:'' }, t:null };
+var MONB=[
+  ['stalled','عالقة','red'], ['running','قيد التنفيذ','green'], ['late','متأخرة','red'],
+  ['now','مطلوبة الآن','orange'], ['review','تحتاج مراجعة','orange'],
+  ['upcoming','قادمة',''], ['done','منجزة','green'], ['cancelled','ملغاة','']
+];
+function monLbl(b){ var o=''; MONB.forEach(function(x){ if(x[0]===b) o=x[1]; }); return o||b; }
+function monCls(b){ var o=''; MONB.forEach(function(x){ if(x[0]===b) o=x[2]; }); return o; }
+function monDur(sec){
+  if(sec===null||sec===undefined) return '—';
+  var m=Math.round(sec/60); if(m<60) return m+' د';
+  return Math.floor(m/60)+' س '+(m%60)+' د';
+}
+ADMIN.monitor=function(v){
+  v.innerHTML='<div id="monHead">'+skel(1)+'</div><div id="monRows">'+skel(4)+'</div>';
+
+  function load(){
+    aAct('ops_monitor',{day:''}).then(function(r){
+      if(!r || !r.ok) return;
+      MON.data=r; draw();
+    }).catch(function(){});
+  }
+
+  function draw(){
+    var r=MON.data; if(!r) return;
+    var all=r.tasks||[], c=r.counts||{};
+
+    /* الشريط العلوي: اليوم التشغيلي والمرحلة، ثم عدّادات هي نفسها
+       المرشّحات — لمسة واحدة من «ما الذي تأخر؟» إلى قائمته. */
+    var ph=(r.phase&&r.phase.phase)||'', bd=(r.phase&&r.phase.business_date)||r.day;
+    var head='<div class="card" style="padding:11px 13px">'+
+      '<div class="row" style="justify-content:space-between;align-items:baseline">'+
+        '<b>'+esc(fmtD(bd))+'</b>'+
+        '<span class="chip">'+esc(WFPH[ph]||ph||'—')+'</span></div>'+
+      '<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:9px" id="monChips">'+
+        MONB.filter(function(b){ return c[b[0]]; }).map(function(b){
+          return '<button class="chip '+b[2]+(MON.f.bucket===b[0]?' on':'')+'" data-mb="'+b[0]+'" style="cursor:pointer">'+
+                 b[1]+' '+c[b[0]]+'</button>';
+        }).join('')+
+        (MON.f.bucket?'<button class="chip" data-mb="" style="cursor:pointer">الكل</button>':'')+
+      '</div></div>';
+
+    var opts=function(list, sel, any){
+      return '<option value="">'+any+'</option>'+(list||[]).map(function(x){
+        return '<option value="'+x.id+'"'+(String(sel)===String(x.id)?' selected':'')+'>'+esc(x.name)+'</option>';
+      }).join('');
+    };
+    head+='<div class="row" style="gap:6px;margin-top:8px">'+
+      '<select class="f" id="monEmp">'+opts(r.staff, MON.f.emp,'كل الموظفات')+'</select>'+
+      '<select class="f" id="monArea">'+opts(r.areas, MON.f.area,'كل المناطق')+'</select></div>'+
+      '<div class="row" style="margin-top:6px"><input class="f grow" id="monQ" placeholder="بحث باسم المهمة" value="'+esc(MON.f.q)+'"></div>';
+    $('#monHead').innerHTML=head;
+
+    var rows=all.filter(function(t){
+      if(MON.f.bucket && t.bucket!==MON.f.bucket) return false;
+      if(MON.f.emp    && String(t.employee_id)!==String(MON.f.emp)) return false;
+      if(MON.f.area   && String(t.area_id)!==String(MON.f.area)) return false;
+      if(MON.f.q      && (t.name||'').indexOf(MON.f.q)<0) return false;
+      return true;
+    });
+
+    $('#monRows').innerHTML = rows.length ? rows.map(function(t){
+      var lc=t.last_change;
+      /* أهمّ معلومة أولا: الاسم والحالة. ثم من ومتى وأين. ثم آخر تعديل
+         — لأن «من غيّر هذا؟» سؤال يتكرر ولا جواب له في الشاشات القديمة. */
+      return '<div class="card" style="padding:10px 12px;margin-bottom:8px;border-inline-start:4px solid var(--'+(monCls(t.bucket)||'line')+')" data-mt="'+t.id+'">'+
+        '<div class="row" style="justify-content:space-between;gap:8px">'+
+          '<b style="min-width:0">'+esc(t.name)+'</b>'+
+          '<span class="chip '+monCls(t.bucket)+'">'+monLbl(t.bucket)+'</span></div>'+
+        '<div class="muted small" style="margin-top:3px">'+
+          esc(t.employee||'بلا مكلّفة')+' · '+esc(t.area||'—')+
+          (t.due_at?' · تستحق '+fmtT(t.due_at):'')+
+        '</div>'+
+        '<div class="muted small" style="margin-top:2px">'+
+          'بدأت '+(t.started_at?fmtT(t.started_at):'—')+
+          ' · انتهت '+(t.finished_at?fmtT(t.finished_at):'—')+
+          ' · المدة '+monDur(t.started_at?t.net_seconds:null)+
+          (t.over_expected?' <span class="chip orange">تجاوزت المتوقع</span>':'')+
+        '</div>'+
+        '<div class="muted small" style="margin-top:2px">تحقّق: '+esc(t.verify_method)+
+          (t.verified?' <span class="chip green">متحقق</span>':'')+
+          (t.attempts>1?' · '+t.attempts+' محاولات':'')+'</div>'+
+        (lc?'<div class="muted small" style="margin-top:3px;opacity:.8">آخر تعديل: '+esc(lc.field)+
+            ' — '+esc(lc.by||'—')+' · '+fmtT(lc.ts)+'</div>':'')+
+      '</div>';
+    }).join('') : '<div class="empty">لا مهام مطابقة</div>';
+
+    $$('#monChips [data-mb]',v).forEach(function(b){
+      b.addEventListener('click', function(){ MON.f.bucket=b.getAttribute('data-mb'); draw(); }); });
+    $('#monEmp').addEventListener('change', function(){ MON.f.emp=this.value; draw(); });
+    $('#monArea').addEventListener('change', function(){ MON.f.area=this.value; draw(); });
+    var q=$('#monQ'); q.addEventListener('input', function(){ MON.f.q=this.value.trim(); draw(); });
+    $$('[data-mt]',v).forEach(function(el){
+      el.addEventListener('click', function(){ monSheet(+el.getAttribute('data-mt')); }); });
+  }
+
+  function monSheet(id){
+    var t=null; (MON.data.tasks||[]).forEach(function(x){ if(x.id===id) t=x; });
+    if(!t) return;
+    var r=MON.data;
+    var body='<div class="muted small">'+esc(t.area||'—')+' · '+esc(monLbl(t.bucket))+'</div>'+
+      '<div id="monHist" style="margin-top:10px">'+skel(2)+'</div>'+
+      '<h3 style="margin:14px 2px 6px">تدخّل</h3>'+
+      '<label class="f">الموظفة المسؤولة</label>'+
+      '<select class="f" id="mvEmp"><option value="">— بلا مكلّفة —</option>'+
+        (r.staff||[]).map(function(x){ return '<option value="'+x.id+'"'+(t.employee_id===x.id?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('')+'</select>'+
+      '<label class="f">المنطقة</label>'+
+      '<select class="f" id="mvArea">'+
+        (r.areas||[]).map(function(x){ return '<option value="'+x.id+'"'+(t.area_id===x.id?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('')+'</select>'+
+      '<label class="f">ملاحظة / سبب التدخل</label><input class="f" id="mvNote" value="'+esc(t.admin_note||'')+'">'+
+      '<div class="btnrow" style="margin-top:8px">'+
+        '<button class="btn sm" data-mo="assign">حفظ الإسناد</button>'+
+        '<button class="btn sm ghost" data-mo="area">حفظ المنطقة</button>'+
+        '<button class="btn sm ghost" data-mo="note">حفظ الملاحظة</button></div>'+
+      '<div class="btnrow" style="margin-top:6px">'+
+        '<button class="btn sm ghost" data-mo="nudge" data-min="-30">تقديم ٣٠ د</button>'+
+        '<button class="btn sm ghost" data-mo="nudge" data-min="30">تأخير ٣٠ د</button></div>'+
+      '<div class="btnrow" style="margin-top:6px">'+
+        (t.started_at?'':'<button class="btn sm" data-mo="start">بدء يدوي</button>')+
+        (t.finished_at?'<button class="btn sm ghost" data-mo="reopen">إعادة فتح</button>'
+                      :'<button class="btn sm" data-mo="finish">إنهاء يدوي</button>')+
+        '<button class="btn sm ghost red" data-mo="cancel">إلغاء</button></div>'+
+      (t.bucket==='stalled'
+        ? '<div class="card soft" style="margin-top:10px;padding:10px 12px;background:var(--surface-2);border:1px dashed var(--line)">'+
+          '<b>مهمة عالقة</b><div class="muted small" style="margin-top:2px">بدأتها '+esc(t.employee||'موظفة')+
+          ' ولم تُنهها. سجلّها محفوظ — اختاري ما يحدث لها:</div>'+
+          '<div class="btnrow" style="margin-top:8px">'+
+            '<button class="btn sm" data-mr="resume">تُستأنف باسمها</button>'+
+            '<button class="btn sm ghost" data-mr="reassign">تُسند لمن أخترتها أعلاه</button>'+
+            '<button class="btn sm ghost" data-mr="finish">أعتبرها منجزة</button></div></div>'
+        : '');
+
+    sheet(t.name, body, function(ov, close){
+      aAct('task_history',{id:id}).then(function(h){
+        if(!h||!h.ok) return;
+        var att=(h.attempts||[]), ch=(h.changes||[]).slice(0,12);
+        $('#monHist',ov).innerHTML=
+          '<h3 style="margin:0 2px 6px">محاولات التنفيذ</h3>'+
+          (att.length? '<div class="list">'+att.map(function(a){
+             return '<div class="row"><div class="row__body"><div class="row__title">'+esc(a.employee||'—')+'</div>'+
+               '<div class="row__sub">'+fmtT(a.started_at)+' → '+(a.ended_at?fmtT(a.ended_at):'ما زالت')+
+               ' · '+monDur(a.net_seconds)+' · '+esc(a.end_reason||'')+'</div></div></div>';
+           }).join('')+'</div>' : '<div class="muted small">لم تبدأ بعد</div>')+
+          '<h3 style="margin:12px 2px 6px">سجل التعديلات</h3>'+
+          (ch.length? '<div class="list">'+ch.map(function(x){
+             return '<div class="row"><div class="row__body"><div class="row__title">'+esc(x.field)+'</div>'+
+               '<div class="row__sub">'+esc(x.from||'∅')+' ← '+esc(x.to||'∅')+' · '+esc(x.by||'—')+' · '+fmtT(x.ts)+
+               (x.reason?' · '+esc(x.reason):'')+'</div></div></div>';
+           }).join('')+'</div>' : '<div class="muted small">لا تعديلات</div>');
+      }).catch(function(){});
+
+      function send(p){
+        p.id=id; p.version=t.version;
+        p.reason=$('#mvNote',ov)?$('#mvNote',ov).value:'';
+        aAct('task_ops', p).then(function(res){
+          if(!res||!res.ok){ toast((res&&res.error)||'تعذّر التنفيذ', true); return; }
+          toast('نُفّذ وسُجّل'); close(); load();
+        });
+      }
+      $$('[data-mo]',ov).forEach(function(b){ b.addEventListener('click', function(){
+        var op=b.getAttribute('data-mo');
+        if(op==='assign') send({op:'assign', employee_id:$('#mvEmp',ov).value});
+        else if(op==='area') send({op:'area', area_id:$('#mvArea',ov).value});
+        else if(op==='note') send({op:'note', note:$('#mvNote',ov).value});
+        else if(op==='nudge') send({op:'nudge', minutes:+b.getAttribute('data-min')});
+        else if(op==='start') send({op:'start', employee_id:$('#mvEmp',ov).value});
+        else if(op==='finish') send({op:'finish', note:$('#mvNote',ov).value});
+        else if(op==='reopen') send({op:'reopen', note:$('#mvNote',ov).value});
+        else if(op==='cancel') confirmSheet('إلغاء المهمة','إلغاء «'+esc(t.name)+'»؟ سيبقى سجلّها كاملا.','إلغاء المهمة',
+          function(){ send({op:'cancel', note:$('#mvNote',ov).value}); }, true);
+      }); });
+      $$('[data-mr]',ov).forEach(function(b){ b.addEventListener('click', function(){
+        send({op:'recover', mode:b.getAttribute('data-mr'), employee_id:$('#mvEmp',ov).value});
+      }); });
+    });
+  }
+
+  load();
+  clearInterval(MON.t);
+  /* تحديث كل ٢٠ ثانية: الشاشة تُقرأ لا تُملأ، فلا يزعج التحديث عملا جاريا */
+  MON.t=setInterval(function(){ if(S.role==='admin' && S.adminSec==='monitor') load(); else clearInterval(MON.t); }, 20000);
+};
 
 /* ---------- مركز القرارات + الحوادث (المجلد الرابع) ---------- */
 ADMIN.ocdecisions=function(v){
@@ -6459,7 +6684,15 @@ ADMIN.tasks=function(v){
     function load(){
       aAct('tasks_day',{day:$('#tkDay').value}).then(function(res){
         var ts=res.tasks||[];
-        var review=ts.filter(function(t){return t.needs_review&&t.status==='done';});
+        /* كان الشرط status==='done' وحده، ودورة الحياة المفعّلة تكتب
+           claimed_done ثم accepted أو review_required — فلا تصل مهمة إلى
+           هذا الطابور أبدا، وتبقى «بانتظار المراجعة» فارغة مهما أُنجز.
+           الشرط الآن: تحتاج مراجعة، وأُنجزت، ولم يُبتّ فيها بعد. */
+        function needsReview(t){
+          return (t.needs_review || t.status==='review_required')
+              && ['done','claimed_done','accepted','verified','review_required'].indexOf(t.status)>=0;
+        }
+        var review=ts.filter(needsReview);
         var out=[];
         if(review.length) out.push('<div class="row" style="justify-content:space-between"><h3 style="margin:0">بانتظار المراجعة ('+review.length+')</h3>'+
           (review.length>1?'<button class="btn sm ghost" id="tkBulk">اعتماد الكل ✔</button>':'')+'</div>');
@@ -6470,12 +6703,12 @@ ADMIN.tasks=function(v){
             (t.result&&t.result.number!==undefined&&t.result.number!==null?'<div class="small">'+esc(t.result.number)+'</div>':'')+'</div>'+
             '<span class="chip '+(t.status==='approved'?'green':t.status==='returned'?'red':'')+'">'+(TSTAT[t.status]||t.status)+'</span></div>'+
             (t.photo?'<div class="btnrow"><button class="btn sm ghost" data-ph="'+t.id+'">عرض الصورة</button></div>':'')+
-            (t.needs_review&&t.status==='done'?'<div class="btnrow"><button class="btn sm" data-ap="'+t.id+'">اعتماد ✔</button><button class="btn sm ghost red" data-rt="'+t.id+'">إعادة للتنفيذ</button></div>':'')+
+            (needsReview(t)?'<div class="btnrow"><button class="btn sm" data-ap="'+t.id+'">اعتماد ✔</button><button class="btn sm ghost red" data-rt="'+t.id+'">إعادة للتنفيذ</button></div>':'')+
             '</div>';
         }
         review.forEach(function(t){ out.push(card(t)); });
         out.push('<h3 style="margin-top:10px">كل المهام ('+ts.length+')</h3>');
-        ts.filter(function(t){return !(t.needs_review&&t.status==='done');}).forEach(function(t){ out.push(card(t)); });
+        ts.filter(function(t){ return !needsReview(t); }).forEach(function(t){ out.push(card(t)); });
         if(!ts.length) out.push('<div class="empty">لا مهام بهذا اليوم</div>');
         $('#tkList').innerHTML=out.join('');
         $$('[data-ph]',v).forEach(function(b){ b.addEventListener('click', function(){
@@ -7804,8 +8037,10 @@ ADMIN.recipes=function(v){
             '<button class="btn sm '+(off?'':'ghost')+'" data-ct="'+esc(c.cat)+'" data-on="'+(off?'1':'0')+'">'+
               (off?'أعدها':'أخفها')+'</button></div>';
         }).join('')+'</div>'+
-      '<div class="card"><h3>الأصناف ('+rows.length+')</h3>'+
-        '<input class="f" id="rcpF" placeholder="ابحث بالاسم">'+
+      '<div class="card"><div class="row" style="justify-content:space-between">'+
+        '<h3 style="margin:0">الأصناف ('+rows.length+')</h3>'+
+        '<button class="btn sm" id="rcpNew">+ صنف جديد</button></div>'+
+        '<input class="f" id="rcpF" placeholder="ابحث بالاسم" style="margin-top:8px">'+
         '<div id="rcpL">'+rcpRows(rows)+'</div></div>';
     function rcpRows(list){
       return list.map(function(x){
@@ -7815,9 +8050,17 @@ ADMIN.recipes=function(v){
             (x.timer?' · مؤقّت '+(+x.timer)+'ث':'')+'</span></span>'+
           '<span class="btnrow" style="margin:0">'+
             '<button class="btn sm ghost" data-ed="'+esc(x.id)+'">تعديل</button>'+
+            '<button class="btn sm ghost" data-dup="'+esc(x.id)+'">نسخ</button>'+
             '<button class="btn sm ghost" data-tg="'+esc(x.id)+'" data-on="'+(x.active?'0':'1')+'">'+
-              (x.active?'إخفاء':'إظهار')+'</button></span></div>';
+              (x.active?'إخفاء':'إظهار')+'</button>'+
+            '<button class="btn sm ghost red" data-arc="'+esc(x.id)+'">أرشفة</button></span></div>';
       }).join('')||'<div class="muted small">لا نتائج</div>';
+    }
+    function ops(p, ok){
+      aAct('rcp_ops', p).then(function(x){
+        if(!x||!x.ok){ toast((x&&x.error)||'تعذّر التنفيذ', true); return; }
+        toast(x.msg||'تم'); (ok||function(){ ADMIN.recipes(v); })(x);
+      });
     }
     function wire(){
       $$('[data-ed]',v).forEach(function(b){ b.addEventListener('click', function(){
@@ -7825,7 +8068,18 @@ ADMIN.recipes=function(v){
       $$('[data-tg]',v).forEach(function(b){ b.addEventListener('click', function(){
         aAct('rcp_item_save',{id:b.getAttribute('data-tg'), active:b.getAttribute('data-on')==='1'})
           .then(function(x){ if(x&&x.ok) ADMIN.recipes(v); }); }); });
+      $$('[data-dup]',v).forEach(function(b){ b.addEventListener('click', function(){
+        ops({op:'duplicate', id:b.getAttribute('data-dup')}, function(x){
+          rcpEdit(x.id, function(){ ADMIN.recipes(v); }); }); }); });
+      $$('[data-arc]',v).forEach(function(b){ b.addEventListener('click', function(){
+        confirmSheet('أرشفة الصنف','يُخفى عن الموظفات ولا يُحذف — يمكن إعادته لاحقا.','أرشفة',
+          function(){ ops({op:'archive', id:b.getAttribute('data-arc')}); }, true); }); });
     }
+    $('#rcpNew',v).addEventListener('click', function(){
+      inputSheet('صنف جديد','اسم الصنف','لاتيه بالفستق','إنشاء', function(nm){
+        ops({op:'create', name:nm}, function(x){ rcpEdit(x.id, function(){ ADMIN.recipes(v); }); });
+      });
+    });
     wire();
     $$('[data-ct]',v).forEach(function(b){ b.addEventListener('click', function(){
       aAct('rcp_cat_toggle',{cat:b.getAttribute('data-ct'), active:b.getAttribute('data-on')==='1'})
@@ -7839,6 +8093,30 @@ ADMIN.recipes=function(v){
     });
   });
 };
+/* ===== تحويل الوصفة بين شكلها المخزَّن وشكلها المحرَّر =====
+   المخزَّن jsonb: المكوّن كائن {name,qty,unit} والخطوة والأداة نصّ.
+   المحرَّر سطور — لأن الكتابة من الهاتف بحقولٍ متكاثرة عذاب، والسطر
+   الواحد يُقرأ ويُعدَّل بلا تعلّم. */
+function rcpLines(a){ return (a||[]).map(function(x){
+  return typeof x==='string' ? x : (x && (x.text||x.name||'')); }).join('\n'); }
+function rcpIngText(a){ return (a||[]).map(function(x){
+  if(typeof x==='string') return x;
+  if(!x) return '';
+  var p=[x.name||''];
+  if(x.qty!==null && x.qty!==undefined && x.qty!=='') p.push(x.qty);
+  if(x.unit) p.push(x.unit);
+  return p.join(' | ');
+}).join('\n'); }
+function rcpParseLines(t){
+  return String(t||'').split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+}
+function rcpParseIng(t){
+  return rcpParseLines(t).map(function(s){
+    var p=s.split('|').map(function(x){ return x.trim(); });
+    var q=p[1]===undefined||p[1]==='' ? null : (isNaN(+p[1]) ? p[1] : +p[1]);
+    return { name:p[0]||'', qty:q, unit:p[2]||null };
+  }).filter(function(x){ return x.name; });
+}
 function rcpEdit(id, after){
   aAct('rcp_admin_list',{}).then(function(){
     sAct('recipe',{id:id}).then(function(r){
@@ -7856,14 +8134,47 @@ function rcpEdit(id, after){
         '<label class="f">الاسم</label><input class="f" id="reN" value="'+esc(it.name||'')+'">'+
         '<label class="f">الفئة</label><input class="f" id="reC" value="'+esc(it.cat||'')+'">'+
         '<label class="f">الكوب</label><input class="f" id="reCup" value="'+esc(it.cup||'')+'">'+
+        /* المكوّنات والمقادير والخطوات والأدوات: كانت تُعدَّل من ملف داخل
+           المشروع فيلزم مطوّر لكل تغيير. سطر لكل عنصر — أبسط ما يُحرَّر
+           من الهاتف، والمقدار بصيغة «الاسم | الكمية | الوحدة». */
+        '<label class="f">المكوّنات والمقادير — سطر لكل مكوّن: الاسم | الكمية | الوحدة</label>'+
+        '<textarea class="f" id="reIng" rows="5" placeholder="اسبريسو | 2 | شوت">'+esc(rcpIngText(it.ingredients))+'</textarea>'+
+        '<label class="f">خطوات التحضير — سطر لكل خطوة</label>'+
+        '<textarea class="f" id="reSt" rows="5">'+esc(rcpLines(it.steps))+'</textarea>'+
+        '<label class="f">الأدوات المطلوبة — سطر لكل أداة</label>'+
+        '<textarea class="f" id="reTo" rows="3">'+esc(rcpLines(it.tools))+'</textarea>'+
         '<label class="f">مؤقّت تنازليّ (بالثواني — اتركه فارغا إن لا حاجة)</label>'+
         '<input class="f" id="reT" type="number" inputmode="numeric" value="'+(it.timer||'')+'">'+
         '<label class="f">اسم المؤقّت</label><input class="f" id="reTL" placeholder="خلط الفرابيه · خبز الوافل" value="'+esc(it.timer_label||'')+'">'+
         '<label class="f">ملاحظة وقت الضغط</label><textarea class="f" id="reB" rows="2">'+esc(it.busy||'')+'</textarea>'+
         '<label class="f">تحذير «انتبهي» — يظهر للموظفة بالأحمر</label><textarea class="f" id="reW" rows="2">'+esc(it.warn||'')+'</textarea>'+
         '<label class="f">علامات النجاح</label><textarea class="f" id="reS" rows="2">'+esc(it.success||'')+'</textarea>'+
-        '<div class="btnrow"><button class="btn block" id="reGo">حفظ</button></div>',
+        '<div class="btnrow"><button class="btn block" id="reGo">حفظ</button></div>'+
+        '<details class="qa" style="margin-top:12px"><summary>تاريخ الإصدارات</summary>'+
+          '<div class="qa-body" id="reVer">'+skel(2)+'</div></details>',
         function(ov, close){
+          /* تاريخ الإصدارات: ما الذي تغيّر ومتى ومن غيّره — والرجوع
+             لإصدار سابق عند الخطأ. الرجوع نفسه يُسجَّل إصدارا جديدا. */
+          aAct('rcp_ops',{op:'versions', id:id}).then(function(hv){
+            var box=$('#reVer',ov); if(!box) return;
+            var vs=(hv&&hv.rows)||[];
+            box.innerHTML = vs.length ? '<div class="list">'+vs.map(function(x){
+              return '<div class="row"><div class="row__body">'+
+                '<div class="row__title">إصدار '+(+x.rev||0)+' · '+esc(x.by||'—')+'</div>'+
+                '<div class="row__sub">'+fmtT(x.ts)+(x.reason?' · '+esc(x.reason):'')+
+                  ((x.changed||[]).length?' · تغيّر: '+esc((x.changed||[]).join('، ')):'')+'</div></div>'+
+                '<button class="btn sm ghost" data-rv="'+esc(x.id)+'">رجوع إليه</button></div>';
+            }).join('')+'</div>' : '<div class="muted small">لا إصدارات سابقة — هذه أول نسخة.</div>';
+            $$('[data-rv]',box).forEach(function(b){ b.addEventListener('click', function(){
+              confirmSheet('الرجوع لإصدار سابق','تُستبدل الوصفة الحالية بمحتوى هذا الإصدار. النسخة الحالية تُحفظ كإصدار أيضا.','رجوع',
+                function(){
+                  aAct('rcp_ops',{op:'restore', id:id, version_id:b.getAttribute('data-rv')}).then(function(x){
+                    if(x&&x.ok){ toast(x.msg); close(); if(after) after(); }
+                    else toast((x&&x.error)||'تعذّر الرجوع', true);
+                  });
+                });
+            }); });
+          }).catch(function(){});
           var photo = it.photo || '';
           var pf=$('#rePf',ov), px=$('#rePx',ov), ph=$('#rePh',ov);
           if(px) px.addEventListener('click', function(){
@@ -7882,6 +8193,9 @@ function rcpEdit(id, after){
                 name:$('#reN',ov).value, cat:$('#reC',ov).value, cup:$('#reCup',ov).value,
                 timer:$('#reT',ov).value, timer_label:$('#reTL',ov).value,
                 busy:$('#reB',ov).value, warn:$('#reW',ov).value, success:$('#reS',ov).value,
+                ingredients:rcpParseIng($('#reIng',ov).value),
+                steps:rcpParseLines($('#reSt',ov).value),
+                tools:rcpParseLines($('#reTo',ov).value),
                 photo:photo
               }).then(function(x){ if(x&&x.ok){ close(); toast(x.msg); if(after) after(); } });
             });
@@ -8099,13 +8413,101 @@ ADMIN.hours=function(v){
     /* ملخّص لكل موظفة (hours_ledger) للقرار السريع، وتفصيل يوم بيوم
        (hours_report) للحوار مع موظفة على يوم بعينه. عرضان لسؤالين مختلفين. */
     '<div class="tfl" style="margin-top:9px"><button class="tfl-b on" data-hv="sum">ملخّص</button>'+
+      '<button class="tfl-b" data-hv="sheet">سجل الحضور</button>'+
       '<button class="tfl-b" data-hv="det">تفصيل يوم بيوم</button></div>'+
     '<div id="hrB" style="margin-top:10px"></div>';
   $$('[data-hv]',v).forEach(function(b){ b.addEventListener('click', function(){
     $$('[data-hv]',v).forEach(function(x){ x.className='tfl-b'; });
     b.className='tfl-b on';
-    if(b.getAttribute('data-hv')==='det') loadDetail(); else load();
+    var hv=b.getAttribute('data-hv');
+    if(hv==='det') loadDetail(); else if(hv==='sheet') loadSheet(); else load();
   });});
+
+  /* ===== سجل الحضور — بمعنى جهاز البصمة =====
+     «عملت ٤ أيام / ٣٢ ساعة» لا يجيب عن سؤال. هذا السجل صفٌّ لكل يوم:
+     دخول وخروج وساعات وتأخير وخروج مبكر وحالة. والإجازة المعتمدة تظهر
+     هنا في تاريخها لا في صفحة منفصلة — فصلُها كان يجعل التقرير مضلّلا:
+     تقرأ الإدارة «غياب» بينما اليوم إجازة موافق عليها. */
+  var TSST={ normal:['green','دوام طبيعي'], late:['orange','تأخير'], early_leave:['orange','خروج مبكر'],
+    absent:['red','غياب'], leave:['','إجازة معتمدة'], rest:['','راحة'], short:['orange','دوام ناقص'],
+    open:['green','شفت مفتوح'], scheduled:['','مجدول — لم يبدأ'], needs_review:['red','يحتاج مراجعة'] };
+  var TSF={ emp:'', status:'' };
+  function loadSheet(){
+    $('#hrB').innerHTML=skel(3);
+    aAct('timesheet',{from:$('#hrFrom').value, to:$('#hrTo').value,
+                      employee_id:TSF.emp, status:TSF.status}).then(function(res){
+      if(!res||!res.ok){ $('#hrB').innerHTML='<div class="empty">'+esc((res&&res.error)||'تعذّر التحميل')+'</div>'; return; }
+      var rows=res.rows||[], t=res.totals||{};
+      var emps=[]; var seen={};
+      (res.by_employee||[]).forEach(function(x){ if(!seen[x.employee_id]){ seen[x.employee_id]=1; emps.push(x); } });
+
+      $('#hrB').innerHTML=
+        '<div class="row" style="gap:6px">'+
+          '<select class="f" id="tsEmp"><option value="">كل الموظفات</option>'+
+            emps.map(function(x){ return '<option value="'+x.employee_id+'"'+(String(TSF.emp)===String(x.employee_id)?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('')+'</select>'+
+          '<select class="f" id="tsSt"><option value="">كل الحالات</option>'+
+            Object.keys(TSST).map(function(k){ return '<option value="'+k+'"'+(TSF.status===k?' selected':'')+'>'+TSST[k][1]+'</option>'; }).join('')+'</select>'+
+        '</div>'+
+        '<div class="statrow" style="margin:10px 0">'+
+          '<div class="stat"><b>'+(t.worked_hours!=null?t.worked_hours:'—')+'</b><span>ساعة عمل</span></div>'+
+          '<div class="stat"><b>'+(t.worked_days||0)+'</b><span>يوم دوام</span></div>'+
+          '<div class="stat"><b>'+(t.late_minutes||0)+'</b><span>دقيقة تأخير</span></div>'+
+        '</div>'+
+        '<div class="statrow" style="margin-bottom:10px">'+
+          '<div class="stat"><b>'+(t.absent_days||0)+'</b><span>غياب</span></div>'+
+          '<div class="stat"><b>'+(t.leave_days||0)+'</b><span>إجازة</span></div>'+
+          '<div class="stat"><b>'+(t.shortfall_hours!=null?t.shortfall_hours:'—')+'</b><span>ساعة ناقصة</span></div>'+
+        '</div>'+
+        '<div class="btnrow" style="margin-bottom:8px">'+
+          '<button class="btn sm ghost" id="tsPrint">طباعة / PDF</button>'+
+          '<button class="btn sm ghost" id="tsCsv">تصدير CSV</button></div>'+
+        '<div class="scrollx" id="tsTbl"><table class="tbl">'+
+          '<tr><th>الموظفة</th><th>التاريخ</th><th>الشفت</th><th>دخول</th><th>خروج</th>'+
+          '<th>ساعات</th><th>تأخير</th><th>خروج مبكر</th><th>الحالة</th></tr>'+
+          (rows.length ? rows.map(function(r){
+            var s=TSST[r.status]||['', r.status_label||r.status];
+            return '<tr><td><b>'+esc(r.name)+'</b></td><td>'+fmtD(r.day)+'</td>'+
+              '<td>'+esc(r.shift||'—')+'</td>'+
+              '<td>'+(r.check_in?fmtT(r.check_in):'—')+'</td>'+
+              '<td>'+(r.check_out?fmtT(r.check_out):'—')+'</td>'+
+              '<td><b>'+hm(r.worked_minutes)+'</b></td>'+
+              '<td>'+((r.late_minutes||0)>0?r.late_minutes+' د':'—')+'</td>'+
+              '<td>'+((r.early_leave_minutes||0)>0?r.early_leave_minutes+' د':'—')+'</td>'+
+              '<td><span class="chip '+s[0]+'">'+esc(r.status_label||s[1])+'</span>'+
+                (r.auto_closed?'<div class="muted small">أُقفل تلقائيا</div>':'')+'</td></tr>';
+          }).join('') : '<tr><td colspan="9" class="center muted">لا سجلات بهذا النطاق</td></tr>')+
+        '</table></div>'+
+        '<div class="muted small" style="margin-top:10px;line-height:1.75">'+
+          'كل يوم في المدى له صفّ: الدوام والغياب والإجازة والراحة. '+
+          '«يحتاج مراجعة» تعني سجلا ناقصا (خروج لم يُسجَّل مثلا) لا مخالفة. '+
+          '<b>ليست بيانات مالية دقيقة</b> — التسجيل يدوي.</div>';
+
+      $('#tsEmp').addEventListener('change', function(){ TSF.emp=this.value; loadSheet(); });
+      $('#tsSt').addEventListener('change', function(){ TSF.status=this.value; loadSheet(); });
+      $('#tsCsv').addEventListener('click', function(){
+        var HH=['الموظفة','التاريخ','الشفت','دخول','خروج','دقائق العمل','تأخير','خروج مبكر','إضافي','الحالة'];
+        var lines=[HH.join(',')].concat(rows.map(function(r){
+          return [r.name, r.day, r.shift||'', r.check_in?fmtT(r.check_in):'', r.check_out?fmtT(r.check_out):'',
+                  r.worked_minutes, r.late_minutes, r.early_leave_minutes, r.overtime_minutes, r.status_label]
+            .map(function(x){ return '"'+String(x==null?'':x).replace(/"/g,'""')+'"'; }).join(',');
+        }));
+        dlFile('سجل-الحضور-'+$('#hrFrom').value+'_'+$('#hrTo').value+'.csv', '﻿'+lines.join('\r\n'), 'text/csv');
+      });
+      /* PDF بلا مكتبة خارجية: سياسة المحتوى تمنع أي سكربت من غير أصلنا،
+         وطباعة المتصفح تعطي «حفظ كـPDF» على الهاتف والحاسوب معا. */
+      $('#tsPrint').addEventListener('click', function(){
+        document.body.setAttribute('data-print','sheet');
+        var ttl=document.title;
+        document.title='سجل الحضور '+$('#hrFrom').value+' — '+$('#hrTo').value;
+        setTimeout(function(){
+          window.print();
+          document.body.removeAttribute('data-print');
+          document.title=ttl;
+        }, 60);
+      });
+      tblResponsive($('#tsTbl'));
+    });
+  }
   function loadDetail(){
     $('#hrB').innerHTML=skel(3);
     aAct('hours_report',{from:$('#hrFrom').value, to:$('#hrTo').value}).then(function(res){

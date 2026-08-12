@@ -2125,3 +2125,28 @@ body.rcp-hide .sheet,body.rcp-hide #view{filter:blur(14px)}
 .kt-s li.on{background:transparent;opacity:.55}
 .kt-s li.on::before{content:"\2713";background:var(--green-ink);color:#fff;font-size:17px}
 .kt-t b{font-size:var(--fs-md)}
+
+/* ===== الطباعة و«حفظ كـPDF» =====
+   سياسة المحتوى تمنع أي سكربت من غير أصلنا، فلا مكتبة PDF خارجية.
+   طباعة المتصفح تعطي «حفظ كـPDF» على الهاتف والحاسوب معا — والمطلوب
+   هنا أن يُطبع الجدول وحده: بلا شريط ولا مرشّحات ولا أزرار، وبجدولٍ
+   حقيقي لا بطاقات (تحويل البطاقات للهاتف يفسد الورقة). */
+@media print{
+  @page{ size:A4 landscape; margin:12mm; }
+  html,body{ background:#fff !important; color:#000 !important; }
+  .top,.nav,.fab,#toast,.sheet,.sheet-bg,.acc,.btnrow,.tfl{ display:none !important; }
+  body[data-print="sheet"] .wrap > *:not(#hrB){ display:none !important; }
+  body[data-print="sheet"] #hrB > *:not(.scrollx):not(.statrow){ display:none !important; }
+  body[data-print="sheet"] #hrB .statrow{ display:flex !important; gap:14px; margin-bottom:8mm; }
+  .scrollx{ overflow:visible !important; }
+  table.tbl{ width:100% !important; border-collapse:collapse !important; font-size:10.5pt; }
+  table.tbl th,table.tbl td{
+    display:table-cell !important; border:1px solid #999 !important;
+    padding:4px 6px !important; text-align:right; }
+  table.tbl tr{ display:table-row !important; page-break-inside:avoid; }
+  table.tbl .rsp-head{ display:table-row !important; background:#eee !important; }
+  table.tbl td::before{ content:none !important; }   /* لا تسميات البطاقات */
+  .chip{ border:1px solid #999 !important; background:transparent !important;
+         color:#000 !important; padding:1px 5px !important; }
+  .stat b{ font-size:13pt; }
+}
