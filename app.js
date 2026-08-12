@@ -711,10 +711,11 @@ function doAttendance(kind, pin, selfie, areaId){
             res.open_tasks.map(function(x){return '<li>'+esc(x.name)+(x.is_core?' <span class="chip red">أساسية</span>':'')+'</li>';}).join('')+'</ul>':'')+
           '<div class="muted small">أنهي هذه النقاط ثم أعيدي المحاولة.</div>');
       } else if(res.confirm_open){
-        var lst=(res.open_tasks||[]).map(function(x){return '<li>'+esc(x.name)+'</li>';}).join('');
-        sheet('لديك مهام لم تغلق',
-          '<div class="small">هذه المهام ما زالت مفتوحة:</div><ul style="padding-right:18px">'+lst+'</ul>'+
-          '<div class="muted small">إن انصرفت الآن ستعود هذه المهام للتوزيع تلقائيا على زميلاتك — ولن تحسب تقصيرا عليك.</div>'+
+        var lst=(res.open_tasks||[]).map(function(x){return '<li>'+esc(x.name)+(x.is_core?' <span class="chip orange">أساسية</span>':'')+'</li>';}).join('');
+        sheet('قبل أن تنصرفي',
+          (lst?'<div class="small">هذه المهام ما زالت مفتوحة:</div><ul style="padding-right:18px">'+lst+'</ul>':'')+
+          (res.needs_handover?'<div class="small" style="color:var(--amber)"><b>تسليم الشفت لم يُسجَّل بعد.</b></div>':'')+
+          '<div class="muted small">'+esc(res.note||'إن انصرفت الآن ستعود هذه المهام للتوزيع تلقائيا على زميلاتك — ولن تحسب تقصيرا عليك.')+'</div>'+
           '<div class="btnrow"><button class="btn block" id="coGo">انصراف وإعادتها للتوزيع</button></div>'+
           '<div class="btnrow"><button class="btn ghost block" id="coBack">أعود لإنهائها</button></div>',
           function(ov, close){
@@ -724,9 +725,12 @@ function doAttendance(kind, pin, selfie, areaId){
                 var p2={geo:g2, device_token:devTok(), device_id:devId(), ack_open:true};
                 if(pin) p2.pin=pin;
                 if(selfie){ if(mediaIsKey(selfie)) p2.selfie_key=selfie; else p2.selfie=selfie; }
-                sAct('check_out', p2, false).then(function(r2){
+                /* mut=true: الانصراف آخر ما تفعله قبل أن تخرج من التغطية،
+                   وأكثر لحظةٍ تُرجَّح فيها ضعف الشبكة. بلا طابور كان يضيع
+                   فيُغلق الكرون يومها بوقتٍ لم يقسه أحد. */
+                sAct('check_out', p2, true).then(function(r2){
                   if(r2.ok){ qClear(function(x){ return /^(task_|blocker_|recur)/.test(x.action||''); });
-                    toast('سجّل انصرافك — أعيدت المهام للتوزيع'); refresh(); }
+                    toast(r2.queued?'سجّل انصرافك — سيرسل عند عودة الاتصال':'سجّل انصرافك — أعيدت المهام للتوزيع'); refresh(); }
                   else toast(r2.error||'خطأ', true);
                 });
               });
@@ -4830,13 +4834,22 @@ function wireTab(v){
          وهو واقف. */
       else if(a==='workLog'){
         sAct('work_log_options',{}).then(function(r){
-          var opts=(r&&r.options)||[];
+          /* مجموعات مسمّاة لا قائمة مختلطة: موظفة المطبخ تجد «عصر عصير»
+             تحت «تحضير وإنتاج» بلمسة، ويداها مبلّلتان لا تكتبان. الكتابة
+             تبقى لما ليس في أي مجموعة. */
+          var groups=(r&&r.groups)||[];
+          if(!groups.length && r && (r.options||[]).length)
+            groups=[{title:'مقترحات', items:r.options}];
+          var chips=groups.filter(function(g){ return (g.items||[]).length; }).map(function(g){
+            return '<div class="muted small" style="margin:8px 0 4px;font-weight:700">'+esc(g.title)+'</div>'+
+              '<div class="wl-opts">'+(g.items||[]).map(function(o){
+                return '<button class="wl-o" data-wl="'+esc(o)+'">'+esc(o)+'</button>';
+              }).join('')+'</div>';
+          }).join('');
           sheet('سجّلي عملا أنجزته',
             '<div class="muted small" style="margin-bottom:8px">عمل لم يكن مسندا إليك — يصل للإدارة باسمك.</div>'+
-            (opts.length?'<div class="wl-opts">'+opts.map(function(o){
-              return '<button class="wl-o" data-wl="'+esc(o)+'">'+esc(o)+'</button>';
-            }).join('')+'</div>':'')+
-            '<label class="f">مإذا عملت؟</label>'+
+            chips+
+            '<label class="f">أو اكتبي غير ذلك</label>'+
             '<input class="f" id="wlN" placeholder="مثال: كبّة النفايات">'+
             '<label class="f">كم أخذ منك؟</label>'+
             '<div class="wl-opts" id="wlM">'+
@@ -4848,6 +4861,8 @@ function wireTab(v){
               var mins=5;
               $$('[data-wl]',ov).forEach(function(b2){ b2.addEventListener('click', function(){
                 $('#wlN',ov).value=b2.getAttribute('data-wl');
+                $$('[data-wl]',ov).forEach(function(x){ x.classList.remove('on'); });
+                b2.classList.add('on');
               }); });
               $$('[data-wm]',ov).forEach(function(b2){ b2.addEventListener('click', function(){
                 mins=+b2.getAttribute('data-wm');
@@ -5229,7 +5244,10 @@ function loadAssignBoard(el){
        (k.manual_rate_breached?'<div class="muted small" style="margin-top:6px;color:var(--red)">نسبة الإسناد اليدوي تجاوزت الهدف ('+pct(k.manual_assignment_target)+') — المحرك لا يغطي التشغيل كما ينبغي.</div>':'')+
        '</div>';
     if(need.length){
-      h+='<h3 style="margin:14px 2px 8px">تحتاج قرارك ('+need.length+')</h3>'+need.map(function(u){
+      /* كان عنوانها «تحتاج قرارك» وعنوان التنبيهات «يحتاج قرارا» — اسمان
+         متطابقان تقريبا لقائمتين مختلفتين، فيقرأ المدير الرقم مرتين ولا
+         يعرف الفرق. الاسم الآن يقول سبب وجودها. */
+      h+='<h3 style="margin:14px 2px 8px">مهام توقّف عندها المحرك ('+need.length+')</h3>'+need.map(function(u){
         var ex=(u.excluded||[]).map(function(x){
           var f=(x.fails||[]).map(function(c){return FAILAR[c]||c;})[0]||'—';
           return esc(x.name)+': '+f; }).join(' · ');
@@ -5322,8 +5340,6 @@ function loadDash(v){
       '<button class="kcard'+(highN?' bad':(alN?' warn':''))+'" data-go="#alerts"><div class="kl">'+SVG_ALERT+'يحتاج قرارا</div><div class="kv">'+alN+'</div><div class="ks">'+(highN?highN+' حرجة':'لا حرجة')+'</div></button>'+
     '</div>');
     out.push('<div class="cc-grid">');
-    /* شريط اليوم الزمني — شكل اليوم لا لقطة منه */
-    out.push('<section class="cc-sec"><div id="dashTL"></div></section>');
     /* الفريق الآن — بطاقات حالة مختصرة */
     out.push('<section class="cc-sec"><h3 style="margin:4px 2px 8px">الفريق الآن</h3>');
     if(!(res.onshift||[]).length) out.push('<div class="card center muted small">لا شفتات اليوم</div>');
@@ -5337,7 +5353,7 @@ function loadDash(v){
     }).join('')+'</div>');
     out.push('</section>');
     var al=res.alerts||[];
-    out.push('<section class="cc-sec"><h3 id="alertsH" style="margin:12px 2px 8px">يحتاج قرارا ('+al.length+')</h3>');
+    out.push('<section class="cc-sec"><h3 id="alertsH" style="margin:12px 2px 8px">يحتاج قرارك ('+al.length+')</h3>');
     if(!al.length) out.push('<div class="card center muted">كل شيء تحت السيطرة ✔</div>');
     al.sort(function(a,b){return (a.sev==='high'?0:1)-(b.sev==='high'?0:1);}).forEach(function(a){
       out.push('<div class="card decision" style="padding:12px 14px'+(a.sev==='high'?';border-inline-start-color:var(--red)':'')+'"><b>'+esc(a.what)+'</b>'+
@@ -5345,6 +5361,16 @@ function loadDash(v){
         (a.action?'<div class="btnrow"><button class="btn sm" data-go="'+esc(mapAction(a.action))+'">فتح واتخاذ قرار</button></div>':'')+'</div>');
     });
     out.push('</section>');
+    /* ===== ما دون القرار يُطوى =====
+       كانت الصفحة تفرد أربعة تيّارات قرارات وستّ لوحات تحليل في تمرير
+       واحد، فيضيع ما يستدعي تدخّلا وسط ما يُقرأ للعلم. الآن: الحالة
+       والأرقام والقرارات والفريق مفرودة، وما دونها خلف طيّة واحدة —
+       متاحة كاملة لمن أرادها، لا معروضة على من لم يطلبها. */
+    out.push('<details class="acc" id="dashMore" style="margin-top:10px">'+
+      '<summary>تفاصيل اليوم — الخط الزمني وقرارات المحرك والمناطق<span class="chev">‹</span></summary>'+
+      '<div class="acc-body" style="display:block;padding:0 2px 8px">');
+    /* شريط اليوم الزمني — شكل اليوم لا لقطة منه */
+    out.push('<section class="cc-sec"><div id="dashTL"></div></section>');
     /* مرحلة اليوم + قرارات المحرك (RCOS Workflow) */
     out.push('<section class="cc-sec"><div id="dashWf"></div></section>');
     /* الحالة التشغيلية المستنتجة + تركّز المهارات (محرك RCOS) */
@@ -5364,6 +5390,7 @@ function loadDash(v){
       }).join('')+'</div></section>');
     }
     out.push('<section class="cc-sec"><h3 style="margin:12px 2px 8px">آخر الأحداث <button class="btn sm ghost" data-go="timeline" style="float:left">عرض الكل</button></h3><div id="dashEv" class="list"><div class="row"><div class="row__body muted small">جار التحميل…</div></div></div></section>');
+    out.push('</div></details>');
     out.push('</div>');
     v.innerHTML=out.join('');
     drawDayTimeline(res);
@@ -8754,8 +8781,13 @@ ADMIN.hours=function(v){
               '<td><b>'+hm(r.worked_minutes)+'</b></td>'+
               '<td>'+((r.late_minutes||0)>0?r.late_minutes+' د':'—')+'</td>'+
               '<td>'+((r.early_leave_minutes||0)>0?r.early_leave_minutes+' د':'—')+'</td>'+
+              /* من أغلق السجل؟ سؤال طُرح، وجوابه يغيّر قراءة الساعات كلها:
+                 «تقدير» ليس قياساً، ولا يجوز أن يُقرأ كأنه قياس. */
               '<td><span class="chip '+s[0]+'">'+esc(r.status_label||s[1])+'</span>'+
-                (r.auto_closed?'<div class="muted small">أُقفل تلقائيا</div>':'')+'</td></tr>';
+                (r.check_out?'<div class="muted small">'+
+                  ({self:'سجّلته بنفسها', evidence:'تلقائي — من آخر نشاط لها',
+                    scheduled:'تلقائي — تقدير بوقت الجدول', admin:'أقفلته الإدارة'}[r.out_source]||'')+
+                  (r.out_confirmed?' · أكّدته':'')+'</div>':'')+'</td></tr>';
           }).join('') : '<tr><td colspan="9" class="center muted">لا سجلات بهذا النطاق</td></tr>')+
         '</table></div>'+
         '<div class="muted small" style="margin-top:10px;line-height:1.75">'+
