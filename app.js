@@ -2511,7 +2511,9 @@ function dashBreak(){
 function dashOps(mode){
   var st=S.state, sh=st.shift, out=[];
   if(!sh) return '';
-  var onlyDue=(mode==='due'), choresOnly=(mode==='chores');
+  /* 'choresdue': الدوريات المستحقّة وحدها — بلا كتلة الضغط ولا نداءات
+     المساعدة، لأنها تُعرض داخل شاشة «الآن» التي فيها هذه الكتل أصلاً. */
+  var onlyDue=(mode==='due'||mode==='choresdue'), choresOnly=(mode==='chores'||mode==='choresdue');
   // ضغط منطقتي — إجراء سريع مطويّ افتراضيا
   var myP=null; (st.pressure||[]).forEach(function(p){ if(p.area_id===sh.area_id) myP=p; });
   if(!choresOnly && sh.area_id && (sh.tables||0)>0){
@@ -2710,12 +2712,20 @@ function nowPendingOut(){
   var po = S.state && S.state.pending_out;
   if(!po || !po.shift_id || S._outAsked) return '';
   var endTxt = po.shift_end ? fmtT(po.shift_end) : null;
+  /* الخياران الجاهزان كانا مبنيَّين على نهاية شفت مخطّطة — وكل شفتات
+     النظام بلا نهاية، فلا يبقى أمام الموظفة إلا «وقت آخر» ومنتقي وقت في
+     نهاية يوم متعب. الآن تُعرض خيارات مبنية على ما نعرفه فعلاً: آخر عمل
+     سجّلته (أصدقها)، ووقت إغلاق المقهى. */
+  var actTxt = po.last_activity ? fmtT(po.last_activity) : null;
+  var clsTxt = po.close_at ? fmtT(po.close_at) : null;
   return '<div class="nx-ask" id="outAsk">'+
     '<b>شفتك أمس بقي مفتوحا</b>'+
     '<span>أغلق تلقائيا '+fmtT(po.closed_at)+'. متى غادرت فعلا؟</span>'+
     '<div class="nx-ask-b">'+
+      (actTxt?'<button data-oc="last_activity">آخر عمل سجّلتِه<i>'+esc(actTxt)+'</i></button>':'')+
       (endTxt?'<button data-oc="shift_end">نهاية الشفت<i>'+esc(endTxt)+'</i></button>':'')+
       (endTxt?'<button data-oc="minus_30">قبلها بنصف ساعة<i>'+esc(fmtT(new Date(new Date(po.shift_end).getTime()-1800000)))+'</i></button>':'')+
+      (clsTxt&&!endTxt?'<button data-oc="close">حتى إغلاق المقهى<i>'+esc(clsTxt)+'</i></button>':'')+
       '<button data-oc="custom">وقت آخر</button>'+
     '</div></div>';
 }
@@ -3133,6 +3143,28 @@ function viewNow(){
   }
   /* القائمة الكاملة صارت أيقونة «مهامي» في الاختصارات — مقصد واحد
      في موضع واحد، لا سطر أسفل الشاشة وزرّ فوقه. */
+
+  /* ── الدوريات التي حان وقتها ──
+     كانت تظهر للموظفة سطراً نصّياً بلا زرّ داخل ورقة «مهامي». والقائمة
+     الوحيدة التي فيها أفعال (حجز · سحب للإنجاز · أخذ من زميلة) كانت في
+     تبويب «المهام» — وهو تبويب أُزيل من الشريط. فصارت دورة الحمّام
+     وأخواتها بلا مكان تُنفَّذ منه: تُرى ولا تُعمل.
+     هنا تعود قابلة للفعل في الشاشة التي تقف عليها الموظفة، ولا تُعرض
+     إلا ما حان وقته فعلاً كي لا تزدحم. */
+  if(inT && !outT){
+    var choresDue=(st.recurring||[]).filter(function(rt){
+      var full = rt.target>0 && rt.done>=rt.target;
+      if(full) return false;
+      var overdue = rt.cadence_min>0 && (!rt.last_ts || (Date.now()-new Date(rt.last_ts).getTime())/60000 >= rt.cadence_min);
+      var mine = rt.turn && S.me && rt.turn.id===S.me.id;
+      return overdue || mine || rt.claim;
+    });
+    if(choresDue.length){
+      out.push('<div class="nx-h" style="margin:16px 2px 6px">دوريات حان وقتها'+
+        ' <span class="chip orange">'+choresDue.length+'</span></div>');
+      out.push(dashOps('choresdue'));
+    }
+  }
 
   /* ── الكتلة ٤: الاختصارات الأربعة ── */
   if(inT && !outT){
