@@ -2783,32 +2783,32 @@ function allTasksSheet(){
       laterL.map(function(t){ return row(t, (PHASE[t.phase]||'')+(t.due_at?' · '+fmtT(t.due_at):'')); }).join('')
     : '<div class="atk-e">لا مهام مؤجّلة</div>';
 
-  /* الدوريات تصل بمسار آخر (قوالب متناوبة لا مهام مسندة)، فتعرض هنا
-     كي تكون هذه الورقة جوابا كاملا لا نصف جواب. */
-  var rec=(st.recurring||[]).filter(function(rt){ return rt.turn; });
-  var recNow=rec.filter(function(rt){ return rt.due !== false; });
-  var recLater=rec.filter(function(rt){ return rt.due === false; });
-  function recRow(rt, sub){
-    return '<div class="atk"><div class="atk-t"><b>'+esc(rt.name)+'</b>'+
-      '<span>'+esc(sub)+'</span></div>'+
-      (rt.cadence_min?'<span class="atk-m">كل '+(+rt.cadence_min)+' د</span>':'')+'</div>';
-  }
-  if(recNow.length){
-    h+='<div class="atk-h">دوريات حان وقتها<i>'+recNow.length+'</i></div>'+
-       recNow.map(function(rt){ return recRow(rt, rt.area||'بالتناوب'); }).join('');
-  }
-  if(recLater.length){
-    h+='<div class="atk-h">دوريات لاحقا<i>'+recLater.length+'</i></div>'+
-       '<div class="atk-why">لكل دورية إيقاعها. تظهر وحدها حين يحين وقتها، '+
-       'فلا تصل عشر دوريات دفعة واحدة والمقهى ما زال هادئا.</div>'+
-       recLater.map(function(rt){
-         return recRow(rt, (rt.area||'')+(rt.due_at?' · من '+fmtT(rt.due_at):'')); }).join('');
+  /* ===== الدوريات: كلّها متاحة، وكلّها قابلة للفعل =====
+     كانت تُعرض هنا سطوراً نصّية بلا زرّ، ومقصورة على ما له «دور» —
+     فالدورية التي لم يُسنَد لها دور تختفي تماماً، والتي تظهر لا تُعمل.
+     الآن تُعرض كل دورية نشطة ببطاقتها الكاملة: حجزٌ، وسحبٌ للإنجاز،
+     وأخذٌ من زميلة تأخّرت. أي موظفة تستطيع أخذ أي دورية متى شاءت —
+     لا تنتظر دورها ولا تنتظر أن «يحين وقتها». */
+  var recAll=(st.recurring||[]);
+  if(recAll.length){
+    var recDue=recAll.filter(function(rt){
+      var full = rt.target>0 && rt.done>=rt.target;
+      if(full) return false;
+      var over = rt.cadence_min>0 && (!rt.last_ts || (Date.now()-new Date(rt.last_ts).getTime())/60000 >= rt.cadence_min);
+      return over || (rt.turn && S.me && rt.turn.id===S.me.id) || rt.claim;
+    });
+    h+='<div class="atk-h">الدوريات<i>'+recAll.length+'</i></div>'+
+       '<div class="atk-why">أي دورية تستطيعين أخذها الآن — لا تنتظري دورك. '+
+       (recDue.length?'<b>'+recDue.length+' منها حان وقتها.</b>':'لا شيء منها متأخر الآن.')+'</div>'+
+       '<div id="atkChores">'+dashOps('chores')+'</div>';
   }
 
   h+='<div class="atk-h">أنجزتها اليوم<i>'+doneL.length+'</i></div>';
   h+= doneL.length ? doneL.map(function(t){ return row(t, ''); }).join('')
                    : '<div class="atk-e">لم تغلق مهمة بعد</div>';
-  sheet('كل مهامي اليوم', h);
+  /* البطاقات تحتاج ربط أفعالها داخل الورقة: الورقة ليست جزءاً من حاوية
+     التبويب فلا يصلها ربط wireTab. */
+  sheet('كل مهامي اليوم', h, function(ov){ wireChores(ov); mediaFill(); });
 }
 
 /* مهام المطبخ: كانت تصل من الخادم ولا تعرض في أي شاشة — بنيت الفعل
@@ -4050,6 +4050,50 @@ function updateTimers(){
 function findTask(id){ var f=null; (S.state.tasks||[]).forEach(function(t){ if(t.id===id) f=t; }); return f; }
 /* مسار إنجاز المهمة الدوّارة: كان محصورا داخل معالج الكبسة، فاستخرج كما هو
    ليستدعيه السحب أيضا. لا تغيير في الحمولة ولا في التوثيق بالصورة. */
+/* ===== أفعال الدوريات — دوالّ مستقلّة =====
+   كانت مدفونة داخل سلسلة معالجات تبويب واحد، فحين عُرضت البطاقات في
+   ورقة «مهامي» ظهرت بلا أفعال: تُرى ولا تُعمل. استخراجها يجعل البطاقة
+   تعمل أينما عُرضت، ويمنع تكرار العطل نفسه في أي شاشة قادمة. */
+function choreClaim(tid){
+  sAct('recur_claim',{template_id:tid},true).then(function(res){
+    if(res&&res.ok) refresh(); else toast((res&&res.error)||'خطأ',true); });
+}
+function choreRelease(tid){
+  sAct('recur_release',{template_id:tid},true).then(function(){ refresh(); });
+}
+function choreTake(tid, who){
+  confirmSheet('أخذ الدورية',
+    esc(who||'زميلتك')+' حجزتها ولم تُنجزها بعد. إن كانت لم تبدأها خذيها — وسيصلها إشعار بذلك.',
+    'خذيها', function(){
+      sAct('recur_claim',{template_id:tid, takeover:true},true).then(function(res){
+        if(res&&res.ok){ toast('صارت لكِ — أنجزيها الآن'); refresh(); }
+        else toast((res&&res.error)||'تعذّر الأخذ', true);
+      });
+    });
+}
+/* تُربط أينما عُرضت البطاقات: شاشة «الآن» أو ورقة «مهامي». */
+function wireChores(root){
+  $$('.swipe[id^="swRec"]', root).forEach(function(el){
+    if(el.getAttribute('data-cb')) return;
+    var tid=+el.id.replace('swRec','');
+    var rt=null; ((S.state&&S.state.recurring)||[]).forEach(function(x){ if(+x.template_id===tid) rt=x; });
+    if(!rt) return;
+    el.setAttribute('data-cb','1');
+    swipeBind(el, function(){ recurringDone(tid, !!rt.needs_photo, rt.name); });
+  });
+  $$('[data-a="recClaim"],[data-a="recRelease"],[data-a="recTake"],[data-a="recDone"]', root)
+    .forEach(function(b){
+      if(b.getAttribute('data-cb')) return;
+      b.setAttribute('data-cb','1');
+      b.addEventListener('click', function(){
+        var a=b.getAttribute('data-a'), id=+b.getAttribute('data-id');
+        if(a==='recClaim') choreClaim(id);
+        else if(a==='recRelease') choreRelease(id);
+        else if(a==='recTake') choreTake(id, b.getAttribute('data-who'));
+        else recurringDone(id, b.getAttribute('data-photo')==='1', b.getAttribute('data-name'));
+      });
+    });
+}
 function recurringDone(tid, needPhoto, nm){
   function send(extra){
     var rp={template_id:tid}; for(var rk in (extra||{})) rp[rk]=extra[rk];
@@ -4678,12 +4722,7 @@ function wireTab(v){
   });
   /* سحب إنجاز المهمة الدوّارة — نفس قواعد السحب، ومسار recurring_done نفسه
      الذي كان خلف الكبسة، بلا تغيير في المنطق ولا في الحمولة. */
-  $$('.swipe[id^="swRec"]', v).forEach(function(el){
-    var tid=+el.id.replace('swRec','');
-    var rt=null; (S.state.recurring||[]).forEach(function(x){ if(+x.template_id===tid) rt=x; });
-    if(!rt) return;
-    swipeBind(el, function(){ recurringDone(tid, !!rt.needs_photo, rt.name); });
-  });
+  wireChores(v);
   /* السؤال التشغيلي العابر */
   $$('[data-obs]', v).forEach(function(b){
     b.addEventListener('click', function(){
@@ -4983,21 +5022,11 @@ function wireTab(v){
       else if(a==='recDone'){
         recurringDone(id, b.getAttribute('data-photo')==='1', b.getAttribute('data-name'));
       }
-      else if(a==='recClaim'){ sAct('recur_claim',{template_id:id},true).then(function(res){ if(res.ok) refresh(); else toast(res.error||'خطأ',true); }); }
+      else if(a==='recClaim'){ choreClaim(id); }
       /* الأخذ من زميلة: يُسأل عنه صراحة ويُخطَر صاحبته — لا يمرّ بصمت،
          حتى لا تذهب اثنتان للحمّام في وقت واحد. */
-      else if(a==='recTake'){
-        var who=b.getAttribute('data-who')||'زميلتك';
-        confirmSheet('أخذ الدورية',
-          esc(who)+' حجزتها ولم تُنجزها بعد. إن كانت لم تبدأها خذيها — وسيصلها إشعار بذلك.',
-          'خذيها', function(){
-            sAct('recur_claim',{template_id:id, takeover:true},true).then(function(res){
-              if(res && res.ok){ toast('صارت لكِ — أنجزيها الآن'); refresh(); }
-              else toast((res&&res.error)||'تعذّر الأخذ', true);
-            });
-          });
-      }
-      else if(a==='recRelease'){ sAct('recur_release',{template_id:id},true).then(function(){ refresh(); }); }
+      else if(a==='recTake'){ choreTake(id, b.getAttribute('data-who')); }
+      else if(a==='recRelease'){ choreRelease(id); }
       else if(a==='coverOpen') openCover();
       else if(a==='sopOpen') sAct('sops_list',{}).then(function(res){
         var rows=(res&&res.rows)||[];
