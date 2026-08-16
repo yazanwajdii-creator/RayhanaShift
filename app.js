@@ -620,9 +620,45 @@ function cameraSheet(opts, cb){
       ov.addEventListener('click', function(e){ if(e.target===ov) stopCam(); });
       navigator.mediaDevices.getUserMedia({video:{facingMode:opts.facing||'environment', width:{ideal:1024}}, audio:false})
         .then(function(st){ stream=st; var v=$('#camV',ov); if(v) v.srcObject=st; else stopCam(); })
-        .catch(function(){
+        /* كان الخطأ يُبتلع وتُعرض رسالة واحدة لكل الأسباب، فلا الموظفة تعرف
+           ما تفعل ولا الإدارة تعرف ما حدث. الأسباب مختلفة وعلاجها مختلف:
+           منعُ إذنٍ يبقى لاصقا في متصفّح سامسونج حتى يُعاد من إعدادات
+           الموقع، وكاميرا مشغولة بتطبيق آخر تُحلّ بإغلاقه، وجهازٌ بلا
+           كاميرا لا حيلة فيه. لكلٍّ رسالته وطريق خروجه. */
+        .catch(function(err){
           stopCam(); closeFn();
-          toast('يجب السماح بالكاميرا — هذه العملية تتطلب تصويرا مباشرا', true);
+          var n=(err&&err.name)||'', msg, how;
+          if(n==='NotAllowedError' || n==='PermissionDeniedError'){
+            msg='الكاميرا ممنوعة على هذا المتصفح';
+            how='افتحي إعدادات الموقع في المتصفّح (رمز القفل بجانب العنوان) وفعّلي الكاميرا، ثم أعيدي المحاولة.';
+          } else if(n==='NotReadableError' || n==='TrackStartError'){
+            msg='الكاميرا مشغولة بتطبيق آخر';
+            how='أغلقي تطبيق الكاميرا أو أي تطبيق يستخدمها، ثم أعيدي المحاولة.';
+          } else if(n==='NotFoundError' || n==='DevicesNotFoundError'){
+            msg='لا توجد كاميرا على هذا الجهاز';
+            how='استخدمي جهازا فيه كاميرا، أو أبلغي الإدارة لتوثّق المهمة بطريقة أخرى.';
+          } else if(!window.isSecureContext){
+            msg='الاتصال غير آمن فمُنعت الكاميرا';
+            how='افتحي النظام من رابطه الرسمي (https) لا من نسخة محلية.';
+          } else {
+            msg='تعذّر فتح الكاميرا'; how='أعيدي المحاولة، وإن تكرر أبلغي الإدارة.';
+          }
+          /* لا تُترك بلا مخرج: تُبلِّغ بضغطة، فتصل الإدارة ويُوثَّق السبب
+             التقني — بدل أن تبقى المهمة معلّقة ولا يعرف أحد لماذا. */
+          sheet(msg, '<div class="cdlg-txt">'+esc(how)+'</div>'+
+            '<div class="muted small">السبب التقني: '+esc(n||'غير معروف')+'</div>'+
+            '<div class="btnrow"><button class="btn block" id="camRetry">أعيد المحاولة</button></div>'+
+            '<div class="btnrow"><button class="btn ghost block" id="camTell">أبلغي الإدارة أن الكاميرا لا تفتح</button></div>',
+            function(ov2, close2){
+              $('#camRetry',ov2).addEventListener('click', function(){ close2(); cameraSheet(opts, cb); });
+              $('#camTell',ov2).addEventListener('click', function(){
+                close2();
+                sAct('issue_report',{title:'الكاميرا لا تفتح — '+(opts.title||''),
+                  category:'maintenance', priority:'high',
+                  detail:'سبب تقني: '+(n||'غير معروف')+' · الجهاز: '+navigator.userAgent}, true)
+                  .then(function(r){ toast(r&&r.ok?'أُبلغت الإدارة':'تعذّر الإبلاغ', !(r&&r.ok)); });
+              });
+            });
           if(opts.onFail) opts.onFail();
         });
       $('#camGo',ov).addEventListener('click', function(){
@@ -5655,6 +5691,48 @@ ADMIN.monitor=function(v){
             ' — '+esc(lc.by||'—')+' · '+fmtT(lc.ts)+'</div>':'')+
       '</div>';
     }).join('') : '<div class="empty">لا مهام مطابقة</div>';
+
+    /* ===== الدوريات =====
+       نصف العمل اليومي (الحمّام · الجلي · الواجهة · دورة الصالة) يُسجَّل
+       في جدول منفصل عن المهام، وكل شاشات التشغيل كانت تقرأ جدول المهام
+       وحده. فيبدو أن الموظفة لم تعمل الدورية بينما هي عملتها وصوّرتها.
+       تظهر هنا بصورها وبمن نفّذتها ومتى. */
+    var ch=r.chores||[], ct=r.chore_totals||{};
+    if(ch.length && !MON.f.bucket){
+      $('#monRows').insertAdjacentHTML('beforeend',
+        '<h3 style="margin:18px 2px 8px">الدوريات — '+(ct.runs||0)+' تنفيذة اليوم'+
+        ((ct.overdue||0)?' · <span class="chip orange">'+ct.overdue+' حان وقتها</span>':'')+'</h3>'+
+        ch.map(function(c){
+          var pct=c.target>0?Math.min(100,Math.round(100*c.done/c.target)):0;
+          return '<div class="card" style="padding:10px 12px;margin-bottom:7px;border-inline-start:4px solid var('+
+              (c.overdue?'--amber':c.done?'--green-ink':'--line')+')">'+
+            '<div class="row" style="justify-content:space-between;gap:8px">'+
+              '<b style="min-width:0">'+esc(c.name)+'</b>'+
+              '<span class="chip '+(c.overdue?'orange':(c.done?'green':''))+'">'+
+                (c.target>0?c.done+'/'+c.target:String(c.done))+'</span></div>'+
+            '<div class="muted small" style="margin-top:3px">'+esc(c.area||'—')+
+              (c.all_staff?' · للجميع':'')+
+              (c.cadence_min?' · كل '+c.cadence_min+' د':'')+
+              (c.last_ts?' · آخرها '+fmtT(c.last_ts):' · لم تُنفَّذ اليوم')+'</div>'+
+            (c.target>0?'<div class="pbar" style="margin-top:6px"><i style="width:'+pct+'%"></i></div>':'')+
+            ((c.runs||[]).length
+              ? '<details class="qa" style="margin-top:7px"><summary>من نفّذتها ('+c.runs.length+')</summary>'+
+                '<div class="qa-body"><div class="list">'+c.runs.map(function(x){
+                  return '<div class="row"><div class="row__body">'+
+                    '<div class="row__title">'+esc(x.who||'—')+'</div>'+
+                    '<div class="row__sub">'+fmtT(x.ts)+
+                      (x.verdict==='suspicious'?' · <span style="color:var(--amber)">تحتاج نظرة</span>':'')+
+                      (x.note?' · '+esc(x.note):'')+'</div></div>'+
+                    (x.photo?'<span style="width:56px;flex:0 0 auto">'+
+                      mediaSlot('img', x.photo, 'width:100%;border-radius:8px;display:block')+'</span>':
+                      (c.needs_photo?'<span class="chip orange">بلا صورة</span>':''))+
+                  '</div>';
+                }).join('')+'</div></div></details>'
+              : '')+
+          '</div>';
+        }).join(''));
+      mediaFill();
+    }
 
     $$('#monChips [data-mb]',v).forEach(function(b){
       b.addEventListener('click', function(){ MON.f.bucket=b.getAttribute('data-mb'); draw(); }); });
