@@ -8754,7 +8754,7 @@ ADMIN.hours=function(v){
           : '')+
         '<div class="scrollx" id="tsTbl"><table class="tbl">'+
           '<tr><th>الموظفة</th><th>التاريخ</th><th>الشفت</th><th>دخول</th><th>خروج</th>'+
-          '<th>ساعات</th><th>تأخير</th><th>خروج مبكر</th><th>الحالة</th></tr>'+
+          '<th>ساعات</th><th>إضافي</th><th>تأخير</th><th>خروج مبكر</th><th>الحالة</th><th>تصحيح</th></tr>'+
           (rows.length ? rows.map(function(r){
             var s=TSST[r.status]||['', r.status_label||r.status];
             return '<tr><td><b>'+esc(r.name)+'</b></td><td>'+fmtD(r.day)+'</td>'+
@@ -8762,6 +8762,9 @@ ADMIN.hours=function(v){
               '<td>'+(r.check_in?fmtT(r.check_in):'—')+'</td>'+
               '<td>'+(r.check_out?fmtT(r.check_out):'—')+'</td>'+
               '<td><b>'+hm(r.worked_minutes)+'</b></td>'+
+              /* الإضافي كان غائبا عن التقرير رغم أنه محسوب — ومن تداوم
+                 إضافيا يقرأ سجلّها كأنها عملت شفتا عاديا. */
+              '<td>'+((r.overtime_minutes||0)>0?'<b style="color:var(--green-ink)">'+hm(r.overtime_minutes)+'</b>':'—')+'</td>'+
               '<td>'+((r.late_minutes||0)>0?r.late_minutes+' د':'—')+'</td>'+
               '<td>'+((r.early_leave_minutes||0)>0?r.early_leave_minutes+' د':'—')+'</td>'+
               /* من أغلق السجل؟ سؤال طُرح، وجوابه يغيّر قراءة الساعات كلها:
@@ -8770,7 +8773,12 @@ ADMIN.hours=function(v){
                 (r.check_out?'<div class="muted small">'+
                   ({self:'سجّلته بنفسها', evidence:'تلقائي — من آخر نشاط لها',
                     scheduled:'تلقائي — تقدير بوقت الجدول', admin:'أقفلته الإدارة'}[r.out_source]||'')+
-                  (r.out_confirmed?' · أكّدته':'')+'</div>':'')+'</td></tr>';
+                  (r.out_confirmed?' · أكّدته':'')+'</div>':'')+'</td>'+
+              /* التصحيح من داخل التقرير: الإدارة تقرأ الصفّ الخاطئ هنا،
+                 فلا معنى لأن تبحث عنه في شاشة أخرى لتصلحه. */
+              '<td>'+(r.shift_id
+                ? '<button class="btn sm ghost" data-tsfix="'+r.shift_id+'" data-nm="'+esc(r.name)+'" data-d="'+esc(r.day)+'">تصحيح</button>'
+                : '—')+'</td></tr>';
           }).join('') : '<tr><td colspan="9" class="center muted">لا سجلات بهذا النطاق</td></tr>')+
         '</table></div>'+
         '<div class="muted small" style="margin-top:10px;line-height:1.75">'+
@@ -8778,13 +8786,40 @@ ADMIN.hours=function(v){
           '«يحتاج مراجعة» تعني سجلا ناقصا (خروج لم يُسجَّل مثلا) لا مخالفة. '+
           '<b>ليست بيانات مالية دقيقة</b> — التسجيل يدوي.</div>';
 
+      /* التصحيح من داخل التقرير: الإدارة تقرأ الصفّ الخاطئ هنا، فلا معنى
+         لأن تبحث عنه في شاشة أخرى. والتصحيح يُوسم بأنه بيد إنسان فيخرج
+         الصفّ من «يحتاج مراجعة» — لأن أحداً نظر فيه وأقرّه. */
+      $$('[data-tsfix]',v).forEach(function(b){ b.addEventListener('click', function(){
+        var sid=b.getAttribute('data-tsfix'), nm=b.getAttribute('data-nm'), dy=b.getAttribute('data-d');
+        var row=null; rows.forEach(function(x){ if(String(x.shift_id)===String(sid)) row=x; });
+        var hhmm=function(ts){ if(!ts) return ''; var d2=new Date(ts);
+          return ('0'+d2.getHours()).slice(-2)+':'+('0'+d2.getMinutes()).slice(-2); };
+        sheet('تصحيح سجل '+esc(nm)+' — '+esc(fmtD(dy)),
+          '<div class="muted small">اتركي الحقل فارغا لإبقائه كما هو.</div>'+
+          '<label class="f">الدخول</label><input class="f" id="tfIn" type="time" value="'+hhmm(row&&row.check_in)+'">'+
+          '<label class="f">الخروج</label><input class="f" id="tfOut" type="time" value="'+hhmm(row&&row.check_out)+'">'+
+          '<div class="muted small">يُعاد حساب الساعات والتأخير والإضافي، ويُسجَّل التصحيح باسمك في سجل التدقيق.</div>'+
+          '<div class="btnrow"><button class="btn block" id="tfGo">حفظ التصحيح</button></div>',
+          function(ov,close){
+            $('#tfGo',ov).addEventListener('click', function(){
+              busyWrap(this, function(){
+                return aAct('attendance_set',{shift_id:+sid, 'in':$('#tfIn',ov).value, out:$('#tfOut',ov).value})
+                  .then(function(rr){
+                    if(rr&&rr.ok){ close(); toast('صُحّح السجل ✔'); loadSheet(); }
+                    else toast((rr&&rr.error)||'تعذّر التصحيح', true);
+                  });
+              });
+            });
+          });
+      }); });
       $('#tsEmp').addEventListener('change', function(){ TSF.emp=this.value; loadSheet(); });
       $('#tsSt').addEventListener('change', function(){ TSF.status=this.value; loadSheet(); });
       $('#tsCsv').addEventListener('click', function(){
-        var HH=['الموظفة','التاريخ','الشفت','دخول','خروج','دقائق العمل','تأخير','خروج مبكر','إضافي','الحالة'];
+        var HH=['الموظفة','التاريخ','الشفت','دخول','خروج','دقائق العمل','إضافي','تأخير','خروج مبكر','الحالة','مصدر الإغلاق'];
         var lines=[HH.join(',')].concat(rows.map(function(r){
           return [r.name, r.day, r.shift||'', r.check_in?fmtT(r.check_in):'', r.check_out?fmtT(r.check_out):'',
-                  r.worked_minutes, r.late_minutes, r.early_leave_minutes, r.overtime_minutes, r.status_label]
+                  r.worked_minutes, r.overtime_minutes, r.late_minutes, r.early_leave_minutes,
+                  r.status_label, {self:'سجّلته بنفسها',evidence:'من آخر نشاط',scheduled:'تقدير',admin:'صحّحته الإدارة'}[r.out_source]||'']
             .map(function(x){ return '"'+String(x==null?'':x).replace(/"/g,'""')+'"'; }).join(',');
         }));
         dlFile('سجل-الحضور-'+$('#hrFrom').value+'_'+$('#hrTo').value+'.csv', '﻿'+lines.join('\r\n'), 'text/csv');
