@@ -5647,10 +5647,12 @@ ADMIN.monitor=function(v){
   v.innerHTML='<div id="monHead">'+skel(1)+'</div><div id="monRows">'+skel(4)+'</div>';
 
   function load(){
-    aAct('ops_monitor',{day:''}).then(function(r){
-      if(!r || !r.ok) return;
+    /* لا يُرسل حقل تاريخ فارغ: الخادم يحرسه الآن، لكن إرسال '' يعني
+       «تاريخ» ولا تاريخ فيه. غيابه يعني «اليوم» وهو المقصود. */
+    aAct('ops_monitor',{}).then(function(r){
+      if(!r || !r.ok){ $('#monRows').innerHTML='<div class="empty">'+esc((r&&r.error)||'تعذّر التحميل')+'</div>'; return; }
       MON.data=r; draw();
-    }).catch(function(){});
+    }).catch(function(){ $('#monRows').innerHTML='<div class="empty">تعذّر الاتصال — أعيدي المحاولة</div>'; });
   }
 
   function draw(){
