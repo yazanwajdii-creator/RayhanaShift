@@ -2551,7 +2551,19 @@ function dashOps(mode){
        تطلب سحبا للتأكيد. توحيد القواعد: كل إعلان إنجاز يسحب لا يكبس،
        والبدء والتراجع يبقيان كبسة لأنهما قابلان للعكس. */
     if(full) btns='<div class="btnrow"><button class="btn sm block" disabled>اكتمل المطلوب</button></div>';
-    else if(claimedByOther) btns='<div class="chip orange" style="display:block;text-align:center;padding:9px;margin-top:8px"><b>'+esc(claim.who)+'</b> تقوم بها الآن</div>';
+    /* الحجز كان يخفي كل الأزرار ويعرض «فلانة تقوم بها الآن» بلا مهلة ولا
+       طريق — فيبدو نهائيا، وتتوقّف الدورية على من حجزتها ولم تكملها.
+       والخادم لا يمنع أحدا أصلا: الحجز إشارة تهذيب لا قفل.
+       الآن: تُعرض المهلة المتبقية، ثم يُفتح الأخذ بعد دقائق قليلة. */
+    else if(claimedByOther){
+      var mLeft = claim.expires ? Math.max(0, Math.ceil((new Date(claim.expires).getTime()-Date.now())/60000)) : 0;
+      var canTake = claim.ts ? (Date.now()-new Date(claim.ts).getTime())/60000 >= 4 : true;
+      btns='<div class="chip orange" style="display:block;text-align:center;padding:9px;margin-top:8px">'+
+             '<b>'+esc(claim.who)+'</b> تقوم بها الآن'+(mLeft?' · تنتهي خلال '+mLeft+' د':' · انتهى حجزها')+'</div>'+
+           (canTake
+             ? '<div class="btnrow" style="margin-top:7px"><button class="btn sm ghost block" data-a="recTake" data-id="'+rt.template_id+'" data-who="'+esc(claim.who)+'">لم تبدأها؟ خذيها</button></div>'
+             : '<div class="muted small center" style="margin-top:6px">أمهليها دقائق</div>');
+    }
     else if(claimedByMe) btns='<div style="margin-top:9px">'+
         swipeHtml('swRec'+rt.template_id,'اسحبي: أنجزتها')+
         '<div class="btnrow" style="margin-top:7px"><button class="btn sm ghost block" data-a="recRelease" data-id="'+rt.template_id+'">تراجع عن الحجز</button></div></div>';
@@ -4940,6 +4952,19 @@ function wireTab(v){
         recurringDone(id, b.getAttribute('data-photo')==='1', b.getAttribute('data-name'));
       }
       else if(a==='recClaim'){ sAct('recur_claim',{template_id:id},true).then(function(res){ if(res.ok) refresh(); else toast(res.error||'خطأ',true); }); }
+      /* الأخذ من زميلة: يُسأل عنه صراحة ويُخطَر صاحبته — لا يمرّ بصمت،
+         حتى لا تذهب اثنتان للحمّام في وقت واحد. */
+      else if(a==='recTake'){
+        var who=b.getAttribute('data-who')||'زميلتك';
+        confirmSheet('أخذ الدورية',
+          esc(who)+' حجزتها ولم تُنجزها بعد. إن كانت لم تبدأها خذيها — وسيصلها إشعار بذلك.',
+          'خذيها', function(){
+            sAct('recur_claim',{template_id:id, takeover:true},true).then(function(res){
+              if(res && res.ok){ toast('صارت لكِ — أنجزيها الآن'); refresh(); }
+              else toast((res&&res.error)||'تعذّر الأخذ', true);
+            });
+          });
+      }
       else if(a==='recRelease'){ sAct('recur_release',{template_id:id},true).then(function(){ refresh(); }); }
       else if(a==='coverOpen') openCover();
       else if(a==='sopOpen') sAct('sops_list',{}).then(function(res){
